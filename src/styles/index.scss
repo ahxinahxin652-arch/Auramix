@@ -1,0 +1,11 @@
+@use './reset.scss';
+@use './variables.scss' as *;
+
+// 覆盖 Element Plus CSS 变量（运行时主题色；编译时 SCSS 变量覆盖需 unplugin-element-plus）
+:root {
+  --el-color-primary: #{$primary-color};
+  --el-color-success: #{$success-color};
+  --el-color-warning: #{$warning-color};
+  --el-color-danger: #{$danger-color};
+  --el-color-info: #{$info-color};
+}
