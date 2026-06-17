@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(mvn -q -DskipTests compile)",
+      "Bash(mvn -v)",
+      "Read(//c/Program Files/Java//**)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files/Microsoft//**)",
+      "Bash(mvn -q dependency:tree)",
+      "Bash(mvn dependency:tree)",
+      "Bash(xargs -I{} unzip -l {})",
+      "Bash(xargs unzip:*)",
+      "Bash(find ~/.m2/repository -name mybatis-plus-jsqlparser-*.jar)",
+      "Bash(mvn -DskipTests compile)",
+      "Bash(mvn -DskipTests clean compile)",
+      "Bash(/d/BaseApp/apache-maven-3.9.8/bin/mvn help:describe -Dplugin=org.springframework.boot:spring-boot-starter-parent -Dversion=3.5.5 -Ddetail=true)",
+      "Bash(/d/BaseApp/apache-maven-3.9.8/bin/mvn dependency:get -Dartifact=org.springframework.boot:spring-boot-starter-parent:3.5.5:pom -Dtransitive=false)",
+      "Bash(for v:*)",
+      "Bash(do echo:*)",
+      "Bash(/d/BaseApp/apache-maven-3.9.8/bin/mvn dependency:get -Dartifact=org.springframework.boot:spring-boot-starter-parent:$v:pom -Dtransitive=false)",
+      "Bash(done)",
+      "Bash(export JAVA_HOME=\"D:/Program Files/Java/jdk-21\")",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(/d/BaseApp/apache-maven-3.9.8/bin/mvn -DskipTests clean compile)"
+    ]
+  }
+}
