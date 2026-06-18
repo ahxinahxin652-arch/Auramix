@@ -29,6 +29,9 @@ release
 /src/generated/prisma
 /server/generated/prisma
 
+# Prisma 查询引擎临时文件
+query_engine-*.dll.node.tmp*
+
 # Prisma database files (本地数据库，不需要上传)
 prisma/*.db
 prisma/*.db-journal
