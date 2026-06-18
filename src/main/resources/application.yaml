@@ -64,3 +64,15 @@ logging:
     com.son.auramix.mapper: debug
   pattern:
     console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} : %m%n"
+
+# ============================ Admin ============================
+auramix:
+  admin:
+    bootstrap:
+      # 初始管理员用户名
+      username: admin
+      # 留空时启动随机生成 12 位密码并打印一次；生产请通过环境变量注入
+      password: ${AURAMIX_ADMIN_BOOTSTRAP_PASSWORD:}
+    token:
+      # 2 小时滑动过期
+      ttl-seconds: 7200
