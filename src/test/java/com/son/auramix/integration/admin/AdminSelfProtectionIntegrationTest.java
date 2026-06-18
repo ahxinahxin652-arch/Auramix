@@ -2,7 +2,7 @@ package com.son.auramix.integration.admin;
 
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.entity.Admin;
+import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import com.son.auramix.service.admin.AdminManageService;
 import com.son.auramix.service.admin.AdminTokenStore;

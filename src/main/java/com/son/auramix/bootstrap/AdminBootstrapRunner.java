@@ -1,6 +1,6 @@
 package com.son.auramix.bootstrap;
 
-import com.son.auramix.entity.Admin;
+import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

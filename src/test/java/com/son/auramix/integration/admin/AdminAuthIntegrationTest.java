@@ -1,7 +1,7 @@
 package com.son.auramix.integration.admin;
 
-import com.son.auramix.dto.admin.AdminLoginResponse;
-import com.son.auramix.entity.Admin;
+import com.son.auramix.domain.dto.admin.AdminLoginResponse;
+import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import com.son.auramix.service.admin.AdminAuthService;
 import com.son.auramix.service.admin.AdminSessionInfo;

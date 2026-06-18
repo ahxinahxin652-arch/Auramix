@@ -1,6 +1,6 @@
 package com.son.auramix.bootstrap;
 
-import com.son.auramix.entity.Admin;
+import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

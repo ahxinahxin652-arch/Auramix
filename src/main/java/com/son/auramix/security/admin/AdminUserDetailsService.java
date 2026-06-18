@@ -1,7 +1,7 @@
 package com.son.auramix.security.admin;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.son.auramix.entity.Admin;
+import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
