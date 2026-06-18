@@ -1,11 +1,11 @@
 package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.Result;
-import com.son.auramix.dto.admin.AdminCreateRequest;
-import com.son.auramix.dto.admin.AdminListItemResponse;
-import com.son.auramix.dto.admin.AdminPasswordResetRequest;
-import com.son.auramix.dto.admin.AdminProfileResponse;
-import com.son.auramix.dto.admin.AdminStatusUpdateRequest;
+import com.son.auramix.domain.dto.admin.AdminCreateRequest;
+import com.son.auramix.domain.dto.admin.AdminListItemResponse;
+import com.son.auramix.domain.dto.admin.AdminPasswordResetRequest;
+import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.dto.admin.AdminStatusUpdateRequest;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminManageService;
 import jakarta.validation.Valid;
@@ -22,6 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+/**
+ * 管理员管理接口（仅 ROOT_ADMIN）。自保护规则在 service 层：不可改自己、不可改初始管理员。
+ */
 @RestController
 @RequestMapping("/api/admin/manage")
 @RequiredArgsConstructor
@@ -30,21 +33,25 @@ public class AdminManageController {
 
     private final AdminManageService manageService;
 
+    /** POST /api/admin/manage/admins — 创建管理员。失败：USERNAME_TAKEN / EMAIL_TAKEN。 */
     @PostMapping("/admins")
     public Result<AdminProfileResponse> create(@Valid @RequestBody AdminCreateRequest req) {
         return Result.success(manageService.createAdmin(req));
     }
 
+    /** GET /api/admin/manage/admins — 全量列表（按 id 升序）。 */
     @GetMapping("/admins")
     public Result<List<AdminListItemResponse>> list() {
         return Result.success(manageService.listAdmins());
     }
 
+    /** GET /api/admin/manage/admins/{id} — 详情。id 不存在抛 ADMIN_NOT_FOUND。 */
     @GetMapping("/admins/{id}")
     public Result<AdminProfileResponse> get(@PathVariable Integer id) {
         return Result.success(manageService.getAdmin(id));
     }
 
+    /** PUT /api/admin/manage/admins/{id}/password — 重置密码。成功撤销该用户所有 token。 */
     @PutMapping("/admins/{id}/password")
     public Result<Void> resetPassword(@PathVariable Integer id,
                                       @Valid @RequestBody AdminPasswordResetRequest req,
@@ -53,6 +60,7 @@ public class AdminManageController {
         return Result.success();
     }
 
+    /** PUT /api/admin/manage/admins/{id}/status — 启停账号。停用（status=0）撤销所有 token；启用暂不支持。 */
     @PutMapping("/admins/{id}/status")
     public Result<Void> updateStatus(@PathVariable Integer id,
                                      @Valid @RequestBody AdminStatusUpdateRequest req,
