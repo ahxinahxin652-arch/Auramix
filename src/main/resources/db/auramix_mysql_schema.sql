@@ -7,6 +7,11 @@
 -- ------------------------------------------------------------------------------
 -- DROP TABLES IF EXISTS (In order of dependencies if keys are added later)
 -- ------------------------------------------------------------------------------
+
+create database auramix;
+use auramix;
+
+DROP table IF EXISTS `admin`;
 DROP TABLE IF EXISTS `playback_history`;
 DROP TABLE IF EXISTS `liked_albums`;
 DROP TABLE IF EXISTS `liked_tracks`;
@@ -251,3 +256,24 @@ CREATE TABLE `playback_history` (
   KEY `playback_history_user_id_idx` (`user_id`),
   KEY `playback_history_track_id_idx` (`track_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 18. 管理员表 (admin)
+-- ------------------------------------------------------------------------------
+CREATE TABLE `admin` (
+                         `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '管理员ID（主键）',
+                         `username` VARCHAR(50) NOT NULL COMMENT '登录用户名',
+                         `password` VARCHAR(255) NOT NULL COMMENT '加密密码（使用bcrypt/argon2）',
+                         `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
+                         `is_root` TINYINT(1) NOT NULL DEFAULT 0
+                           COMMENT '是否初始管理员: 0否 1是',
+                         `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：0禁用 1启用',
+                         `last_login_ip` VARCHAR(45) DEFAULT NULL COMMENT '最后登录IP（支持IPv6）',
+                         `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
+                         `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                         `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                         PRIMARY KEY (`id`),
+                         UNIQUE KEY `uk_username` (`username`),
+                         UNIQUE KEY `uk_email` (`email`),
+                         KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
