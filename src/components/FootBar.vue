@@ -39,6 +39,12 @@ function goToArtist(artistId) {
   }
 }
 
+function goToAlbum(albumId) {
+  if (albumId) {
+    router.push(`/album/${albumId}`)
+  }
+}
+
 const isDragging = ref(false)
 const isLyricsOpen = ref(false)
 
@@ -406,7 +412,7 @@ onUnmounted(() => {
     <!-- 左侧：当前曲目信息 -->
     <div class="foot-left">
       <div v-if="player.currentTrack" class="track-info">
-        <div class="track-cover">
+        <div class="track-cover" @click="goToAlbum(player.currentTrack.albumId)" style="cursor: pointer;">
           <img v-if="player.currentTrack.cover" :src="player.currentTrack.cover" class="track-cover-img" alt="" />
           <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 18V5l12-2v13"/>
@@ -415,9 +421,9 @@ onUnmounted(() => {
           </svg>
         </div>
         <div class="track-detail">
-          <div class="track-name-wrap" ref="nameWrapRef" :title="player.currentTrack.title || player.currentTrack.name">
+          <div class="track-name-wrap" ref="nameWrapRef" :title="player.currentTrack.title || player.currentTrack.name" @click="goToAlbum(player.currentTrack.albumId)" style="cursor: pointer;">
             <div class="track-name-inner" :class="{ scrolling: canScrollName }">
-              <span class="track-name">{{ player.currentTrack.title || player.currentTrack.name }}</span>
+              <span class="track-name" style="font-weight: 700;">{{ player.currentTrack.title || player.currentTrack.name }}</span>
               <span class="track-name track-name-clone">{{ player.currentTrack.title || player.currentTrack.name }}</span>
             </div>
           </div>

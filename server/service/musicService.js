@@ -1,5 +1,6 @@
 const musicDao = require('../dao/musicDao')
 const artistDao = require('../dao/artistDao')
+const albumDao = require('../dao/albumDao')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
@@ -480,6 +481,38 @@ async function updateArtist(id, updates) {
   }
 }
 
+/**
+ * 根据 ID 获取专辑详情
+ * @param {string} albumId
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function getAlbumById(albumId) {
+  try {
+    const album = await albumDao.getAlbumById(albumId)
+    if (!album) {
+      return ApiResult.fail('专辑不存在')
+    }
+    return ApiResult.ok({ album })
+  } catch (err) {
+    return ApiResult.fail(err.message)
+  }
+}
+
+/**
+ * 更新专辑信息
+ * @param {string} albumId
+ * @param {Object} updates
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function updateAlbum(albumId, updates) {
+  try {
+    const updated = await albumDao.updateAlbum(albumId, updates)
+    return ApiResult.ok({ album: updated })
+  } catch (err) {
+    return ApiResult.fail(err.message)
+  }
+}
+
 module.exports = {
   getMusicWarehouses,
   createMusicWarehouse,
@@ -496,6 +529,7 @@ module.exports = {
   getFileMetadata,
   updateFileMetadata,
   getArtistById,
-  updateArtist
+  updateArtist,
+  getAlbumById,
+  updateAlbum
 }
-

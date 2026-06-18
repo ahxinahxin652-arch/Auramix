@@ -195,6 +195,12 @@ function goToArtist(artistId) {
   }
 }
 
+function goToAlbum(albumId) {
+  if (albumId) {
+    router.push(`/album/${albumId}`)
+  }
+}
+
 function toggleFollow(artistId) {
   if (artistId) {
     followedArtists.value[artistId] = !followedArtists.value[artistId]
@@ -257,7 +263,7 @@ const handleCardArtistClick = (art) => {
     <!-- 曲目详情 -->
     <div class="sidebar-content">
       <!-- 封面 -->
-      <div class="album-art">
+      <div class="album-art" @click="goToAlbum(player.currentTrack.albumId)" style="cursor: pointer;">
         <img v-if="player.currentTrack && player.currentTrack.cover" :src="player.currentTrack.cover" class="album-art-img" alt="" />
         <svg v-else-if="player.currentTrack" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path d="M9 18V5l12-2v13"/>
@@ -273,7 +279,7 @@ const handleCardArtistClick = (art) => {
 
       <!-- 曲目信息 -->
       <div class="track-detail-info">
-        <span class="track-title" :class="{ empty: !player.currentTrack }">
+        <span class="track-title" :class="{ empty: !player.currentTrack }" @click="goToAlbum(player.currentTrack.albumId)" style="cursor: pointer;">
           {{ trackInfo().title }}
         </span>
         <div class="track-artist-wrap" ref="artistWrapRef" :title="trackInfo().artist || '未知作者'" v-if="trackInfo().artist">

@@ -119,31 +119,14 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.MusicLibraryScalarFieldEnum = {
+exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
-  name: 'name',
-  description: 'description',
-  coverPath: 'coverPath',
-  recentPlayedAt: 'recentPlayedAt',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
-exports.Prisma.TrackScalarFieldEnum = {
-  id: 'id',
-  libraryId: 'libraryId',
-  name: 'name',
-  title: 'title',
-  artist: 'artist',
-  artists: 'artists',
-  album: 'album',
-  cover: 'cover',
-  duration: 'duration',
-  path: 'path',
-  format: 'format',
-  size: 'size',
-  modified: 'modified',
-  isEncrypted: 'isEncrypted',
+  email: 'email',
+  passwordHash: 'passwordHash',
+  displayName: 'displayName',
+  avatarUrl: 'avatarUrl',
+  country: 'country',
+  product: 'product',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -152,7 +135,105 @@ exports.Prisma.ArtistScalarFieldEnum = {
   id: 'id',
   name: 'name',
   coverImg: 'coverImg',
-  metadata: 'metadata'
+  bio: 'bio',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AlbumScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  coverUrl: 'coverUrl',
+  releaseDate: 'releaseDate',
+  albumType: 'albumType',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TrackScalarFieldEnum = {
+  id: 'id',
+  albumId: 'albumId',
+  title: 'title',
+  duration: 'duration',
+  lyrics: 'lyrics',
+  trackNumber: 'trackNumber',
+  discNumber: 'discNumber',
+  isrc: 'isrc',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TrackArtistScalarFieldEnum = {
+  trackId: 'trackId',
+  artistId: 'artistId',
+  role: 'role'
+};
+
+exports.Prisma.AlbumArtistScalarFieldEnum = {
+  albumId: 'albumId',
+  artistId: 'artistId'
+};
+
+exports.Prisma.TrackAudioResourceScalarFieldEnum = {
+  id: 'id',
+  trackId: 'trackId',
+  quality: 'quality',
+  format: 'format',
+  bitrate: 'bitrate',
+  streamUrl: 'streamUrl',
+  size: 'size',
+  isPremiumOnly: 'isPremiumOnly',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.GenreScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TrackGenreScalarFieldEnum = {
+  trackId: 'trackId',
+  genreId: 'genreId'
+};
+
+exports.Prisma.PlaylistScalarFieldEnum = {
+  id: 'id',
+  ownerId: 'ownerId',
+  name: 'name',
+  description: 'description',
+  coverUrl: 'coverUrl',
+  isPublic: 'isPublic',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.PlaylistTrackScalarFieldEnum = {
+  playlistId: 'playlistId',
+  trackId: 'trackId',
+  sortOrder: 'sortOrder',
+  addedAt: 'addedAt'
+};
+
+exports.Prisma.PlaylistFollowerScalarFieldEnum = {
+  playlistId: 'playlistId',
+  userId: 'userId',
+  followedAt: 'followedAt'
+};
+
+exports.Prisma.LikedTrackScalarFieldEnum = {
+  userId: 'userId',
+  trackId: 'trackId',
+  likedAt: 'likedAt'
+};
+
+exports.Prisma.PlaybackHistoryScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  trackId: 'trackId',
+  playedAt: 'playedAt',
+  contextType: 'contextType',
+  contextId: 'contextId'
 };
 
 exports.Prisma.SortOrder = {
@@ -167,9 +248,20 @@ exports.Prisma.NullsOrder = {
 
 
 exports.Prisma.ModelName = {
-  MusicLibrary: 'MusicLibrary',
+  User: 'User',
+  Artist: 'Artist',
+  Album: 'Album',
   Track: 'Track',
-  Artist: 'Artist'
+  TrackArtist: 'TrackArtist',
+  AlbumArtist: 'AlbumArtist',
+  TrackAudioResource: 'TrackAudioResource',
+  Genre: 'Genre',
+  TrackGenre: 'TrackGenre',
+  Playlist: 'Playlist',
+  PlaylistTrack: 'PlaylistTrack',
+  PlaylistFollower: 'PlaylistFollower',
+  LikedTrack: 'LikedTrack',
+  PlaybackHistory: 'PlaybackHistory'
 };
 
 /**

@@ -143,12 +143,6 @@ function getMusicWarehouseRoot() {
  */
 async function getAllWarehouses(sortBy = 'recent-played') {
     const db = getDb()
-    const root = getMusicWarehouseRoot()
-
-    // 确保根目录存在
-    if (!fs.existsSync(root)) {
-        fs.mkdirSync(root, {recursive: true})
-    }
 
     // 根据排序方式确定 orderBy
     let orderBy
@@ -157,41 +151,37 @@ async function getAllWarehouses(sortBy = 'recent-played') {
             orderBy = {updatedAt: 'desc'}
             break
         case 'name':
-            orderBy = {name: 'asc'}
+            orderBy = {title: 'asc'}
             break
         case 'recent-played':
         default:
-            orderBy = {recentPlayedAt: {sort: 'desc', nulls: 'last'}}
+            orderBy = {updatedAt: 'desc'}
             break
     }
 
-    const libraries = await db.musicLibrary.findMany({
+    const albums = await db.album.findMany({
         include: {
             _count: {select: {tracks: true}},
+            artists: {
+                include: {
+                    artist: true
+                }
+            }
         },
         orderBy,
     })
 
     const result = []
-    for (const lib of libraries) {
-        const warehousePath = path.join(root, lib.name)
-
-        // 一致性校验：数据库有记录但文件夹不存在 -> 清理数据库记录
-        if (!fs.existsSync(warehousePath)) {
-            console.warn(`[DB Sync] Warehouse "${lib.name}" directory not found, removing from database`)
-            await db.track.deleteMany({where: {libraryId: lib.id}})
-            await db.musicLibrary.delete({where: {id: lib.id}})
-            continue
-        }
-
+    for (const album of albums) {
+        const artistsStr = album.artists.map(aa => aa.artist.name).join(' / ')
         result.push(new WarehouseItemVO({
-            id: lib.id,
-            name: lib.name,
-            path: warehousePath,
-            trackCount: lib._count.tracks,
-            description: lib.description || '',
-            coverPath: lib.coverPath || '',
-            recentPlayedAt: lib.recentPlayedAt,
+            id: album.id,
+            name: album.title,
+            path: album.id,
+            trackCount: album._count.tracks,
+            description: artistsStr,
+            coverPath: album.coverUrl || '',
+            recentPlayedAt: album.updatedAt,
         }))
     }
 
@@ -393,32 +383,45 @@ async function resolveTrackById(trackId) {
     try {
         const track = await db.track.findUnique({
             where: {id: trackId},
-            include: {library: {select: {id: true, name: true}}},
+            include: {
+                album: true,
+                artists: {
+                    include: {
+                        artist: true
+                    }
+                },
+                audioResources: true,
+            },
         })
         if (!track) {
             return {success: false, error: '曲目不存在'}
         }
+        const artistsList = track.artists.map(ta => ({
+            id: ta.artist.id,
+            name: ta.artist.name,
+            role: ta.role
+        }))
+        const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
         return {
             success: true,
             track: {
                 id: track.id,
-                libraryId: track.libraryId,
-                name: track.name,
-                title: track.title || track.name,
-                artist: track.artist || '',
-                album: track.album || '',
-                cover: track.cover || '',
-                duration: track.duration || 0,
-                path: track.path,
-                format: track.format,
-                size: track.size,
-                modified: track.modified || 0,
-                isEncrypted: track.isEncrypted,
-                warehouse: track.library.name,
-                warehouseId: track.libraryId,
+                title: track.title,
+                name: track.title,
+                artist: artistsList.filter(a => a.role === 'Main Artist').map(a => a.name).join(' / ') || artistsList.map(a => a.name).join(' / '),
+                album: track.album.title,
+                albumId: track.albumId,
+                cover: track.album.coverUrl || '',
+                duration: track.duration / 1000,
+                path: resource.streamUrl,
+                format: resource.format,
+                size: resource.size,
+                artists: JSON.stringify(artistsList),
+                trackNumber: track.trackNumber,
+                discNumber: track.discNumber,
+                lyrics: track.lyrics,
                 createdAt: track.createdAt,
                 updatedAt: track.updatedAt,
-                artists: track.artists || '[]',
             },
         }
     } catch (err) {
@@ -435,62 +438,74 @@ async function getWarehouseTracksById(libraryId) {
     const db = getDb()
 
     try {
-        const library = await db.musicLibrary.findUnique({
+        const album = await db.album.findUnique({
             where: {id: libraryId},
+            include: {
+                artists: {
+                    include: {
+                        artist: true
+                    }
+                },
+                tracks: {
+                    include: {
+                        artists: {
+                            include: {
+                                artist: true
+                            }
+                        },
+                        audioResources: true
+                    },
+                    orderBy: {
+                        trackNumber: 'asc'
+                    }
+                }
+            }
         })
 
-        if (!library) {
-            return {success: false, error: `音乐库不存在`}
+        if (!album) {
+            return {success: false, error: `专辑不存在`}
         }
-
-        const tracks = await db.track.findMany({
-            where: {libraryId: library.id},
-            orderBy: {createdAt: 'desc'},
-        })
 
         const validTracks = []
-        const orphanIds = []
+        for (const track of album.tracks) {
+            const artistsList = track.artists.map(ta => ({
+                id: ta.artist.id,
+                name: ta.artist.name,
+                role: ta.role
+            }))
+            const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
+            const isRemote = resource.streamUrl.startsWith('http://') || resource.streamUrl.startsWith('https://')
+            const exists = isRemote || fs.existsSync(resource.streamUrl)
 
-        for (const track of tracks) {
-            if (fs.existsSync(track.path)) {
-                validTracks.push(Track.from({
+            if (exists) {
+                validTracks.push({
                     id: track.id,
-                    libraryId: track.libraryId,
-                    name: track.name,
-                    title: track.title || track.name,
-                    artist: track.artist || '',
-                    album: track.album || '',
-                    cover: track.cover || '',
-                    duration: track.duration || 0,
-                    path: track.path,
-                    format: track.format,
-                    size: track.size,
-                    modified: track.modified || 0,
-                    isEncrypted: track.isEncrypted,
-                    warehouse: library.name,
-                    warehouseId: library.id,
+                    title: track.title,
+                    name: track.title,
+                    artist: artistsList.filter(a => a.role === 'Main Artist').map(a => a.name).join(' / ') || artistsList.map(a => a.name).join(' / '),
+                    album: album.title,
+                    albumId: track.albumId,
+                    cover: album.coverUrl || '',
+                    duration: track.duration / 1000,
+                    path: resource.streamUrl,
+                    format: resource.format,
+                    size: resource.size,
+                    artists: JSON.stringify(artistsList),
+                    trackNumber: track.trackNumber,
+                    discNumber: track.discNumber,
+                    lyrics: track.lyrics,
                     createdAt: track.createdAt,
                     updatedAt: track.updatedAt,
-                    artists: track.artists || '[]',
-                }))
-            } else {
-                console.warn(`[DB Sync] Track "${track.name}" file not found at "${track.path}", removing from database`)
-                orphanIds.push(track.id)
+                })
             }
-        }
-
-        if (orphanIds.length > 0) {
-            await db.track.deleteMany({
-                where: {id: {in: orphanIds}},
-            })
         }
 
         return {
             success: true,
-            warehouseName: library.name,
+            warehouseName: album.title,
             tracks: validTracks,
-            libraryId: library.id,
-            warehouse: {name: library.name, description: library.description || '', coverPath: library.coverPath || ''}
+            libraryId: album.id,
+            warehouse: {name: album.title, description: album.albumType || 'Album', coverPath: album.coverUrl || ''}
         }
     } catch (err) {
         return {success: false, error: err.message}
@@ -734,20 +749,11 @@ async function deleteWarehouseById(libraryId) {
 async function updateTrack(id, data) {
     const db = getDb()
     try {
-        let artistsJson = undefined
-        if (data.artists !== undefined) {
-            artistsJson = typeof data.artists === 'string' ? data.artists : JSON.stringify(data.artists)
-        } else if (data.artist !== undefined) {
-            artistsJson = await buildArtistsJson(data.artist)
-        }
-
         const track = await db.track.update({
             where: {id},
             data: {
                 ...(data.title !== undefined && {title: data.title}),
-                ...(data.artist !== undefined && {artist: data.artist}),
-                ...(data.album !== undefined && {album: data.album}),
-                ...(artistsJson !== undefined && {artists: artistsJson}),
+                ...(data.lyrics !== undefined && {lyrics: data.lyrics}),
             },
         })
         return {success: true, track}

@@ -595,3 +595,7 @@
     border-color: #e91429;
     color: #e91429;
 }
+
+.track-title:hover {
+    text-decoration: underline;
+}

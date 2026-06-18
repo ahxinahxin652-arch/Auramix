@@ -100,5 +100,17 @@ module.exports = function(mainWindow) {
     res.json(await musicService.updateArtist(decodeURIComponent(id), req.body))
   })
 
+  // 获取专辑信息
+  router.get('/albums/:id', async (req, res) => {
+    const { id } = req.params
+    res.json(await musicService.getAlbumById(decodeURIComponent(id)))
+  })
+
+  // 更新专辑信息
+  router.put('/albums/:id', async (req, res) => {
+    const { id } = req.params
+    res.json(await musicService.updateAlbum(decodeURIComponent(id), req.body))
+  })
+
   return router
 }

@@ -277,22 +277,15 @@ const formatPlayCount = (num) => {
         :style="artistInfo.coverImg ? { backgroundImage: `url(${artistInfo.coverImg})` } : {}"
       ></div>
       
-      <!-- 返回按钮 -->
-      <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-      </button>
 
       <div class="artist-banner-content">
+        <h1 class="artist-banner-name">{{ artistInfo.name }}</h1>
         <div class="verified-row">
           <svg class="verified-badge" width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#3d91ff"/>
           </svg>
           <span class="verified-text">Verified Artist</span>
         </div>
-        <h1 class="artist-banner-name">{{ artistInfo.name }}</h1>
         <span class="listeners-count">{{ monthlyListeners }} monthly listeners</span>
       </div>
     </div>

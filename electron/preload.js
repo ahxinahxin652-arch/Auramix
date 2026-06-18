@@ -94,6 +94,15 @@ function updateArtist(artistId, updates) {
   return apiFetch(`/api/music/artists/${encodeURIComponent(artistId)}`, { method: 'PUT', body: updates })
 }
 
+// ========== 专辑 API ==========
+function getAlbumById(albumId) {
+  return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`)
+}
+
+function updateAlbum(albumId, updates) {
+  return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`, { method: 'PUT', body: updates })
+}
+
 // ========== 格式转换 API ==========
 
 /** @returns {Promise<{ success: boolean, data?: { files: Array<{name: string, path: string, size: number}> }, error?: string }>} */
@@ -258,6 +267,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 歌手 API
   getArtistById,
   updateArtist,
+  // 专辑 API
+  getAlbumById,
+  updateAlbum,
   // 格式转换
   scanFiles,
   startConvert,

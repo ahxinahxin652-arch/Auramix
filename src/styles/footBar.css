@@ -332,7 +332,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 8px;
+    gap: 2px;
 }
 
 .vol-btn {
@@ -373,4 +373,8 @@
     background: var(--text-h);
     border-radius: 50%;
     cursor: pointer;
+}
+
+.track-name-wrap:hover .track-name {
+    text-decoration: underline;
 }
