@@ -392,6 +392,27 @@ async function handleSaveTrackEdit() {
     ElMessage.error(result.error || '保存失败')
   }
 }
+
+// ---- 导航与解析助手 ----
+function goToArtist(artistId) {
+  if (artistId) {
+    router.push(`/artist/${artistId}`)
+  }
+}
+
+function goToAlbum(albumId) {
+  if (albumId) {
+    router.push(`/album/${albumId}`)
+  }
+}
+
+function parseArtists(artistsStr) {
+  try {
+    return JSON.parse(artistsStr)
+  } catch (e) {
+    return []
+  }
+}
 </script>
 
 <template>
@@ -399,11 +420,6 @@ async function handleSaveTrackEdit() {
     <!-- Spotify 风格 Hero 头部 -->
     <div class="warehouse-hero">
       <div class="hero-top-bar">
-        <button class="btn btn-back" @click="router.push('/')">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
       </div>
       <div class="hero-content">
         <div class="hero-cover" @click="openEditDialog" title="点击编辑封面">
@@ -549,6 +565,7 @@ async function handleSaveTrackEdit() {
         <div class="track-header">
           <span class="th-num">#</span>
           <span class="th-info">歌曲</span>
+          <span class="th-album">专辑</span>
           <span class="th-date">添加时间</span>
           <span class="th-duration">时长</span>
           <span class="th-actions"></span>
@@ -584,8 +601,21 @@ async function handleSaveTrackEdit() {
               </div>
               <div class="track-text">
                 <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span>
-                <span class="track-artist" :title="track.artist || '未知作者'">{{ track.artist || '未知作者' }}</span>
+                <span class="track-artists-links">
+                  <template v-if="track.artists && parseArtists(track.artists).length > 0">
+                    <span v-for="(tArt, tIdx) in parseArtists(track.artists)" :key="tArt.id">
+                      <span class="artist-link-small" @click.stop="goToArtist(tArt.id)">{{ tArt.name }}</span>
+                      <span v-if="tIdx < parseArtists(track.artists).length - 1">, </span>
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="artist-text" :title="track.artist || '未知作者'">{{ track.artist || '未知作者' }}</span>
+                  </template>
+                </span>
               </div>
+            </div>
+            <div class="track-album" @click.stop="goToAlbum(track.albumId)" :title="track.album || '未知专辑'">
+              <span class="album-link">{{ track.album || '未知专辑' }}</span>
             </div>
             <div class="track-date" @click="playTrack(track, index)">{{ formatDate(track.createdAt) }}</div>
             <div class="track-duration" @click="playTrack(track, index)">{{ track.duration ? formatTime(track.duration) : '' }}</div>

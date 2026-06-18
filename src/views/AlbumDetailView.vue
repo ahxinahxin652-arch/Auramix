@@ -538,14 +538,14 @@ async function handleSaveEdit() {
 <style scoped>
 .album-detail-view {
   min-height: 100%;
-  background-color: #121212;
-  color: #ffffff;
+  background-color: var(--bg);
+  color: var(--text-h);
   font-family: var(--font, sans-serif);
 }
 
 /* 顶部横幅 */
 .album-banner {
-  background: linear-gradient(to bottom, #3b3b3b 0%, #1c1c1c 100%);
+  background: linear-gradient(to bottom, var(--surface-2) 0%, transparent 100%);
   padding: 24px 32px 32px 32px;
   min-height: 280px;
   display: flex;
@@ -579,11 +579,11 @@ async function handleSaveEdit() {
 .cover-empty {
   width: 100%;
   height: 100%;
-  background-color: #282828;
+  background-color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #b3b3b3;
+  color: var(--text);
 }
 
 .cover-hover-overlay {
@@ -640,7 +640,7 @@ async function handleSaveEdit() {
   gap: 6px;
   font-size: 14px;
   font-weight: 500;
-  color: #ffffff;
+  color: var(--text);
 }
 
 .artist-link {
@@ -653,16 +653,18 @@ async function handleSaveEdit() {
 }
 
 .meta-dot {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  opacity: 0.6;
 }
 
 .album-year, .album-duration {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  opacity: 0.8;
 }
 
 /* 底部操作区与内容 */
 .album-content {
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, #121212 200px);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, var(--bg) 200px);
   padding: 24px 32px;
 }
 
@@ -677,19 +679,19 @@ async function handleSaveEdit() {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: #1db954;
+  background-color: var(--accent);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: #ffffff;
   cursor: pointer;
   transition: transform 0.2s, background-color 0.2s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .circle-play-btn:hover {
-  background-color: #1ed760;
+  background-color: var(--accent-hover);
   transform: scale(1.05);
 }
 
@@ -700,26 +702,29 @@ async function handleSaveEdit() {
 .shuffle-toggle {
   background: transparent;
   border: none;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.6;
   cursor: pointer;
   padding: 4px;
-  transition: color 0.2s;
+  transition: color 0.2s, opacity 0.2s;
   display: flex;
   align-items: center;
 }
 
 .shuffle-toggle:hover {
-  color: #ffffff;
+  color: var(--text-h);
+  opacity: 1;
 }
 
 .shuffle-toggle.active {
-  color: #1db954;
+  color: var(--accent);
+  opacity: 1;
 }
 
 .edit-album-btn-outline {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
   font-size: 12px;
   font-weight: 700;
   padding: 7px 18px;
@@ -731,36 +736,39 @@ async function handleSaveEdit() {
 }
 
 .edit-album-btn-outline:hover {
-  border-color: #ffffff;
+  border-color: var(--accent);
+  color: var(--text-h);
   transform: scale(1.04);
 }
 
 .options-ellipsis {
   background: transparent;
   border: none;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.6;
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 4px;
-  transition: color 0.2s;
+  transition: color 0.2s, opacity 0.2s;
 }
 
 .options-ellipsis:hover {
-  color: #ffffff;
+  color: var(--text-h);
+  opacity: 1;
 }
 
 .dark-dropdown {
-  background-color: #282828 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .dark-dropdown :deep(.el-dropdown-menu__item) {
-  color: #ffffff !important;
+  color: var(--text-h) !important;
 }
 
 .dark-dropdown :deep(.el-dropdown-menu__item:hover) {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--surface-3) !important;
 }
 
 /* 曲目列表表格 */
@@ -773,8 +781,9 @@ async function handleSaveEdit() {
   display: grid;
   grid-template-columns: 48px 4fr 2fr 80px;
   padding: 8px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #b3b3b3;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  opacity: 0.8;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -803,7 +812,7 @@ async function handleSaveEdit() {
 .track-row {
   display: grid;
   grid-template-columns: 48px 4fr 2fr 80px;
-  padding: 12px 16px;
+  padding: 8px 16px; /* 减少4px的上下padding */
   border-radius: 6px;
   align-items: center;
   transition: background-color 0.2s;
@@ -811,11 +820,11 @@ async function handleSaveEdit() {
 }
 
 .track-row:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--surface-2);
 }
 
 .track-row.active {
-  background-color: rgba(255, 255, 255, 0.05);
+  background-color: var(--accent-dim);
 }
 
 .col-index {
@@ -823,7 +832,8 @@ async function handleSaveEdit() {
   display: flex;
   align-items: center;
   font-size: 14px;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.8;
   width: 24px;
 }
 
@@ -831,7 +841,7 @@ async function handleSaveEdit() {
   display: none;
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--text-h);
   cursor: pointer;
   padding: 0;
   margin-left: 2px;
@@ -866,7 +876,7 @@ async function handleSaveEdit() {
 .active-playing-indicator .bar {
   width: 2px;
   height: 100%;
-  background-color: #1db954;
+  background-color: var(--accent);
   animation: bounce 0.8s ease infinite alternate;
 }
 
@@ -893,19 +903,20 @@ async function handleSaveEdit() {
 .track-title-text {
   font-size: 15px;
   font-weight: 500;
-  color: #ffffff;
+  color: var(--text-h);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .track-row.active .track-title-text {
-  color: #1db954;
+  color: var(--accent);
 }
 
 .track-artists-links {
   font-size: 13px;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.7;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -916,7 +927,7 @@ async function handleSaveEdit() {
 }
 
 .artist-link-small:hover {
-  color: #ffffff;
+  color: var(--text-h);
   text-decoration: underline;
 }
 
@@ -935,7 +946,8 @@ async function handleSaveEdit() {
 }
 
 .dialog {
-  background-color: #282828;
+  background-color: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 8px;
   width: 540px;
   padding: 24px;
@@ -949,7 +961,7 @@ async function handleSaveEdit() {
   font-size: 18px;
   font-weight: 700;
   margin: 0;
-  color: #ffffff;
+  color: var(--text-h);
 }
 
 .edit-body {
@@ -962,7 +974,7 @@ async function handleSaveEdit() {
   height: 180px;
   border-radius: 6px;
   overflow: hidden;
-  background-color: #181818;
+  background-color: var(--surface);
   position: relative;
   cursor: pointer;
   flex-shrink: 0;
@@ -983,7 +995,7 @@ async function handleSaveEdit() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #b3b3b3;
+  color: var(--text);
 }
 
 .cover-add-text {
@@ -1016,13 +1028,15 @@ async function handleSaveEdit() {
   right: 8px;
   background: transparent;
   border: none;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.6;
   cursor: pointer;
   padding: 0;
 }
 
 .cover-remove-btn:hover {
-  color: #ffffff;
+  color: var(--text-h);
+  opacity: 1;
 }
 
 .edit-fields {
@@ -1041,16 +1055,16 @@ async function handleSaveEdit() {
 .form-item label {
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-h);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .edit-input {
-  background: #3e3e3e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 4px;
-  color: #ffffff;
+  color: var(--text-h);
   font-size: 13px;
   padding: 10px 12px;
   font-family: inherit;
@@ -1058,7 +1072,7 @@ async function handleSaveEdit() {
 
 .edit-input:focus {
   outline: none;
-  border-color: #1db954;
+  border-color: var(--accent);
 }
 
 .dialog-select {
@@ -1088,23 +1102,23 @@ async function handleSaveEdit() {
 
 .btn-secondary {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .btn-secondary:hover {
-  border-color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-h);
+  background-color: var(--surface-2);
 }
 
 .btn-primary {
-  background: #1db954;
+  background: var(--accent);
   border: none;
-  color: #000000;
+  color: #ffffff;
 }
 
 .btn-primary:hover {
-  background: #1ed760;
+  background: var(--accent-hover);
   transform: scale(1.03);
 }
 

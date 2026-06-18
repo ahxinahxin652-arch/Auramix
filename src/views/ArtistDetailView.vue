@@ -487,9 +487,9 @@ const formatPlayCount = (num) => {
 <style scoped>
 .artist-detail {
   padding: 0 0 40px;
-  background: #121212;
+  background: var(--bg);
   min-height: 100%;
-  color: #b3b3b3;
+  color: var(--text);
   font-family: var(--font);
   box-sizing: border-box;
   overflow-y: auto;
@@ -501,7 +501,7 @@ const formatPlayCount = (num) => {
   height: 38vh;
   min-height: 280px;
   max-height: 480px;
-  background-color: #242424;
+  background-color: var(--surface-2);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -544,7 +544,7 @@ const formatPlayCount = (num) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(rgba(0, 0, 0, 0.1) 30%, rgba(18, 18, 18, 0.95));
+  background: linear-gradient(rgba(0, 0, 0, 0.1) 30%, var(--bg));
   z-index: 3;
 }
 
@@ -623,20 +623,20 @@ const formatPlayCount = (num) => {
 .circle-play-btn {
   width: 56px;
   height: 56px;
-  background: #1db954;
+  background: var(--accent);
   border: none;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000000;
+  color: #ffffff;
   cursor: pointer;
   transition: transform 0.2s, background-color 0.2s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .circle-play-btn:hover {
-  background: #1ed760;
+  background: var(--accent-hover);
   transform: scale(1.05);
 }
 
@@ -647,27 +647,30 @@ const formatPlayCount = (num) => {
 .shuffle-toggle {
   background: transparent;
   border: none;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.6;
   cursor: pointer;
   padding: 4px;
-  transition: color 0.2s;
+  transition: color 0.2s, opacity 0.2s;
   display: flex;
   align-items: center;
 }
 
 .shuffle-toggle:hover {
-  color: #ffffff;
+  color: var(--text-h);
+  opacity: 1;
 }
 
 .shuffle-toggle.active {
-  color: #1db954;
+  color: var(--accent);
+  opacity: 1;
 }
 
 .follow-btn-outline,
 .edit-bio-btn-outline {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
   font-size: 12px;
   font-weight: 700;
   padding: 7px 18px;
@@ -680,28 +683,31 @@ const formatPlayCount = (num) => {
 
 .follow-btn-outline:hover,
 .edit-bio-btn-outline:hover {
-  border-color: #ffffff;
+  border-color: var(--accent);
+  color: var(--text-h);
   transform: scale(1.04);
 }
 
 .follow-btn-outline.active {
-  border-color: #1db954;
-  color: #1db954;
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .options-ellipsis {
   background: transparent;
   border: none;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.6;
   cursor: pointer;
   display: flex;
   align-items: center;
   padding: 4px;
-  transition: color 0.2s;
+  transition: color 0.2s, opacity 0.2s;
 }
 
 .options-ellipsis:hover {
-  color: #ffffff;
+  color: var(--text-h);
+  opacity: 1;
 }
 
 /* Layout (Now 100% full width, About card removed) */
@@ -713,7 +719,7 @@ const formatPlayCount = (num) => {
 .section-title {
   font-size: 22px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-h);
   margin-top: 0;
   margin-bottom: 20px;
 }
@@ -736,7 +742,7 @@ const formatPlayCount = (num) => {
 }
 
 .track-row-item:hover {
-  background-color: rgba(255, 255, 255, 0.08);
+  background-color: var(--surface-2);
 }
 
 .track-row-item:hover .index-num,
@@ -749,7 +755,7 @@ const formatPlayCount = (num) => {
 }
 
 .track-row-item.active {
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: var(--accent-dim);
 }
 
 .col-num-cell {
@@ -758,14 +764,15 @@ const formatPlayCount = (num) => {
   justify-content: center;
   align-items: center;
   font-size: 14px;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.8;
 }
 
 .row-play-btn {
   display: none;
   background: transparent;
   border: none;
-  color: #ffffff;
+  color: var(--text-h);
   cursor: pointer;
   align-items: center;
   justify-content: center;
@@ -783,7 +790,7 @@ const formatPlayCount = (num) => {
 .active-equalizer .bar {
   width: 2px;
   height: 100%;
-  background-color: #1db954;
+  background-color: var(--accent);
   animation: bounce-equalizer 0.8s ease-in-out infinite alternate;
   transform-origin: bottom;
 }
@@ -806,12 +813,12 @@ const formatPlayCount = (num) => {
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  background-color: #282828;
+  background-color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  color: #b3b3b3;
+  color: var(--text);
 }
 
 .track-thumbnail-img {
@@ -830,20 +837,21 @@ const formatPlayCount = (num) => {
 .track-row-title {
   font-size: 15px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-h);
 }
 
 .track-row-title.green {
-  color: #1db954;
+  color: var(--accent);
 }
 
 .track-row-item:hover .track-row-title {
-  color: #ffffff;
+  color: var(--text-h);
 }
 
 .col-playcount-cell {
   font-size: 13px;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.8;
 }
 
 .col-status-cell {
@@ -859,7 +867,8 @@ const formatPlayCount = (num) => {
 .col-time-cell {
   font-size: 13px;
   font-family: var(--mono);
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.8;
   text-align: right;
   padding-right: 8px;
 }
@@ -876,7 +885,7 @@ const formatPlayCount = (num) => {
   width: 100px;
   height: 100px;
   border-radius: 50%;
-  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border: 2px dashed var(--border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -885,12 +894,12 @@ const formatPlayCount = (num) => {
   overflow: hidden;
   margin: 0 auto;
   gap: 4px;
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--surface-2);
   transition: border-color 0.2s;
 }
 
 .edit-avatar-upload:hover {
-  border-color: #1db954;
+  border-color: var(--accent);
 }
 
 .upload-avatar {
@@ -905,7 +914,8 @@ const formatPlayCount = (num) => {
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  color: #b3b3b3;
+  color: var(--text);
+  opacity: 0.8;
 }
 
 .edit-form {
@@ -923,16 +933,16 @@ const formatPlayCount = (num) => {
 .form-item label {
   font-size: 11px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-h);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .form-item input, .form-item textarea {
-  background: #282828;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #ffffff;
+  color: var(--text-h);
   font-size: 13px;
   padding: 8px 12px;
   font-family: var(--font);
@@ -940,7 +950,7 @@ const formatPlayCount = (num) => {
 }
 
 .form-item input:focus, .form-item textarea:focus {
-  border-color: #1db954;
+  border-color: var(--accent);
   outline: none;
 }
 
@@ -961,34 +971,34 @@ const formatPlayCount = (num) => {
 
 .cancel-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .cancel-btn:hover {
-  border-color: #ffffff;
-  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-h);
+  background-color: var(--surface-2);
 }
 
 .save-btn {
-  background: #1db954;
+  background: var(--accent);
   border: none;
-  color: #000000;
+  color: #ffffff;
 }
 
 .save-btn:hover {
-  background: #1ed760;
+  background: var(--accent-hover);
   transform: scale(1.03);
 }
 
 :deep(.el-dialog) {
-  background: #181818 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 8px !important;
 }
 
 :deep(.el-dialog__title) {
-  color: #ffffff !important;
+  color: var(--text-h) !important;
   font-size: 16px !important;
   font-weight: 700 !important;
 }
@@ -998,15 +1008,15 @@ const formatPlayCount = (num) => {
 }
 
 .dark-dropdown {
-  background-color: #282828 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--surface-2) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .dark-dropdown :deep(.el-dropdown-menu__item) {
-  color: #ffffff !important;
+  color: var(--text-h) !important;
 }
 
 .dark-dropdown :deep(.el-dropdown-menu__item:hover) {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: var(--surface-3) !important;
 }
 </style>
