@@ -1,5 +1,5 @@
-// Prisma Schema for FlacConverter (Auramix Online Refactored)
-// 使用 SQLite 作为本地开发与缓存数据库，模型结构支持平滑迁移至 PostgreSQL
+// Prisma Schema for FlacConverter (Auramix Online)
+// Aligning with auramix_mysql_schema.sql (using BigInt for all IDs, matching fields and types)
 
 generator client {
   provider = "prisma-client-js"
@@ -7,102 +7,99 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider     = "sqlite"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
-// ==========================================
-// 1. 用户与权限控制模块
-// ==========================================
-
+// 1. 用户表
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash") // 密码哈希 (bcrypt)
-  displayName  String   @map("display_name") // 用户昵称，对应 Spotify displayName
-  avatarUrl    String?  @map("avatar_url") // 用户头像云存储 S3 URL
-  country      String   @default("CN") // 国家地区编码，用于音乐版权国家过滤限制
-  product      String   @default("free") // 订阅产品等级: "free" | "premium"
+  id           BigInt   @id @map("id")
+  email        String   @unique @map("email")
+  passwordHash String   @map("password_hash")
+  displayName  String   @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  country      String   @default("CN") @map("country")
+  product      Int      @default(0) @map("product")
   createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 关系映射
-  ownedPlaylists    Playlist[]         @relation("PlaylistOwner") // 用户拥有的自建歌单
-  followedPlaylists PlaylistFollower[] // 用户收藏的别人的歌单
-  likedTracks       LikedTrack[] // 用户喜爱的歌曲
-  playbackHistories PlaybackHistory[] // 用户的播放记录历史
+  playlists         Playlist[]         @relation("PlaylistOwner")
+  playlistFollowers PlaylistFollower[]
+  artistFollowers   ArtistFollower[]
+  likedTracks       LikedTrack[]
+  likedAlbums       LikedAlbum[]
+  playbackHistories PlaybackHistory[]
 
   @@map("users")
 }
 
-// ==========================================
-// 2. 音乐核心实体与多码率媒体模块
-// ==========================================
-
-// 2.1 歌手表
+// 2. 歌手/艺人表
 model Artist {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  coverImg  String?  @map("cover_img") // 歌手背景/大头像图片 URL
-  bio       String? // 歌手小传简介
+  id        BigInt   @id @map("id")
+  name      String   @unique @map("name")
+  coverImg  String?  @map("cover_img")
+  bio       String?  @map("bio")
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 关系映射
-  tracks TrackArtist[] // 歌手演唱的音轨（多对多关系）
-  albums AlbumArtist[] // 歌手发行的唱片专辑（多对多关系）
+  tracks          TrackArtist[]
+  albums          AlbumArtist[]
+  artistFollowers ArtistFollower[]
 
   @@map("artists")
 }
 
-// 2.2 唱片专辑表
+// 3. 专辑表
 model Album {
-  id          String   @id @default(uuid())
-  title       String
-  coverUrl    String?  @map("cover_url") // 专辑封面图片 URL
-  releaseDate DateTime @map("release_date") // 发行时间
-  albumType   String   @default("album") @map("album_type") // 唱片类型: "album" | "single" (单曲) | "ep" | "compilation" (精选集)
+  id          BigInt   @id @map("id")
+  title       String   @map("title")
+  coverUrl    String?  @map("cover_url")
+  releaseDate DateTime @map("release_date")
+  albumType   Int      @default(0) @map("album_type")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 关系映射
-  tracks  Track[] // 专辑内的音轨（一对多）
-  artists AlbumArtist[] // 发行该专辑的歌手群（多对多）
+  tracks      Track[]
+  artists     AlbumArtist[]
+  likedAlbums LikedAlbum[]
 
   @@map("albums")
 }
 
-// 2.3 歌曲曲目表
+// 4. 单曲/曲目表
 model Track {
-  id          String   @id @default(uuid())
-  albumId     String   @map("album_id")
-  title       String
-  duration    Int // 歌曲时长，单位为“毫秒”(Spotify 标准)
-  lyrics      String? // 歌词（存放 LRC 文本或云端歌词 JSON 链接）
-  trackNumber Int      @map("track_number") // 在专辑中的音轨序列号
-  discNumber  Int      @default(1) @map("disc_number") // 多 CD 专辑中的碟片号
-  isrc        String?  @unique // 国际标准录音制品编码 (ISRC)
+  id          BigInt   @id @map("id")
+  albumId     BigInt   @map("album_id")
+  title       String   @map("title")
+  duration    Int      @map("duration")
+  lyricsUrl   String?  @map("lyrics_url")
+  status      Int      @default(0) @map("status")
+  likedCount  Int      @default(0) @map("liked_count")
+  playCount   BigInt   @default(0) @map("play_count")
+  trackNumber Int      @map("track_number")
+  discNumber  Int      @default(1) @map("disc_number")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 关系映射
   album          Album                @relation(fields: [albumId], references: [id], onDelete: Cascade)
-  artists        TrackArtist[] // 歌曲所属歌手（多对多，即 Credits 数据源）
-  audioResources TrackAudioResource[] // 歌曲拥有的不同码率流媒体资源（一对多）
-  playlistTracks PlaylistTrack[] // 关联的歌单明细记录（多对多）
-  likedUsers     LikedTrack[] // 喜欢该歌曲的用户列表（多对多）
-  playbacks      PlaybackHistory[] // 播放历史记录
-  genres         TrackGenre[] // 歌曲流派分类（多对多关系）
+  artists        TrackArtist[]
+  audioResources TrackAudioResource[]
+  videoResources TrackVideoResource[]
+  playlistTracks PlaylistTrack[]
+  likedTracks    LikedTrack[]
+  playbacks      PlaybackHistory[]
+  genres         TrackGenre[]
 
   @@index([albumId])
   @@map("tracks")
 }
 
-// 2.4 [多对多中间表] 歌曲-歌手关联表 (支持 Credits 角色控制)
+// 5. 歌曲-歌手关联表
 model TrackArtist {
-  trackId  String @map("track_id")
-  artistId String @map("artist_id")
-  role     String @default("Main Artist") // 担当角色: "Main Artist" | "Featured Artist" | "Producer" | "Writer"
+  trackId  BigInt @map("track_id")
+  artistId BigInt @map("artist_id")
+  role     Int    @default(0) @map("role")
 
   track  Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
   artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
@@ -113,10 +110,10 @@ model TrackArtist {
   @@map("track_artists")
 }
 
-// 2.5 [多对多中间表] 专辑-歌手关联表
+// 6. 专辑-歌手关联表
 model AlbumArtist {
-  albumId  String @map("album_id")
-  artistId String @map("artist_id")
+  albumId  BigInt @map("album_id")
+  artistId BigInt @map("artist_id")
 
   album  Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
   artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
@@ -127,17 +124,16 @@ model AlbumArtist {
   @@map("album_artists")
 }
 
-// 2.6 音频流媒体资源表 (支持不同音质与码率的在线流式播放)
+// 7. 音源资源表
 model TrackAudioResource {
-  id            String   @id @default(uuid())
-  trackId       String   @map("track_id")
-  quality       String // 音质等级: "low" (96k) | "medium" (160k) | "high" (320k) | "lossless"
-  format        String // 音频容器格式: "mp3" | "ogg" | "aac" | "flac"
-  bitrate       Int // 真实码率，例如 320000
-  streamUrl     String   @map("stream_url") // 云端对象存储 S3 的流式播放 HTTP 地址
-  size          Int // 音频文件字节大小
-  isPremiumOnly Boolean  @default(false) @map("is_premium_only") // 是否仅 Premium 付费会员可听
-  createdAt     DateTime @default(now()) @map("created_at")
+  id        BigInt   @id @map("id")
+  trackId   BigInt   @map("track_id")
+  quality   Int      @default(1) @map("quality")
+  format    Int      @default(0) @map("format")
+  bitrate   Int      @map("bitrate")
+  streamUrl String   @map("stream_url")
+  size      BigInt   @map("size")
+  createdAt DateTime @default(now()) @map("created_at")
 
   track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
@@ -145,21 +141,40 @@ model TrackAudioResource {
   @@map("track_audio_resources")
 }
 
-// 2.7 流派/曲风表 (流派独立建表以支撑多曲风检索与 AI 召回)
+// 8. MV 视频资源表
+model TrackVideoResource {
+  id         BigInt   @id @map("id")
+  trackId    BigInt   @map("track_id")
+  quality    Int      @default(1) @map("quality")
+  resolution String   @map("resolution")
+  fps        Int      @default(30) @map("fps")
+  format     Int      @default(0) @map("format")
+  bitrate    Int      @map("bitrate")
+  streamUrl  String   @map("stream_url")
+  size       BigInt   @map("size")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([trackId])
+  @@map("track_video_resources")
+}
+
+// 9. 流派表
 model Genre {
-  id        String   @id @default(uuid())
-  name      String   @unique // 曲风名称，例如 "Pop" | "Hip-Hop" | "K-Pop" | "Blues"
+  id        BigInt   @id @map("id")
+  name      String   @unique @map("name")
   createdAt DateTime @default(now()) @map("created_at")
 
-  tracks TrackGenre[] // 拥有此流派分类的所有歌曲（多对多）
+  tracks TrackGenre[]
 
   @@map("genres")
 }
 
-// 2.8 [多对多中间表] 歌曲-流派关联表
+// 10. 歌曲-流派关联表
 model TrackGenre {
-  trackId String @map("track_id")
-  genreId String @map("genre_id")
+  trackId BigInt @map("track_id")
+  genreId BigInt @map("genre_id")
 
   track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
   genre Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
@@ -170,36 +185,31 @@ model TrackGenre {
   @@map("track_genres")
 }
 
-// ==========================================
-// 3. 歌单与收藏用户交互模块
-// ==========================================
-
-// 3.1 歌单元数据表
+// 11. 歌单表
 model Playlist {
-  id          String   @id @default(uuid())
-  ownerId     String   @map("owner_id")
-  name        String
-  description String?
-  coverUrl    String?  @map("cover_url") // 歌单封面大图 URL
-  isPublic    Boolean  @default(true) @map("is_public") // 是否公开（公开后可被他人检索和关注）
+  id          BigInt   @id @map("id")
+  ownerId     BigInt   @map("owner_id")
+  name        String   @map("name")
+  description String?  @map("description")
+  coverUrl    String?  @map("cover_url")
+  isPublic    Int      @default(1) @map("is_public")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
-  // 关系映射
   owner     User               @relation("PlaylistOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  tracks    PlaylistTrack[] // 歌单含有的歌曲明细
-  followers PlaylistFollower[] // 关注/收藏了该公开歌单的粉丝群（多对多关系）
+  tracks    PlaylistTrack[]
+  followers PlaylistFollower[]
 
   @@index([ownerId])
   @@map("playlists")
 }
 
-// 3.2 [多对多中间表] 歌单-歌曲关系表 (支持用户对歌曲在歌单内自由拖拽排序)
+// 12. 歌单-歌曲关联表
 model PlaylistTrack {
-  playlistId String   @map("playlist_id")
-  trackId    String   @map("track_id")
-  sortOrder  Int      @default(0) @map("sort_order") // 歌曲在歌单内的排位序列号 (从 0 开始)
-  addedAt    DateTime @default(now()) @map("added_at") // 添加到该歌单的时刻
+  playlistId BigInt   @map("playlist_id")
+  trackId    BigInt   @map("track_id")
+  sortOrder  Int      @default(0) @map("sort_order")
+  addedAt    DateTime @default(now()) @map("added_at")
 
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
   track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
@@ -210,10 +220,10 @@ model PlaylistTrack {
   @@map("playlist_tracks")
 }
 
-// 3.3 [多对多中间表] 歌单-收藏粉丝关联表 (用于追踪用户收藏别人创建的公开歌单)
+// 13. 歌单关注表
 model PlaylistFollower {
-  playlistId String   @map("playlist_id")
-  userId     String   @map("user_id")
+  playlistId BigInt   @map("playlist_id")
+  userId     BigInt   @map("user_id")
   followedAt DateTime @default(now()) @map("followed_at")
 
   playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
@@ -225,11 +235,26 @@ model PlaylistFollower {
   @@map("playlist_followers")
 }
 
-// 3.4 [多对多中间表] 用户-喜爱歌曲关联表 (独立分表用于存储 Spotify 核心“Liked Songs”列表)
+// 14. 歌手关注表
+model ArtistFollower {
+  artistId   BigInt   @map("artist_id")
+  userId     BigInt   @map("user_id")
+  followedAt DateTime @default(now()) @map("followed_at")
+
+  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([artistId, userId])
+  @@index([artistId])
+  @@index([userId])
+  @@map("artist_followers")
+}
+
+// 15. 单曲收藏表
 model LikedTrack {
-  userId  String   @map("user_id")
-  trackId String   @map("track_id")
-  likedAt DateTime @default(now()) @map("liked_at") // 标记喜爱的时刻（用于列表倒序排列）
+  userId  BigInt   @map("user_id")
+  trackId BigInt   @map("track_id")
+  likedAt DateTime @default(now()) @map("liked_at")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)
@@ -240,20 +265,29 @@ model LikedTrack {
   @@map("liked_tracks")
 }
 
-// ==========================================
-// 4. 播放历史模块
-// ==========================================
+// 16. 专辑收藏表
+model LikedAlbum {
+  albumId BigInt   @map("album_id")
+  userId  BigInt   @map("user_id")
+  likedAt DateTime @default(now()) @map("liked_at")
 
-// 4.1 播放记录表
+  album Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, userId])
+  @@index([albumId])
+  @@index([userId])
+  @@map("liked_albums")
+}
+
+// 17. 播放历史记录表
 model PlaybackHistory {
-  id       String   @id @default(uuid())
-  userId   String   @map("user_id")
-  trackId  String   @map("track_id")
-  playedAt DateTime @default(now()) @map("played_at") // 播放时刻
-
-  // 记录播放的上下文，用以支撑个性化算法和“最近播放 (Recently Played)”模块的快速还原
-  contextType String? @map("context_type") // 播放来源上下文: "playlist" (歌单) | "album" (专辑) | "artist" (歌手页) | "recommendation" (电台算法)
-  contextId   String? @map("context_id") // 上下文来源 ID (例如对应的 playlistId 或 albumId)
+  id          BigInt   @id @map("id")
+  userId      BigInt   @map("user_id")
+  trackId     BigInt   @map("track_id")
+  playedAt    DateTime @default(now()) @map("played_at")
+  contextType Int?     @map("context_type")
+  contextId   BigInt?  @map("context_id")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   track Track @relation(fields: [trackId], references: [id], onDelete: Cascade)

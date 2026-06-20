@@ -198,13 +198,16 @@ async function createWarehouse(name) {
     const db = getDb()
     const root = getMusicWarehouseRoot()
     const warehousePath = path.join(root, name)
+    const { nextId } = require('./snowflake')
 
     try {
         // 1. 先插入数据库
-        const library = await db.musicLibrary.create({
+        const library = await db.album.create({
             data: {
-                id: crypto.randomUUID(),
-                name,
+                id: nextId(),
+                title: name,
+                releaseDate: new Date(),
+                albumType: 0,
             },
         })
 
@@ -217,7 +220,7 @@ async function createWarehouse(name) {
         } catch (fsErr) {
             // 文件夹创建失败，回滚数据库
             console.error(`[DB Rollback] Failed to create directory for "${name}", rolling back database`)
-            await db.musicLibrary.delete({where: {id: library.id}})
+            await db.album.delete({where: {id: library.id}})
             return {success: false, error: `文件夹创建失败: ${fsErr.message}`}
         }
 
@@ -279,9 +282,9 @@ function scanMusicDirForSync(dir, result) {
 async function updateRecentPlayedById(libraryId) {
     const db = getDb()
     try {
-        await db.musicLibrary.update({
-            where: {id: libraryId},
-            data: {recentPlayedAt: new Date()},
+        await db.album.update({
+            where: {id: BigInt(libraryId)},
+            data: {updatedAt: new Date()},
         })
         return {success: true}
     } catch (err) {
@@ -303,15 +306,15 @@ async function updateWarehouseById(libraryId, updates) {
     const root = getMusicWarehouseRoot()
 
     try {
-        const library = await db.musicLibrary.findUnique({where: {id: libraryId}})
+        const library = await db.album.findUnique({where: {id: BigInt(libraryId)}})
         if (!library) {
             return {success: false, error: `音乐库不存在`}
         }
 
         // 如果要改名，需要重命名文件夹并更新所有 track 的路径
-        const needRename = updates.name && updates.name !== library.name
+        const needRename = updates.name && updates.name !== library.title
         if (needRename) {
-            const oldPath = path.join(root, library.name)
+            const oldPath = path.join(root, library.title)
             const newPath = path.join(root, updates.name)
             // 检查新名称是否已存在文件夹
             if (fs.existsSync(newPath)) {
@@ -324,15 +327,16 @@ async function updateWarehouseById(libraryId, updates) {
             const oldPrefix = oldPath + path.sep
             const newPrefix = newPath + path.sep
             const libraryTracks = await db.track.findMany({
-                where: {libraryId: library.id},
-                select: {id: true, path: true},
+                where: {albumId: library.id},
+                include: {audioResources: true},
             })
             for (const track of libraryTracks) {
-                if (track.path.startsWith(oldPrefix)) {
-                    const updatedPath = newPrefix + track.path.slice(oldPrefix.length)
-                    await db.track.update({
-                        where: {id: track.id},
-                        data: {path: updatedPath},
+                const resource = track.audioResources[0]
+                if (resource && resource.streamUrl.startsWith(oldPrefix)) {
+                    const updatedPath = newPrefix + resource.streamUrl.slice(oldPrefix.length)
+                    await db.trackAudioResource.update({
+                        where: {id: resource.id},
+                        data: {streamUrl: updatedPath},
                     })
                 }
             }
@@ -340,27 +344,26 @@ async function updateWarehouseById(libraryId, updates) {
 
         // 构建更新数据
         const data = {}
-        if (updates.name !== undefined) data.name = updates.name
-        if (updates.description !== undefined) data.description = updates.description
-        if (updates.coverPath !== undefined) data.coverPath = updates.coverPath
+        if (updates.name !== undefined) data.title = updates.name
+        if (updates.coverPath !== undefined) data.coverUrl = updates.coverPath
 
-        const updated = await db.musicLibrary.update({
+        const updated = await db.album.update({
             where: {id: library.id},
             data,
             include: {_count: {select: {tracks: true}}},
         })
 
-        const warehousePath = path.join(root, updated.name)
+        const warehousePath = path.join(root, updated.title)
         return {
             success: true,
             warehouse: new WarehouseItemVO({
                 id: updated.id,
-                name: updated.name,
+                name: updated.title,
                 path: warehousePath,
                 trackCount: updated._count.tracks,
-                description: updated.description || '',
-                coverPath: updated.coverPath || '',
-                recentPlayedAt: updated.recentPlayedAt,
+                description: '',
+                coverPath: updated.coverUrl || '',
+                recentPlayedAt: updated.updatedAt,
             }),
         }
     } catch (err) {
@@ -382,7 +385,7 @@ async function resolveTrackById(trackId) {
     const db = getDb()
     try {
         const track = await db.track.findUnique({
-            where: {id: trackId},
+            where: {id: BigInt(trackId)},
             include: {
                 album: true,
                 artists: {
@@ -396,12 +399,18 @@ async function resolveTrackById(trackId) {
         if (!track) {
             return {success: false, error: '曲目不存在'}
         }
-        const artistsList = track.artists.map(ta => ({
-            id: ta.artist.id,
-            name: ta.artist.name,
-            role: ta.role
-        }))
-        const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
+        const artistsList = track.artists.map(ta => {
+            let roleStr = 'Main Artist'
+            if (ta.role === 1) roleStr = 'Featuring'
+            else if (ta.role === 2) roleStr = 'Composer/Songwriter'
+            return {
+                id: ta.artist.id,
+                name: ta.artist.name,
+                role: roleStr
+            }
+        })
+        const resource = track.audioResources[0] || { streamUrl: '', format: 0, size: 0 }
+        const formatStr = resource.format === 1 ? 'flac' : (resource.format === 2 ? 'm4a' : (resource.format === 3 ? 'ogg' : 'mp3'))
         return {
             success: true,
             track: {
@@ -414,12 +423,12 @@ async function resolveTrackById(trackId) {
                 cover: track.album.coverUrl || '',
                 duration: track.duration / 1000,
                 path: resource.streamUrl,
-                format: resource.format,
+                format: formatStr,
                 size: resource.size,
                 artists: JSON.stringify(artistsList),
                 trackNumber: track.trackNumber,
                 discNumber: track.discNumber,
-                lyrics: track.lyrics,
+                lyrics: track.lyricsUrl || '',
                 createdAt: track.createdAt,
                 updatedAt: track.updatedAt,
             },
@@ -439,7 +448,7 @@ async function getWarehouseTracksById(libraryId) {
 
     try {
         const album = await db.album.findUnique({
-            where: {id: libraryId},
+            where: {id: BigInt(libraryId)},
             include: {
                 artists: {
                     include: {
@@ -468,16 +477,22 @@ async function getWarehouseTracksById(libraryId) {
 
         const validTracks = []
         for (const track of album.tracks) {
-            const artistsList = track.artists.map(ta => ({
-                id: ta.artist.id,
-                name: ta.artist.name,
-                role: ta.role
-            }))
-            const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
+            const artistsList = track.artists.map(ta => {
+                let roleStr = 'Main Artist'
+                if (ta.role === 1) roleStr = 'Featuring'
+                else if (ta.role === 2) roleStr = 'Composer/Songwriter'
+                return {
+                    id: ta.artist.id,
+                    name: ta.artist.name,
+                    role: roleStr
+                }
+            })
+            const resource = track.audioResources[0] || { streamUrl: '', format: 0, size: 0 }
             const isRemote = resource.streamUrl.startsWith('http://') || resource.streamUrl.startsWith('https://')
             const exists = isRemote || fs.existsSync(resource.streamUrl)
 
             if (exists) {
+                const formatStr = resource.format === 1 ? 'flac' : (resource.format === 2 ? 'm4a' : (resource.format === 3 ? 'ogg' : 'mp3'))
                 validTracks.push({
                     id: track.id,
                     title: track.title,
@@ -488,12 +503,12 @@ async function getWarehouseTracksById(libraryId) {
                     cover: album.coverUrl || '',
                     duration: track.duration / 1000,
                     path: resource.streamUrl,
-                    format: resource.format,
+                    format: formatStr,
                     size: resource.size,
                     artists: JSON.stringify(artistsList),
                     trackNumber: track.trackNumber,
                     discNumber: track.discNumber,
-                    lyrics: track.lyrics,
+                    lyrics: track.lyricsUrl || '',
                     createdAt: track.createdAt,
                     updatedAt: track.updatedAt,
                 })
@@ -505,7 +520,7 @@ async function getWarehouseTracksById(libraryId) {
             warehouseName: album.title,
             tracks: validTracks,
             libraryId: album.id,
-            warehouse: {name: album.title, description: album.albumType || 'Album', coverPath: album.coverUrl || ''}
+            warehouse: {name: album.title, description: album.albumType === 1 ? 'Single' : 'Album', coverPath: album.coverUrl || ''}
         }
     } catch (err) {
         return {success: false, error: err.message}
@@ -521,16 +536,17 @@ async function getWarehouseTracksById(libraryId) {
 async function importFilesToWarehouseById(libraryId, filePaths) {
     const db = getDb();
     const root = getMusicWarehouseRoot();
+    const { nextId } = require('./snowflake');
 
-    const library = await db.musicLibrary.findUnique({
-        where: {id: libraryId},
+    const library = await db.album.findUnique({
+        where: {id: BigInt(libraryId)},
     });
 
     if (!library) {
         return {success: false, error: `音乐库不存在`};
     }
 
-    const musicDir = path.join(root, library.name, 'music');
+    const musicDir = path.join(root, library.title, 'music');
 
     if (!fs.existsSync(musicDir)) {
         fs.mkdirSync(musicDir, {recursive: true});
@@ -542,7 +558,6 @@ async function importFilesToWarehouseById(libraryId, filePaths) {
     for (const filePath of filePaths) {
         try {
             const ext = path.extname(filePath).toLowerCase();
-            // 此处的 ALL_IMPORTABLE_EXTENSIONS 和 SUPPORTED_EXTENSIONS 需在外部定义
             if (!ALL_IMPORTABLE_EXTENSIONS.includes(ext)) {
                 skipped.push(filePath);
                 continue;
@@ -572,23 +587,13 @@ async function importFilesToWarehouseById(libraryId, filePaths) {
 
             try {
                 const stats = fs.statSync(finalPath);
-                const trackId = crypto.randomUUID();
+                const trackIdVal = nextId();
                 const isEncrypted = ENCRYPTED_FORMATS.includes(ext.replace('.', ''));
 
                 // 初始化基础 Track 数据
-                const trackData = {
-                    id: trackId,
-                    libraryId: library.id,
-                    name: finalName,
-                    title: path.basename(finalName, ext), // 默认 title 为文件名
-                    artist: '',                           // 默认 artist 为空
-                    duration: 0,                          // 默认时长为 0
-                    path: finalPath,
-                    format: ext.replace('.', ''),
-                    size: stats.size,
-                    modified: stats.mtimeMs,
-                    isEncrypted,
-                };
+                let title = path.basename(finalName, ext);
+                let artistStr = '';
+                let duration = 0;
 
                 // 如果是未加密的受支持格式，读取内置元数据
                 if (!isEncrypted && SUPPORTED_EXTENSIONS.includes(ext)) {
@@ -596,15 +601,64 @@ async function importFilesToWarehouseById(libraryId, filePaths) {
                     const nameMeta = parseFileName(finalName);
 
                     // 优先级：文件内置元数据 > 文件名正则提取 > 默认文件名
-                    trackData.title = meta.title || nameMeta.title || trackData.title;
-                    trackData.artist = meta.artist || nameMeta.artist || '';
-                    trackData.duration = meta.duration || 0;
-                    trackData.cover = meta.cover || '';
+                    title = meta.title || nameMeta.title || title;
+                    artistStr = meta.artist || nameMeta.artist || '';
+                    duration = meta.duration || 0;
                 }
 
+                const maxTrack = await db.track.findFirst({
+                    where: { albumId: library.id },
+                    orderBy: { trackNumber: 'desc' },
+                });
+                const trackNumber = maxTrack ? maxTrack.trackNumber + 1 : 1;
+
                 // 存入 SQLite 数据库
-                trackData.artists = await buildArtistsJson(trackData.artist);
-                await db.track.create({data: trackData});
+                await db.track.create({
+                    data: {
+                        id: trackIdVal,
+                        albumId: library.id,
+                        title,
+                        duration: duration * 1000,
+                        trackNumber,
+                    }
+                });
+
+                const artistNames = artistStr.split(/[,/;|&，、\/]/).map(name => name.trim()).filter(Boolean);
+                if (artistNames.length === 0) {
+                    artistNames.push('未知歌手');
+                }
+                for (const name of artistNames) {
+                    const artist = await artistDao.createArtistIfNotExist(name);
+                    await db.trackArtist.create({
+                        data: {
+                            trackId: trackIdVal,
+                            artistId: artist.id,
+                            role: 0
+                        }
+                    });
+                }
+
+                // Create Audio Resource
+                let quality = ext === '.flac' ? 2 : 1;
+                let format = 0;
+                const formatStr = ext.replace('.', '').toLowerCase();
+                if (formatStr === 'mp3') format = 0;
+                else if (formatStr === 'flac') format = 1;
+                else if (formatStr === 'm4a') format = 2;
+                else if (formatStr === 'ogg') format = 3;
+                else if (formatStr === 'wav') format = 0;
+
+                await db.trackAudioResource.create({
+                    data: {
+                        id: nextId(),
+                        trackId: trackIdVal,
+                        quality,
+                        format,
+                        bitrate: ext === '.flac' ? 1411200 : 320000,
+                        streamUrl: finalPath,
+                        size: BigInt(stats.size),
+                    }
+                });
 
                 imported.push(finalPath);
             } catch (dbErr) {
@@ -621,7 +675,6 @@ async function importFilesToWarehouseById(libraryId, filePaths) {
         }
     }
 
-    // 假设 ImportResultVO 已经定义
     return {
         success: true,
         result: {imported: imported.length, skipped: skipped.length},
@@ -636,19 +689,21 @@ async function importFilesToWarehouseById(libraryId, filePaths) {
 async function syncWarehouseById(libraryId) {
     const db = getDb()
     const root = getMusicWarehouseRoot()
+    const { nextId } = require('./snowflake')
 
-    const library = await db.musicLibrary.findUnique({
-        where: {id: libraryId},
+    const library = await db.album.findUnique({
+        where: {id: BigInt(libraryId)},
     })
 
     if (!library) return {added: 0, removed: 0}
 
-    const musicDir = path.join(root, library.name, 'music')
+    const musicDir = path.join(root, library.title, 'music')
 
     const dbTracks = await db.track.findMany({
-        where: {libraryId: library.id},
+        where: {albumId: library.id},
+        include: {audioResources: true},
     })
-    const dbPathSet = new Set(dbTracks.map(t => t.path))
+    const dbPathSet = new Set(dbTracks.map(t => t.audioResources[0]?.streamUrl).filter(Boolean))
 
     const fsFiles = []
     if (fs.existsSync(musicDir)) {
@@ -656,7 +711,10 @@ async function syncWarehouseById(libraryId) {
     }
     const fsPathSet = new Set(fsFiles.map(f => f.path))
 
-    const orphanTracks = dbTracks.filter(t => !fsPathSet.has(t.path))
+    const orphanTracks = dbTracks.filter(t => {
+        const pathVal = t.audioResources[0]?.streamUrl
+        return !pathVal || !fsPathSet.has(pathVal)
+    })
     let removed = 0
     if (orphanTracks.length > 0) {
         const result = await db.track.deleteMany({
@@ -672,32 +730,75 @@ async function syncWarehouseById(libraryId) {
             const ext = path.extname(file.name).toLowerCase()
             const isEncrypted = ENCRYPTED_FORMATS.includes(ext.replace('.', ''))
 
-            const trackData = {
-                id: crypto.randomUUID(),
-                libraryId: library.id,
-                name: file.name,
-                title: path.basename(file.name, ext),
-                path: file.path,
-                format: ext.replace('.', ''),
-                size: file.size,
-                modified: file.modified,
-                isEncrypted,
-            }
+            let title = path.basename(file.name, ext)
+            let artistStr = ''
+            let duration = 0
 
             if (!isEncrypted && SUPPORTED_EXTENSIONS.includes(ext)) {
                 const meta = await parseAudioMetadata(file.path)
                 const nameMeta = parseFileName(file.name)
-                trackData.title = meta.title || nameMeta.title || trackData.title
-                trackData.artist = meta.artist || nameMeta.artist || ''
-                trackData.duration = meta.duration || 0
-                trackData.cover = meta.cover || ''
+                title = meta.title || nameMeta.title || title
+                artistStr = meta.artist || nameMeta.artist || ''
+                duration = meta.duration || 0
             }
 
-            trackData.artists = await buildArtistsJson(trackData.artist)
-            await db.track.create({data: trackData})
+            const trackIdVal = nextId()
+            const maxTrack = await db.track.findFirst({
+                where: { albumId: library.id },
+                orderBy: { trackNumber: 'desc' },
+            })
+            const trackNumber = maxTrack ? maxTrack.trackNumber + 1 : 1
+
+            await db.track.create({
+                data: {
+                    id: trackIdVal,
+                    albumId: library.id,
+                    title,
+                    duration: duration * 1000,
+                    trackNumber,
+                }
+            })
+
+            const artistNames = artistStr.split(/[,/;|&，、\/]/).map(name => name.trim()).filter(Boolean)
+            if (artistNames.length === 0) {
+                artistNames.push('未知歌手')
+            }
+            for (const name of artistNames) {
+                const artist = await artistDao.createArtistIfNotExist(name)
+                await db.trackArtist.create({
+                    data: {
+                        trackId: trackIdVal,
+                        artistId: artist.id,
+                        role: 0
+                    }
+                })
+            }
+
+            // Create Audio Resource
+            let quality = ext === '.flac' ? 2 : 1
+            let format = 0
+            const formatStr = ext.replace('.', '').toLowerCase()
+            if (formatStr === 'mp3') format = 0
+            else if (formatStr === 'flac') format = 1
+            else if (formatStr === 'm4a') format = 2
+            else if (formatStr === 'ogg') format = 3
+            else if (formatStr === 'wav') format = 0
+
+            await db.trackAudioResource.create({
+                data: {
+                    id: nextId(),
+                    trackId: trackIdVal,
+                    quality,
+                    format,
+                    bitrate: ext === '.flac' ? 1411200 : 320000,
+                    streamUrl: file.path,
+                    size: BigInt(file.size),
+                }
+            })
+
             added++
         } catch (e) {
-            // 可能路径重复，跳过
+            console.error('[Sync] Failed to sync file:', file.name, e)
         }
     }
 
@@ -714,25 +815,25 @@ async function deleteWarehouseById(libraryId) {
     const root = getMusicWarehouseRoot()
 
     try {
-        const library = await db.musicLibrary.findUnique({
-            where: {id: libraryId},
+        const library = await db.album.findUnique({
+            where: {id: BigInt(libraryId)},
         })
 
         if (!library) {
             return {success: true}
         }
 
-        const warehousePath = path.join(root, library.name)
+        const warehousePath = path.join(root, library.title)
 
         if (fs.existsSync(warehousePath)) {
             try {
                 fs.rmSync(warehousePath, {recursive: true, force: true})
             } catch (fsErr) {
-                console.error(`[DB] Warning: Failed to delete warehouse directory "${library.name}":`, fsErr.message)
+                console.error(`[DB] Warning: Failed to delete warehouse directory "${library.title}":`, fsErr.message)
             }
         }
 
-        await db.musicLibrary.delete({where: {id: library.id}})
+        await db.album.delete({where: {id: library.id}})
 
         return {success: true}
     } catch (err) {
@@ -750,10 +851,10 @@ async function updateTrack(id, data) {
     const db = getDb()
     try {
         const track = await db.track.update({
-            where: {id},
+            where: {id: BigInt(id)},
             data: {
                 ...(data.title !== undefined && {title: data.title}),
-                ...(data.lyrics !== undefined && {lyrics: data.lyrics}),
+                ...(data.lyrics !== undefined && {lyricsUrl: data.lyrics}),
             },
         })
         return {success: true, track}
@@ -770,14 +871,18 @@ async function updateTrack(id, data) {
 async function deleteTrack(id) {
     const db = getDb()
     try {
-        const track = await db.track.findUnique({where: {id}})
+        const track = await db.track.findUnique({
+            where: {id: BigInt(id)},
+            include: {audioResources: true}
+        })
         if (!track) return {success: false, error: '曲目不存在'}
 
-        await db.track.delete({where: {id}})
+        await db.track.delete({where: {id: track.id}})
 
         try {
-            if (fs.existsSync(track.path)) {
-                fs.unlinkSync(track.path)
+            const resource = track.audioResources[0]
+            if (resource && fs.existsSync(resource.streamUrl)) {
+                fs.unlinkSync(resource.streamUrl)
             }
         } catch (fsErr) {
             console.error(`[DB] Warning: Failed to delete track file "${track.path}":`, fsErr.message)

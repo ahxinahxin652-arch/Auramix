@@ -1,3 +1,9 @@
+if (!BigInt.prototype.toJSON) {
+  BigInt.prototype.toJSON = function() {
+    return this.toString()
+  }
+}
+
 const express = require('express')
 const { ipcMain } = require('electron')
 const path = require('path')

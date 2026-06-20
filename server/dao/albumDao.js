@@ -8,7 +8,7 @@ async function getAlbumById(id) {
   const db = getDb()
   try {
     const album = await db.album.findUnique({
-      where: { id },
+      where: { id: BigInt(id) },
       include: {
         artists: {
           include: {
@@ -35,12 +35,18 @@ async function getAlbumById(id) {
 
     // 将 Tracks 列表映射为前端播放器所期望的 VO 格式
     const tracksList = album.tracks.map(track => {
-      const artistsList = track.artists.map(ta => ({
-        id: ta.artist.id,
-        name: ta.artist.name,
-        role: ta.role
-      }))
-      const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
+      const artistsList = track.artists.map(ta => {
+        let roleStr = 'Main Artist'
+        if (ta.role === 1) roleStr = 'Featuring'
+        else if (ta.role === 2) roleStr = 'Composer/Songwriter'
+        return {
+          id: ta.artist.id,
+          name: ta.artist.name,
+          role: roleStr
+        }
+      })
+      const resource = track.audioResources[0] || { streamUrl: '', format: 0, size: 0 }
+      const formatStr = resource.format === 1 ? 'flac' : (resource.format === 2 ? 'm4a' : (resource.format === 3 ? 'ogg' : 'mp3'))
       return {
         id: track.id,
         title: track.title,
@@ -51,12 +57,12 @@ async function getAlbumById(id) {
         cover: album.coverUrl || '',
         duration: track.duration / 1000, // 将 ms 转换为秒
         path: resource.streamUrl,
-        format: resource.format,
+        format: formatStr,
         size: resource.size,
         artists: JSON.stringify(artistsList),
         trackNumber: track.trackNumber,
         discNumber: track.discNumber,
-        lyrics: track.lyrics,
+        lyrics: track.lyricsUrl || '',
         createdAt: track.createdAt,
         updatedAt: track.updatedAt,
       }
@@ -101,7 +107,7 @@ async function updateAlbum(id, updates) {
   if (updates.albumType !== undefined) data.albumType = updates.albumType
 
   return await db.album.update({
-    where: { id },
+    where: { id: BigInt(id) },
     data
   })
 }

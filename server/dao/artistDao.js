@@ -1,5 +1,6 @@
 const crypto = require('crypto')
 const { getDb } = require('./db')
+const { nextId } = require('./snowflake')
 
 /**
  * 根据 ID 获取歌手，包含其演唱的所有曲目（通过 TrackArtist 中间表关联）
@@ -10,7 +11,7 @@ async function getArtistById(id) {
   const db = getDb()
   try {
     const artist = await db.artist.findUnique({
-      where: { id },
+      where: { id: BigInt(id) },
       include: {
         tracks: {
           include: {
@@ -37,12 +38,18 @@ async function getArtistById(id) {
     // 格式化歌手演唱的曲目列表为前端播放器所期望的 VO 格式
     const tracksList = artist.tracks.map(ta => {
       const track = ta.track
-      const artistsList = track.artists.map(tArtist => ({
-        id: tArtist.artist.id,
-        name: tArtist.artist.name,
-        role: tArtist.role
-      }))
-      const resource = track.audioResources[0] || { streamUrl: '', format: 'mp3', size: 0 }
+      const artistsList = track.artists.map(tArtist => {
+        let roleStr = 'Main Artist'
+        if (tArtist.role === 1) roleStr = 'Featuring'
+        else if (tArtist.role === 2) roleStr = 'Composer/Songwriter'
+        return {
+          id: tArtist.artist.id,
+          name: tArtist.artist.name,
+          role: roleStr
+        }
+      })
+      const resource = track.audioResources[0] || { streamUrl: '', format: 0, size: 0 }
+      const formatStr = resource.format === 1 ? 'flac' : (resource.format === 2 ? 'm4a' : (resource.format === 3 ? 'ogg' : 'mp3'))
       return {
         id: track.id,
         title: track.title,
@@ -53,12 +60,12 @@ async function getArtistById(id) {
         cover: track.album.coverUrl || '',
         duration: track.duration / 1000, // 将 ms 转换为秒
         path: resource.streamUrl,
-        format: resource.format,
+        format: formatStr,
         size: resource.size,
         artists: JSON.stringify(artistsList),
         trackNumber: track.trackNumber,
         discNumber: track.discNumber,
-        lyrics: track.lyrics,
+        lyrics: track.lyricsUrl || '',
         createdAt: track.createdAt,
         updatedAt: track.updatedAt,
       }
@@ -92,7 +99,7 @@ async function createArtistIfNotExist(name) {
   if (!artist) {
     artist = await db.artist.create({
       data: {
-        id: crypto.randomUUID(),
+        id: nextId(),
         name,
         coverImg: null,
         bio: ''
@@ -116,7 +123,7 @@ async function updateArtist(id, updates) {
   if (updates.bio !== undefined) data.bio = updates.bio
 
   return await db.artist.update({
-    where: { id },
+    where: { id: BigInt(id) },
     data
   })
 }

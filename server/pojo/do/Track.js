@@ -1,81 +1,62 @@
 /**
- * 曲目（Track）
+ * 曲目（Track） - 对应 MySQL tracks 表结构
  */
 class Track {
   /**
    * @param {Object} params
-   * @param {string} params.id           - UUID 唯一主键
-   * @param {string} params.libraryId    - 外键，关联 MusicLibrary.id
-   * @param {string} params.name         - 文件名 (例如 "song.flac")
-   * @param {string} [params.title]      - 歌曲名称 (可从文件名解析)
-   * @param {string} [params.artist]     - 歌手
-   * @param {string} [params.album]      - 专辑名称
-   * @param {string} [params.cover]      - 封面缩略图 (base64 data URL)
-   * @param {number} [params.duration]   - 歌曲时长（秒）
-   * @param {string} params.path         - 本地物理绝对路径
-   * @param {string} params.format       - 文件格式后缀 (flac, mp3, kgm, ncm 等)
-   * @param {number} [params.size]       - 文件大小 (Bytes)
-   * @param {number} [params.modified]   - 文件修改时间戳 (mtimeMs)
-   * @param {boolean} [params.isEncrypted] - 是否为加密格式
-   * @param {string} [params.warehouse]  - 所属仓库名称
-   * @param {string} [params.warehouseId] - 所属仓库 ID (稳定 UUID)
-   * @param {Date|string} [params.createdAt] - 录入时间
-   * @param {Date|string} [params.updatedAt] - 更新时间
+   * @param {BigInt|string} params.id         - 雪花唯一ID
+   * @param {BigInt|string} params.albumId    - 关联专辑ID
+   * @param {string} params.title             - 歌曲名称
+   * @param {number} params.duration          - 时长（毫秒）
+   * @param {string} [params.lyricsUrl]       - 云端LRC歌词文件URL
+   * @param {number} [params.status]          - 歌曲状态: 0为正常播放, -1为已下架, -2为暂无版权
+   * @param {number} [params.likedCount]      - 被收藏红心总次数
+   * @param {BigInt|number} [params.playCount] - 流媒体总播放次数
+   * @param {number} params.trackNumber       - 该曲目在专辑中的顺序
+   * @param {number} [params.discNumber]      - 碟片序号
+   * @param {Date|string} [params.createdAt]
+   * @param {Date|string} [params.updatedAt]
    */
   constructor({
-    id, libraryId = '', name, title = '', artist = '', album = '',
-    cover = '', duration = 0, path, format = '', size = 0, modified = 0,
-    isEncrypted = false, warehouse = '', warehouseId = '', createdAt, updatedAt,
-    artists = '[]',
+    id, albumId, title, duration = 0, lyricsUrl = '',
+    status = 0, likedCount = 0, playCount = 0n,
+    trackNumber = 1, discNumber = 1, createdAt, updatedAt
   }) {
     this.id = id
-    this.libraryId = libraryId
-    this.name = name
-    this.title = title || name
-    this.artist = artist
-    this.album = album
-    this.cover = cover
+    this.albumId = albumId
+    this.title = title
     this.duration = duration
-    this.path = path
-    this.format = format
-    this.size = size
-    this.modified = modified
-    this.isEncrypted = isEncrypted
-    this.warehouse = warehouse
-    this.warehouseId = warehouseId
+    this.lyricsUrl = lyricsUrl
+    this.status = status
+    this.likedCount = likedCount
+    this.playCount = playCount
+    this.trackNumber = trackNumber
+    this.discNumber = discNumber
     this.createdAt = createdAt || new Date().toISOString()
     this.updatedAt = updatedAt || new Date().toISOString()
-    this.artists = artists
   }
 
   /**
-   * 从文件系统扫描结果创建 Track
-   * @param {Object} fileEntry - { name, path, size, modified? }
-   * @param {string} warehouseName - 所属仓库名称
-   * @returns {Track}
-   */
-  static fromFileEntry(fileEntry, warehouseName = '') {
-    const ext = fileEntry.name.split('.').pop().toLowerCase()
-    const ENCRYPTED_FORMATS = ['kgm', 'kgma', 'vpr', 'kgmm', 'qmc0', 'qmc3', 'qmcflac', 'qmcogg', 'mflac', 'mgg', 'ncm', 'kwm']
-    return new Track({
-      id: `track-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      name: fileEntry.name,
-      path: fileEntry.path,
-      format: ext,
-      size: fileEntry.size || 0,
-      modified: fileEntry.modified || 0,
-      isEncrypted: ENCRYPTED_FORMATS.includes(ext),
-      warehouse: warehouseName,
-    })
-  }
-
-  /**
-   * 从 plain object 创建实例
+   * 从 plain object 创建实例，支持 snake_case 到 camelCase 映射
    * @param {Object} obj
    * @returns {Track}
    */
   static from(obj) {
-    return new Track(obj)
+    if (!obj) return null
+    return new Track({
+      id: obj.id,
+      albumId: obj.albumId !== undefined ? obj.albumId : obj.album_id,
+      title: obj.title,
+      duration: obj.duration,
+      lyricsUrl: obj.lyricsUrl !== undefined ? obj.lyricsUrl : obj.lyrics_url,
+      status: obj.status,
+      likedCount: obj.likedCount !== undefined ? obj.likedCount : obj.liked_count,
+      playCount: obj.playCount !== undefined ? obj.playCount : obj.play_count,
+      trackNumber: obj.trackNumber !== undefined ? obj.trackNumber : obj.track_number,
+      discNumber: obj.discNumber !== undefined ? obj.discNumber : obj.disc_number,
+      createdAt: obj.createdAt !== undefined ? obj.createdAt : obj.created_at,
+      updatedAt: obj.updatedAt !== undefined ? obj.updatedAt : obj.updated_at
+    })
   }
 }
 

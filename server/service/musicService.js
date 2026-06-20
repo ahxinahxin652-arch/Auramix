@@ -133,7 +133,7 @@ async function validateTrackPlayable(trackId, filePath) {
     try {
       const { getDb } = require('../dao/db')
       const db = getDb()
-      await db.track.delete({ where: { id: trackId } })
+      await db.track.delete({ where: { id: BigInt(trackId) } })
       console.warn(`[DB Sync] Track "${trackId}" file missing, deleted from database`)
     } catch (e) {
       console.error(`[DB] Failed to delete orphan track "${trackId}":`, e.message)
@@ -404,10 +404,15 @@ async function updateFileMetadata(filePath, data) {
       try {
         const { getDb } = require('../dao/db')
         const db = getDb()
-        const track = await db.track.findFirst({ where: { path: filePath } })
+        // Query database via stream_url in track_audio_resources
+        const resource = await db.trackAudioResource.findFirst({
+          where: { streamUrl: filePath },
+          include: { track: { include: { album: true } } }
+        })
+        const track = resource?.track
         if (track) {
           // 重新从文件提取封面（确保与文件一致）
-          let newCover = track.cover || ''
+          let newCover = track.album.coverUrl || ''
           try {
             const { parseFile } = await import('music-metadata')
             const meta = await parseFile(filePath)
@@ -421,21 +426,48 @@ async function updateFileMetadata(filePath, data) {
             }
           } catch (_) { /* 提取封面失败，保持原值 */ }
 
-          let artistsJson = undefined
-          if (data.artist !== undefined) {
-            artistsJson = await musicDao.buildArtistsJson(data.artist)
-          }
-
+          // 更新 Track 标题
           await db.track.update({
             where: { id: track.id },
             data: {
-              title: data.title || track.title,
-              artist: data.artist || track.artist,
-              album: data.album || track.album,
-              cover: newCover,
-              ...(artistsJson !== undefined && { artists: artistsJson }),
+              title: data.title || track.title
             }
           })
+
+          // 更新 Album 信息
+          if (data.album !== undefined || newCover !== undefined) {
+            await db.album.update({
+              where: { id: track.albumId },
+              data: {
+                ...(data.album !== undefined && { title: data.album }),
+                ...(newCover !== undefined && { coverUrl: newCover })
+              }
+            })
+          }
+
+          // 更新歌手关系
+          if (data.artist !== undefined) {
+            const artistDao = require('../dao/artistDao')
+            // 删除旧歌手关联
+            await db.trackArtist.deleteMany({
+              where: { trackId: track.id }
+            })
+            // 重新插入新歌手关联
+            const artistNames = data.artist.split(/[,/;|&，、\/]/).map(name => name.trim()).filter(Boolean)
+            if (artistNames.length === 0) {
+              artistNames.push('未知歌手')
+            }
+            for (const name of artistNames) {
+              const artist = await artistDao.createArtistIfNotExist(name)
+              await db.trackArtist.create({
+                data: {
+                  trackId: track.id,
+                  artistId: artist.id,
+                  role: 0
+                }
+              })
+            }
+          }
         }
       } catch (dbErr) {
         console.error('更新数据库记录失败:', dbErr)

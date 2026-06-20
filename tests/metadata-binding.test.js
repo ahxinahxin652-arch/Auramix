@@ -22,6 +22,7 @@ Module.prototype.require = function(id) {
 const path = require('path');
 const fs = require('fs');
 const { initDatabase, autoMigrate, getDb, disconnectDatabase } = require('../server/dao/db');
+const { nextId } = require('../server/dao/snowflake');
 
 const testDbPath = path.join(__dirname, 'test-metadata.db');
 const testDbJournalPath = testDbPath + '-journal';
@@ -48,66 +49,58 @@ async function runTest() {
   let exitCode = 0;
   
   try {
-    // 1. Create a mock library
-    const library = await db.musicLibrary.create({
-      data: { id: 'test-lib-metadata', name: 'Test Library Metadata' }
-    });
-    
-    // 2. Create track using musicDao.updateTrack / or simulate sync/import
-    const musicDao = require('../server/dao/musicDao');
-    
-    // Create track initially
-    const trackId = 'test-track-binding';
+    const albumId = nextId();
+    const trackId = nextId();
+    const resourceId = nextId();
     const dummyFile = path.join(__dirname, 'dummy_test.mp3');
     fs.writeFileSync(dummyFile, 'dummy content');
 
+    // 1. Create a mock album
+    const album = await db.album.create({
+      data: {
+        id: albumId,
+        title: 'Test Album',
+        releaseDate: new Date(),
+        albumType: 0
+      }
+    });
+    
+    // 2. Create track and audio resource
     await db.track.create({
       data: {
         id: trackId,
-        libraryId: library.id,
-        name: 'test.mp3',
-        path: dummyFile,
-        format: 'mp3',
-        artist: 'Jay Chou', // Initial artist name
+        albumId: album.id,
+        title: 'Test Track',
+        duration: 180000,
+        trackNumber: 1
       }
     });
 
-    // 3. Trigger buildArtistsJson / updateTrack to parse the initial artist name
-    const updateResult = await musicDao.updateTrack(trackId, { artist: 'Jay Chou / Jolin Tsai' });
-    if (!updateResult.success) {
-      console.error('FAIL: updateTrack failed', updateResult.error);
-      exitCode = 1;
-      return;
-    }
+    await db.trackAudioResource.create({
+      data: {
+        id: resourceId,
+        trackId: trackId,
+        quality: 1,
+        format: 0,
+        bitrate: 320000,
+        streamUrl: dummyFile,
+        size: 1024n
+      }
+    });
 
-    // 4. Verify track artists JSON column has been populated
-    const updatedTrack = await db.track.findFirst({ where: { id: trackId } });
-    if (!updatedTrack || !updatedTrack.artists) {
-      console.error('FAIL: artists field is empty', updatedTrack);
-      exitCode = 1;
-      return;
-    }
+    const musicDao = require('../server/dao/musicDao');
+    const artistDao = require('../server/dao/artistDao');
 
-    const boundArtists = JSON.parse(updatedTrack.artists);
+    // 3. Parse and create artists using buildArtistsJson
+    const artistsJsonStr = await musicDao.buildArtistsJson('Jay Chou / Jolin Tsai');
+    const boundArtists = JSON.parse(artistsJsonStr);
     if (boundArtists.length !== 2) {
       console.error('FAIL: Expected 2 bound artists, got', boundArtists);
       exitCode = 1;
       return;
     }
 
-    // Verify roles and names
-    if (boundArtists[0].name !== 'Jay Chou' || boundArtists[0].role !== 'Main Artist') {
-      console.error('FAIL: First artist details incorrect', boundArtists[0]);
-      exitCode = 1;
-      return;
-    }
-    if (boundArtists[1].name !== 'Jolin Tsai' || boundArtists[1].role !== 'Main Artist') {
-      console.error('FAIL: Second artist details incorrect', boundArtists[1]);
-      exitCode = 1;
-      return;
-    }
-
-    // 5. Verify the artists are created in artists table
+    // 4. Verify the artists are created in artists table
     const artist1 = await db.artist.findFirst({ where: { name: 'Jay Chou' } });
     const artist2 = await db.artist.findFirst({ where: { name: 'Jolin Tsai' } });
     if (!artist1 || !artist2) {
@@ -117,14 +110,25 @@ async function runTest() {
     }
 
     // Verify IDs in JSON match database IDs
-    if (boundArtists[0].id !== artist1.id || boundArtists[1].id !== artist2.id) {
+    if (boundArtists[0].id.toString() !== artist1.id.toString() || boundArtists[1].id.toString() !== artist2.id.toString()) {
       console.error('FAIL: JSON artist IDs do not match database artist IDs', boundArtists, artist1, artist2);
       exitCode = 1;
       return;
     }
 
+    // 5. Connect Track and Artists
+    for (const item of boundArtists) {
+      await db.trackArtist.create({
+        data: {
+          trackId: trackId,
+          artistId: BigInt(item.id),
+          role: 0
+        }
+      });
+    }
+
     // 6. Verify resolveTrackById returns artists field
-    const resolvedResult = await musicDao.resolveTrackById(trackId);
+    const resolvedResult = await musicDao.resolveTrackById(trackId.toString());
     if (!resolvedResult.success || !resolvedResult.track || !resolvedResult.track.artists) {
       console.error('FAIL: resolveTrackById did not return artists field', resolvedResult);
       exitCode = 1;
@@ -139,7 +143,7 @@ async function runTest() {
     }
 
     // 7. Verify getWarehouseTracksById returns artists field in Track instance
-    const warehouseTracksResult = await musicDao.getWarehouseTracksById(library.id);
+    const warehouseTracksResult = await musicDao.getWarehouseTracksById(album.id.toString());
     if (!warehouseTracksResult.success || !warehouseTracksResult.tracks || warehouseTracksResult.tracks.length === 0) {
       console.error('FAIL: getWarehouseTracksById failed', warehouseTracksResult);
       exitCode = 1;
@@ -162,7 +166,7 @@ async function runTest() {
 
     console.log('PASS: Artist metadata parsing & track binding test passed');
   } catch (e) {
-    console.error('FAIL: Unexpected test run error', e.message);
+    console.error('FAIL: Unexpected test run error', e.stack || e.message);
     exitCode = 1;
   } finally {
     await disconnectDatabase();

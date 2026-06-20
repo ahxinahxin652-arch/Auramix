@@ -155,10 +155,12 @@ exports.Prisma.TrackScalarFieldEnum = {
   albumId: 'albumId',
   title: 'title',
   duration: 'duration',
-  lyrics: 'lyrics',
+  lyricsUrl: 'lyricsUrl',
+  status: 'status',
+  likedCount: 'likedCount',
+  playCount: 'playCount',
   trackNumber: 'trackNumber',
   discNumber: 'discNumber',
-  isrc: 'isrc',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -182,7 +184,19 @@ exports.Prisma.TrackAudioResourceScalarFieldEnum = {
   bitrate: 'bitrate',
   streamUrl: 'streamUrl',
   size: 'size',
-  isPremiumOnly: 'isPremiumOnly',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.TrackVideoResourceScalarFieldEnum = {
+  id: 'id',
+  trackId: 'trackId',
+  quality: 'quality',
+  resolution: 'resolution',
+  fps: 'fps',
+  format: 'format',
+  bitrate: 'bitrate',
+  streamUrl: 'streamUrl',
+  size: 'size',
   createdAt: 'createdAt'
 };
 
@@ -221,9 +235,21 @@ exports.Prisma.PlaylistFollowerScalarFieldEnum = {
   followedAt: 'followedAt'
 };
 
+exports.Prisma.ArtistFollowerScalarFieldEnum = {
+  artistId: 'artistId',
+  userId: 'userId',
+  followedAt: 'followedAt'
+};
+
 exports.Prisma.LikedTrackScalarFieldEnum = {
   userId: 'userId',
   trackId: 'trackId',
+  likedAt: 'likedAt'
+};
+
+exports.Prisma.LikedAlbumScalarFieldEnum = {
+  albumId: 'albumId',
+  userId: 'userId',
   likedAt: 'likedAt'
 };
 
@@ -255,12 +281,15 @@ exports.Prisma.ModelName = {
   TrackArtist: 'TrackArtist',
   AlbumArtist: 'AlbumArtist',
   TrackAudioResource: 'TrackAudioResource',
+  TrackVideoResource: 'TrackVideoResource',
   Genre: 'Genre',
   TrackGenre: 'TrackGenre',
   Playlist: 'Playlist',
   PlaylistTrack: 'PlaylistTrack',
   PlaylistFollower: 'PlaylistFollower',
+  ArtistFollower: 'ArtistFollower',
   LikedTrack: 'LikedTrack',
+  LikedAlbum: 'LikedAlbum',
   PlaybackHistory: 'PlaybackHistory'
 };
 

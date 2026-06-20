@@ -22,6 +22,7 @@ Module.prototype.require = function(id) {
 const path = require('path');
 const fs = require('fs');
 const { initDatabase, autoMigrate, getDb, disconnectDatabase } = require('../server/dao/db');
+const { nextId } = require('../server/dao/snowflake');
 
 const testDbPath = path.join(__dirname, 'test-crud.db');
 const testDbJournalPath = testDbPath + '-journal';
@@ -43,37 +44,71 @@ async function runTest() {
   
   console.log('Testing Artist CRUD...');
   
-  const artistId = 'test-uuid-artist';
+  const artistId = nextId();
+  const trackId = nextId();
+  const albumId = nextId();
+  const resourceId = nextId();
   let exitCode = 0;
   
   try {
     // 1. Create artist
     await db.artist.create({
-      data: { id: artistId, name: 'Original Name', metadata: '{}' }
-    });
-    
-    // 2. Create a mock library
-    const library = await db.musicLibrary.create({
-      data: { id: 'test-lib-id', name: 'Test Library' }
-    });
-    
-    // 3. Create a track bound to this artist in JSON format
-    await db.track.create({
       data: {
-        id: 'test-uuid-track',
-        libraryId: library.id,
-        name: 'test.mp3',
-        path: 'dummy/test.mp3',
-        format: 'mp3',
-        artists: JSON.stringify([{ id: artistId, name: 'Original Name', role: 'Main Artist' }])
+        id: artistId,
+        name: 'Original Name',
+        coverImg: null,
+        bio: ''
       }
     });
     
-    // 4. Perform update via service (which we will implement)
+    // 2. Create a mock album
+    const album = await db.album.create({
+      data: {
+        id: albumId,
+        title: 'Test Album',
+        releaseDate: new Date(),
+        albumType: 0
+      }
+    });
+    
+    // 3. Create a track bound to this album
+    await db.track.create({
+      data: {
+        id: trackId,
+        albumId: album.id,
+        title: 'Test Track',
+        duration: 180000,
+        trackNumber: 1
+      }
+    });
+
+    // Connect Track and Artist
+    await db.trackArtist.create({
+      data: {
+        trackId: trackId,
+        artistId: artistId,
+        role: 0
+      }
+    });
+
+    // Create audio resource
+    await db.trackAudioResource.create({
+      data: {
+        id: resourceId,
+        trackId: trackId,
+        quality: 1,
+        format: 0,
+        bitrate: 320000,
+        streamUrl: 'dummy/test.mp3',
+        size: 1024n
+      }
+    });
+    
+    // 4. Perform update via service
     const musicService = require('../server/service/musicService');
-    const updateResult = await musicService.updateArtist(artistId, {
+    const updateResult = await musicService.updateArtist(artistId.toString(), {
       name: 'New Name',
-      metadata: { birthPlace: 'Taipei', links: ['https://example.com'] }
+      bio: 'New Bio'
     });
     
     if (!updateResult.success) {
@@ -82,32 +117,34 @@ async function runTest() {
       return;
     }
     
-    // 5. Verify name sync in Track
-    const updatedTrack = await db.track.findFirst({ where: { id: 'test-uuid-track' } });
-    if (!updatedTrack) {
-      console.error('FAIL: Track not found');
+    // 5. Verify name sync when resolving Track
+    const musicDao = require('../server/dao/musicDao');
+    const resolvedResult = await musicDao.resolveTrackById(trackId.toString());
+    if (!resolvedResult.success || !resolvedResult.track) {
+      console.error('FAIL: Track resolve failed', resolvedResult.error);
       exitCode = 1;
       return;
     }
     
-    const boundArtists = JSON.parse(updatedTrack.artists);
+    const trackVO = resolvedResult.track;
+    const boundArtists = JSON.parse(trackVO.artists);
     if (boundArtists[0].name !== 'New Name') {
-      console.error('FAIL: Track artist name was not synchronized', updatedTrack.artists);
+      console.error('FAIL: Track artist name was not synchronized', trackVO.artists);
       exitCode = 1;
       return;
     }
     
     // 6. Verify artist details in db
     const updatedArtist = await db.artist.findUnique({ where: { id: artistId } });
-    if (!updatedArtist || updatedArtist.name !== 'New Name' || !updatedArtist.metadata.includes('Taipei')) {
-      console.error('FAIL: Artist name or metadata was not updated in db', updatedArtist);
+    if (!updatedArtist || updatedArtist.name !== 'New Name' || updatedArtist.bio !== 'New Bio') {
+      console.error('FAIL: Artist name or bio was not updated in db', updatedArtist);
       exitCode = 1;
       return;
     }
     
     console.log('PASS: Artist CRUD and sync works');
   } catch (e) {
-    console.error('FAIL: Unexpected test run error', e.message);
+    console.error('FAIL: Unexpected test run error', e.stack || e.message);
     exitCode = 1;
   } finally {
     await disconnectDatabase();

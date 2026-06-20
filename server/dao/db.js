@@ -1,7 +1,13 @@
+if (!BigInt.prototype.toJSON) {
+  BigInt.prototype.toJSON = function() {
+    return this.toString()
+  }
+}
+
 const { PrismaClient } = require('../generated/prisma-client')
 const path = require('path')
 const fs = require('fs')
-const crypto = require('crypto')
+const { nextId } = require('./snowflake')
 
 let prisma = null
 
@@ -60,225 +66,276 @@ function initDatabase(customDbPath) {
  * 使用 CREATE TABLE IF NOT EXISTS 确保幂等性
  */
 async function autoMigrate() {
-  const db = getDb()
+  try {
+    const db = getDb()
 
-  // 1. 创建 users 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "users" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "email" TEXT NOT NULL,
-      "password_hash" TEXT NOT NULL,
-      "display_name" TEXT NOT NULL,
-      "avatar_url" TEXT,
-      "country" TEXT NOT NULL DEFAULT 'CN',
-      "product" TEXT NOT NULL DEFAULT 'free',
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" DATETIME NOT NULL
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email")`)
+    // 1. 创建 users 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "users" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "email" TEXT NOT NULL,
+        "password_hash" TEXT NOT NULL,
+        "display_name" TEXT NOT NULL,
+        "avatar_url" TEXT,
+        "country" TEXT NOT NULL DEFAULT 'CN',
+        "product" INTEGER NOT NULL DEFAULT 0,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email")`)
 
-  // 2. 创建 artists 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "artists" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "name" TEXT NOT NULL,
-      "cover_img" TEXT,
-      "bio" TEXT,
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" DATETIME NOT NULL
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "artists_name_key" ON "artists"("name")`)
+    // 2. 创建 artists 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "artists" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "cover_img" TEXT,
+        "bio" TEXT,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "artists_name_key" ON "artists"("name")`)
 
-  // 3. 创建 albums 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "albums" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "title" TEXT NOT NULL,
-      "cover_url" TEXT,
-      "release_date" DATETIME NOT NULL,
-      "album_type" TEXT NOT NULL DEFAULT 'album',
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" DATETIME NOT NULL
-    )
-  `)
+    // 3. 创建 albums 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "albums" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "title" TEXT NOT NULL,
+        "cover_url" TEXT,
+        "release_date" DATETIME NOT NULL,
+        "album_type" INTEGER NOT NULL DEFAULT 0,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
 
-  // 4. 创建 tracks 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "tracks" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "album_id" TEXT NOT NULL,
-      "title" TEXT NOT NULL,
-      "duration" INTEGER NOT NULL,
-      "lyrics" TEXT,
-      "track_number" INTEGER NOT NULL,
-      "disc_number" INTEGER NOT NULL DEFAULT 1,
-      "isrc" TEXT,
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" DATETIME NOT NULL,
-      CONSTRAINT "tracks_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "tracks_isrc_key" ON "tracks"("isrc")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "tracks_album_id_idx" ON "tracks"("album_id")`)
+    // 4. 创建 tracks 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "tracks" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "album_id" BIGINT NOT NULL,
+        "title" TEXT NOT NULL,
+        "duration" INTEGER NOT NULL,
+        "lyrics_url" TEXT,
+        "status" INTEGER NOT NULL DEFAULT 0,
+        "liked_count" INTEGER NOT NULL DEFAULT 0,
+        "play_count" BIGINT NOT NULL DEFAULT 0,
+        "track_number" INTEGER NOT NULL,
+        "disc_number" INTEGER NOT NULL DEFAULT 1,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "tracks_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "tracks_album_id_idx" ON "tracks"("album_id")`)
 
-  // 5. 创建 track_artists 中间表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "track_artists" (
-      "track_id" TEXT NOT NULL,
-      "artist_id" TEXT NOT NULL,
-      "role" TEXT NOT NULL DEFAULT 'Main Artist',
-      PRIMARY KEY ("track_id", "artist_id"),
-      CONSTRAINT "track_artists_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "track_artists_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_artists_track_id_idx" ON "track_artists"("track_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_artists_artist_id_idx" ON "track_artists"("artist_id")`)
+    // 5. 创建 track_artists 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "track_artists" (
+        "track_id" BIGINT NOT NULL,
+        "artist_id" BIGINT NOT NULL,
+        "role" INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY ("track_id", "artist_id"),
+        CONSTRAINT "track_artists_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "track_artists_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_artists_track_id_idx" ON "track_artists"("track_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_artists_artist_id_idx" ON "track_artists"("artist_id")`)
 
-  // 6. 创建 album_artists 中间表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "album_artists" (
-      "album_id" TEXT NOT NULL,
-      "artist_id" TEXT NOT NULL,
-      PRIMARY KEY ("album_id", "artist_id"),
-      CONSTRAINT "album_artists_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "album_artists_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "album_artists_album_id_idx" ON "album_artists"("album_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "album_artists_artist_id_idx" ON "album_artists"("artist_id")`)
+    // 6. 创建 album_artists 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "album_artists" (
+        "album_id" BIGINT NOT NULL,
+        "artist_id" BIGINT NOT NULL,
+        PRIMARY KEY ("album_id", "artist_id"),
+        CONSTRAINT "album_artists_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "album_artists_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "album_artists_album_id_idx" ON "album_artists"("album_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "album_artists_artist_id_idx" ON "album_artists"("artist_id")`)
 
-  // 7. 创建 track_audio_resources 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "track_audio_resources" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "track_id" TEXT NOT NULL,
-      "quality" TEXT NOT NULL,
-      "format" TEXT NOT NULL,
-      "bitrate" INTEGER NOT NULL,
-      "stream_url" TEXT NOT NULL,
-      "size" INTEGER NOT NULL,
-      "is_premium_only" BOOLEAN NOT NULL DEFAULT 0,
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "track_audio_resources_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_audio_resources_track_id_idx" ON "track_audio_resources"("track_id")`)
+    // 7. 创建 track_audio_resources 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "track_audio_resources" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "track_id" BIGINT NOT NULL,
+        "quality" INTEGER NOT NULL DEFAULT 1,
+        "format" INTEGER NOT NULL DEFAULT 0,
+        "bitrate" INTEGER NOT NULL,
+        "stream_url" TEXT NOT NULL,
+        "size" BIGINT NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "track_audio_resources_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_audio_resources_track_id_idx" ON "track_audio_resources"("track_id")`)
 
-  // 8. 创建 genres 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "genres" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "name" TEXT NOT NULL,
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "genres_name_key" ON "genres"("name")`)
+    // 8. 创建 track_video_resources 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "track_video_resources" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "track_id" BIGINT NOT NULL,
+        "quality" INTEGER NOT NULL DEFAULT 1,
+        "resolution" TEXT NOT NULL,
+        "fps" INTEGER NOT NULL DEFAULT 30,
+        "format" INTEGER NOT NULL DEFAULT 0,
+        "bitrate" INTEGER NOT NULL,
+        "stream_url" TEXT NOT NULL,
+        "size" BIGINT NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "track_video_resources_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_video_resources_track_id_idx" ON "track_video_resources"("track_id")`)
 
-  // 9. 创建 track_genres 中间表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "track_genres" (
-      "track_id" TEXT NOT NULL,
-      "genre_id" TEXT NOT NULL,
-      PRIMARY KEY ("track_id", "genre_id"),
-      CONSTRAINT "track_genres_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "track_genres_genre_id_fkey" FOREIGN KEY ("genre_id") REFERENCES "genres" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_genres_track_id_idx" ON "track_genres"("track_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_genres_genre_id_idx" ON "track_genres"("genre_id")`)
+    // 9. 创建 genres 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "genres" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "genres_name_key" ON "genres"("name")`)
 
-  // 10. 创建 playlists 表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "playlists" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "owner_id" TEXT NOT NULL,
-      "name" TEXT NOT NULL,
-      "description" TEXT,
-      "cover_url" TEXT,
-      "is_public" BOOLEAN NOT NULL DEFAULT 1,
-      "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "updated_at" DATETIME NOT NULL,
-      CONSTRAINT "playlists_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlists_owner_id_idx" ON "playlists"("owner_id")`)
+    // 10. 创建 track_genres 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "track_genres" (
+        "track_id" BIGINT NOT NULL,
+        "genre_id" BIGINT NOT NULL,
+        PRIMARY KEY ("track_id", "genre_id"),
+        CONSTRAINT "track_genres_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "track_genres_genre_id_fkey" FOREIGN KEY ("genre_id") REFERENCES "genres" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_genres_track_id_idx" ON "track_genres"("track_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "track_genres_genre_id_idx" ON "track_genres"("genre_id")`)
 
-  // 11. 创建 playlist_tracks 中间表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "playlist_tracks" (
-      "playlist_id" TEXT NOT NULL,
-      "track_id" TEXT NOT NULL,
-      "sort_order" INTEGER NOT NULL DEFAULT 0,
-      "added_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY ("playlist_id", "track_id"),
-      CONSTRAINT "playlist_tracks_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "playlist_tracks_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_tracks_playlist_id_idx" ON "playlist_tracks"("playlist_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_tracks_track_id_idx" ON "playlist_tracks"("track_id")`)
+    // 11. 创建 playlists 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "playlists" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "owner_id" BIGINT NOT NULL,
+        "name" TEXT NOT NULL,
+        "description" TEXT,
+        "cover_url" TEXT,
+        "is_public" INTEGER NOT NULL DEFAULT 1,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "playlists_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlists_owner_id_idx" ON "playlists"("owner_id")`)
 
-  // 12. 创建 playlist_followers 中间表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "playlist_followers" (
-      "playlist_id" TEXT NOT NULL,
-      "user_id" TEXT NOT NULL,
-      "followed_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY ("playlist_id", "user_id"),
-      CONSTRAINT "playlist_followers_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "playlist_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_playlist_id_idx" ON "playlist_followers"("playlist_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_user_id_idx" ON "playlist_followers"("user_id")`)
+    // 12. 创建 playlist_tracks 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "playlist_tracks" (
+        "playlist_id" BIGINT NOT NULL,
+        "track_id" BIGINT NOT NULL,
+        "sort_order" INTEGER NOT NULL DEFAULT 0,
+        "added_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("playlist_id", "track_id"),
+        CONSTRAINT "playlist_tracks_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "playlist_tracks_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_tracks_playlist_id_idx" ON "playlist_tracks"("playlist_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_tracks_track_id_idx" ON "playlist_tracks"("track_id")`)
 
-  // 13. 创建 liked_tracks 收藏表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "liked_tracks" (
-      "user_id" TEXT NOT NULL,
-      "track_id" TEXT NOT NULL,
-      "liked_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      PRIMARY KEY ("user_id", "track_id"),
-      CONSTRAINT "liked_tracks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "liked_tracks_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_tracks_user_id_idx" ON "liked_tracks"("user_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_tracks_track_id_idx" ON "liked_tracks"("track_id")`)
+    // 13. 创建 playlist_followers 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "playlist_followers" (
+        "playlist_id" BIGINT NOT NULL,
+        "user_id" BIGINT NOT NULL,
+        "followed_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("playlist_id", "user_id"),
+        CONSTRAINT "playlist_followers_playlist_id_fkey" FOREIGN KEY ("playlist_id") REFERENCES "playlists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "playlist_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_playlist_id_idx" ON "playlist_followers"("playlist_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_user_id_idx" ON "playlist_followers"("user_id")`)
 
-  // 14. 创建 playback_history 历史记录表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "playback_history" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "user_id" TEXT NOT NULL,
-      "track_id" TEXT NOT NULL,
-      "played_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "context_type" TEXT,
-      "context_id" TEXT,
-      CONSTRAINT "playback_history_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-      CONSTRAINT "playback_history_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
-    )
-  `)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playback_history_user_id_idx" ON "playback_history"("user_id")`)
-  await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playback_history_track_id_idx" ON "playback_history"("track_id")`)
+    // 14. 创建 artist_followers 中间表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "artist_followers" (
+        "artist_id" BIGINT NOT NULL,
+        "user_id" BIGINT NOT NULL,
+        "followed_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("artist_id", "user_id"),
+        CONSTRAINT "artist_followers_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "artist_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "artist_followers_artist_id_idx" ON "artist_followers"("artist_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "artist_followers_user_id_idx" ON "artist_followers"("user_id")`)
 
-  // 15. 创建 _prisma_migrations 兼容表
-  await db.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "checksum" TEXT NOT NULL,
-      "finished_at" DATETIME,
-      "migration_name" TEXT NOT NULL,
-      "started_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
+    // 15. 创建 liked_tracks 收藏表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "liked_tracks" (
+        "user_id" BIGINT NOT NULL,
+        "track_id" BIGINT NOT NULL,
+        "liked_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("user_id", "track_id"),
+        CONSTRAINT "liked_tracks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "liked_tracks_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_tracks_user_id_idx" ON "liked_tracks"("user_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_tracks_track_id_idx" ON "liked_tracks"("track_id")`)
 
-  await seedDatabase(db)
+    // 16. 创建 liked_albums 收藏表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "liked_albums" (
+        "album_id" BIGINT NOT NULL,
+        "user_id" BIGINT NOT NULL,
+        "liked_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY ("album_id", "user_id"),
+        CONSTRAINT "liked_albums_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "liked_albums_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_albums_album_id_idx" ON "liked_albums"("album_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "liked_albums_user_id_idx" ON "liked_albums"("user_id")`)
 
-  console.log('[DB] Auramix Refactored auto-migration completed.')
+    // 17. 创建 playback_history 播放历史记录表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "playback_history" (
+        "id" BIGINT NOT NULL PRIMARY KEY,
+        "user_id" BIGINT NOT NULL,
+        "track_id" BIGINT NOT NULL,
+        "played_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "context_type" INTEGER,
+        "context_id" BIGINT,
+        CONSTRAINT "playback_history_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        CONSTRAINT "playback_history_track_id_fkey" FOREIGN KEY ("track_id") REFERENCES "tracks" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playback_history_user_id_idx" ON "playback_history"("user_id")`)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playback_history_track_id_idx" ON "playback_history"("track_id")`)
+
+    // 18. 创建 _prisma_migrations 兼容表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "_prisma_migrations" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "checksum" TEXT NOT NULL,
+        "finished_at" DATETIME,
+        "migration_name" TEXT NOT NULL,
+        "started_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    await seedDatabase(db)
+
+    console.log('[DB] Auramix Refactored auto-migration completed.')
+  } catch (err) {
+    console.error('[DB] Database auto-migration failed:', err)
+    throw err
+  }
 }
 
 /**
@@ -351,11 +408,11 @@ async function seedDatabase(db) {
       where: { email: 'user@auramix.com' },
       update: {},
       create: {
-        id: 'default-user-uuid',
+        id: 1n,
         email: 'user@auramix.com',
         passwordHash: 'no-password-needed',
         displayName: 'Auramix User',
-        product: 'premium',
+        product: 1, // VIP (premium)
         country: 'CN'
       }
     })
@@ -372,7 +429,6 @@ async function seedDatabase(db) {
         const ext = path.extname(fileName).toLowerCase()
         if (['.flac', '.mp3', '.ogg', '.wav', '.aac', '.m4a'].includes(ext)) {
           const filePath = path.join(localMusicDir, fileName)
-          const stats = fs.statSync(filePath)
           
           // Parse "Artist - Title" from fileName
           const baseName = path.basename(fileName, ext)
@@ -381,16 +437,17 @@ async function seedDatabase(db) {
           if (baseName.includes(' - ')) {
             const parts = baseName.split(' - ')
             artistName = parts[0].trim()
-            trackTitle = parts[1].trim()
+            trackTitle = parts.slice(1).join(' - ').trim()
           }
           
           try {
+            const stats = fs.statSync(filePath)
             // Create Artist
             const artist = await db.artist.upsert({
               where: { name: artistName },
               update: {},
               create: {
-                id: crypto.randomUUID(),
+                id: nextId(),
                 name: artistName,
                 coverImg: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=300&auto=format&fit=crop',
                 bio: `Local artist: ${artistName}`
@@ -400,11 +457,11 @@ async function seedDatabase(db) {
             // Create Album
             const album = await db.album.create({
               data: {
-                id: crypto.randomUUID(),
+                id: nextId(),
                 title: trackTitle, // Local albums named after the single
                 coverUrl: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300&auto=format&fit=crop',
                 releaseDate: new Date('2024-01-01'),
-                albumType: 'single'
+                albumType: 1 // single
               }
             })
             
@@ -419,7 +476,7 @@ async function seedDatabase(db) {
             // Create Track
             const track = await db.track.create({
               data: {
-                id: crypto.randomUUID(),
+                id: nextId(),
                 albumId: album.id,
                 title: trackTitle,
                 duration: 210000, // approximate 3.5 minutes
@@ -432,20 +489,30 @@ async function seedDatabase(db) {
               data: {
                 trackId: track.id,
                 artistId: artist.id,
-                role: 'Main Artist'
+                role: 0 // Main Artist
               }
             })
             
+            let quality = ext === '.flac' ? 2 : 1
+            let format = 0
+            const formatStr = ext.replace('.', '').toLowerCase()
+            if (formatStr === 'mp3') format = 0
+            else if (formatStr === 'flac') format = 1
+            else if (formatStr === 'm4a') format = 2
+            else if (formatStr === 'ogg') format = 3
+            else if (formatStr === 'wav') format = 0
+            else format = 0 // default or map appropriately
+
             // Create Audio Resource
             await db.trackAudioResource.create({
               data: {
-                id: crypto.randomUUID(),
+                id: nextId(),
                 trackId: track.id,
-                quality: ext === '.flac' ? 'lossless' : 'high',
-                format: ext.replace('.', ''),
+                quality: quality,
+                format: format,
                 bitrate: ext === '.flac' ? 1411200 : 320000,
                 streamUrl: filePath,
-                size: stats.size
+                size: BigInt(stats.size)
               }
             })
             
@@ -466,10 +533,10 @@ async function seedDatabase(db) {
         artistName: 'Taylor Swift',
         coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=300&auto=format&fit=crop',
         releaseDate: new Date('2014-10-27'),
-        albumType: 'album',
+        albumType: 0, // album
         tracks: [
-          { title: 'Blank Space', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', format: 'mp3', bitrate: 128000, size: 3600000 },
-          { title: 'Style', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', format: 'mp3', bitrate: 128000, size: 3600000 }
+          { title: 'Blank Space', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', bitrate: 128000, size: 3600000n },
+          { title: 'Style', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', bitrate: 128000, size: 3600000n }
         ]
       },
       {
@@ -477,10 +544,10 @@ async function seedDatabase(db) {
         artistName: 'Ed Sheeran',
         coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=300&auto=format&fit=crop',
         releaseDate: new Date('2017-03-03'),
-        albumType: 'album',
+        albumType: 0, // album
         tracks: [
-          { title: 'Shape of You', duration: 233000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', format: 'mp3', bitrate: 128000, size: 3700000 },
-          { title: 'Castle on the Hill', duration: 261000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', format: 'mp3', bitrate: 128000, size: 4100000 }
+          { title: 'Shape of You', duration: 233000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', bitrate: 128000, size: 3700000n },
+          { title: 'Castle on the Hill', duration: 261000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', bitrate: 128000, size: 4100000n }
         ]
       },
       {
@@ -488,9 +555,9 @@ async function seedDatabase(db) {
         artistName: 'The Weeknd',
         coverUrl: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=300&auto=format&fit=crop',
         releaseDate: new Date('2020-03-20'),
-        albumType: 'album',
+        albumType: 0, // album
         tracks: [
-          { title: 'Blinding Lights', duration: 200000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', format: 'mp3', bitrate: 128000, size: 3200000 }
+          { title: 'Blinding Lights', duration: 200000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', bitrate: 128000, size: 3200000n }
         ]
       }
     ]
@@ -501,7 +568,7 @@ async function seedDatabase(db) {
           where: { name: albumData.artistName },
           update: {},
           create: {
-            id: crypto.randomUUID(),
+            id: nextId(),
             name: albumData.artistName,
             coverImg: albumData.coverUrl,
             bio: `${albumData.artistName} is a globally renowned music artist.`
@@ -510,7 +577,7 @@ async function seedDatabase(db) {
 
         const album = await db.album.create({
           data: {
-            id: crypto.randomUUID(),
+            id: nextId(),
             title: albumData.title,
             coverUrl: albumData.coverUrl,
             releaseDate: albumData.releaseDate,
@@ -529,7 +596,7 @@ async function seedDatabase(db) {
           const trackData = albumData.tracks[i]
           const track = await db.track.create({
             data: {
-              id: crypto.randomUUID(),
+              id: nextId(),
               albumId: album.id,
               title: trackData.title,
               duration: trackData.duration,
@@ -541,16 +608,16 @@ async function seedDatabase(db) {
             data: {
               trackId: track.id,
               artistId: artist.id,
-              role: 'Main Artist'
+              role: 0 // Main Artist
             }
           })
 
           await db.trackAudioResource.create({
             data: {
-              id: crypto.randomUUID(),
+              id: nextId(),
               trackId: track.id,
-              quality: 'medium',
-              format: trackData.format,
+              quality: 1, // medium
+              format: 0, // mp3
               bitrate: trackData.bitrate,
               streamUrl: trackData.streamUrl,
               size: trackData.size

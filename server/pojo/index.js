@@ -8,6 +8,7 @@
 
 // DO
 const MusicLibrary = require('./do/MusicLibrary')
+const Album = require('./do/Album')
 const Track = require('./do/Track')
 const TaskRecord = require('./do/TaskRecord')
 
@@ -28,6 +29,7 @@ const {
 module.exports = {
   // DO
   MusicLibrary,
+  Album,
   Track,
   TaskRecord,
   // VO
