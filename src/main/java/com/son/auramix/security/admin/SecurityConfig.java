@@ -1,5 +1,6 @@
 package com.son.auramix.security.admin;
 
+import com.son.auramix.security.user.UserAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,6 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final AdminAuthenticationFilter adminAuthenticationFilter;
+    private final UserAuthenticationFilter userAuthenticationFilter;
     private final RestAuthenticationEntryPoint authenticationEntryPoint;
     private final RestAccessDeniedHandler accessDeniedHandler;
 
@@ -43,11 +45,18 @@ public class SecurityConfig {
                     .authenticationEntryPoint(authenticationEntryPoint)
                     .accessDeniedHandler(accessDeniedHandler))
             .authorizeHttpRequests(auth -> auth
+                    // 公开接口
                     .requestMatchers("/api/health/**").permitAll()
+                    // 管理员
                     .requestMatchers("/api/admin/auth/login").permitAll()
                     .requestMatchers("/api/admin/**").authenticated()
+                    // 用户
+                    .requestMatchers("/api/user/auth/**").permitAll()
+                    .requestMatchers("/api/user/**").authenticated()
+                    // 其他
                     .anyRequest().permitAll())
-            .addFilterBefore(adminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(adminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(userAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

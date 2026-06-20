@@ -1,7 +1,7 @@
-package com.son.auramix.security.admin;
+package com.son.auramix.security.user;
 
-import com.son.auramix.service.admin.AdminSessionInfo;
-import com.son.auramix.service.admin.AdminTokenStore;
+import com.son.auramix.service.user.UserSessionInfo;
+import com.son.auramix.service.user.UserTokenStore;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,26 +19,21 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * 解析 {@code Authorization: Bearer <token>}：
- * <ol>
- *   <li>仅处理 /api/admin/ 路径</li>
- *   <li>未带 / 格式错 -> 放行，后续由 Spring Security 决定是否要 401</li>
- *   <li>Redis 命中 -> 构造 Authentication，写入 SecurityContext；同时续期 TTL</li>
- *   <li>Redis 未命中 -> 不设 context，放行到 Spring Security</li>
- * </ol>
- * <p>
- * 响应处理结束后清空 SecurityContextHolder，避免线程复用造成串号。
+ * 用户 Token 认证过滤器，仅处理 /api/user/ 下的请求。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class AdminAuthenticationFilter extends OncePerRequestFilter {
+public class UserAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String HEADER = "Authorization";
     private static final String PREFIX = "Bearer ";
-    private static final String PATH_PREFIX = "/api/admin/";
+    private static final String PATH_PREFIX = "/api/user/";
 
-    private final AdminTokenStore tokenStore;
+    /** 普通用户权限 */
+    public static final String AUTH_USER = "USER";
+
+    private final UserTokenStore userTokenStore;
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
@@ -53,15 +48,12 @@ public class AdminAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = extractToken(request);
             if (token != null) {
-                AdminSessionInfo info = tokenStore.loadToken(token);
+                UserSessionInfo info = userTokenStore.loadToken(token);
                 if (info != null) {
-                    List<SimpleGrantedAuthority> authorities = info.getIsRoot() != null
-                            && info.getIsRoot() == 1
-                            ? List.of(new SimpleGrantedAuthority(AdminUserDetailsService.AUTH_ROOT_ADMIN))
-                            : List.of(new SimpleGrantedAuthority(AdminUserDetailsService.AUTH_ADMIN));
-                    AdminUserDetails principal = new AdminUserDetails(
-                            info.getId(), info.getUsername(), null, info.getIsRoot(), authorities);
-                    // credentials 字段保存 token，供 /logout 读取后撤销
+                    List<SimpleGrantedAuthority> authorities = List.of(
+                            new SimpleGrantedAuthority(AUTH_USER));
+                    UserPrincipal principal = new UserPrincipal(
+                            info.getId(), info.getEmail(), null, authorities);
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(principal, token, authorities);
                     SecurityContextHolder.getContext().setAuthentication(auth);

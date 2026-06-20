@@ -48,7 +48,24 @@ public enum ResultCode {
     /** 无管理员操作权限 */
     ADMIN_FORBIDDEN(4032, "无管理员操作权限"),
     /** 当前不支持启用账号 */
-    ADMIN_ENABLE_NOT_SUPPORTED(4005, "当前不支持启用账号");
+    ADMIN_ENABLE_NOT_SUPPORTED(4005, "当前不支持启用账号"),
+
+    // ============================ 用户域 ============================
+
+    /** 邮箱或密码错误 */
+    USER_BAD_CREDENTIALS(4101, "邮箱或密码错误"),
+    /** 邮箱已被注册 */
+    USER_EMAIL_TAKEN(4102, "邮箱已被注册"),
+    /** 用户不存在 */
+    USER_NOT_FOUND(4103, "用户不存在"),
+    /** 验证码错误或已过期 */
+    USER_CODE_INVALID(4104, "验证码错误或已过期"),
+    /** 验证码发送过于频繁 */
+    USER_CODE_TOO_FREQUENT(4105, "验证码发送过于频繁，请稍后再试"),
+    /** 登录凭证无效或已过期 */
+    USER_TOKEN_INVALID(4106, "登录凭证无效或已过期"),
+    /** 无用户操作权限 */
+    USER_FORBIDDEN(4107, "无用户操作权限");
 
     private final int code;
     private final String message;
