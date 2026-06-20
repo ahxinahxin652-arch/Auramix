@@ -640,7 +640,7 @@
 
 /* 曲目信息 - Spotify 三列风格 */
 .track-info-col {
-    flex: 1;
+    flex: 1.5;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -814,8 +814,8 @@
 }
 
 .th-album, .track-album {
-    width: 180px;
-    flex-shrink: 0;
+    flex: 0.6;
+    min-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

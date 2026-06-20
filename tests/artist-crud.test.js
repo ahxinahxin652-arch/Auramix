@@ -47,6 +47,7 @@ async function runTest() {
   const artistId = nextId();
   const trackId = nextId();
   const albumId = nextId();
+  const playlistId = nextId();
   const resourceId = nextId();
   let exitCode = 0;
   
@@ -61,7 +62,7 @@ async function runTest() {
       }
     });
     
-    // 2. Create a mock album
+    // 2. Create a mock album (required for Track.albumId NOT NULL)
     const album = await db.album.create({
       data: {
         id: albumId,
@@ -70,8 +71,18 @@ async function runTest() {
         albumType: 0
       }
     });
+
+    // 2b. Create a playlist (warehouse)
+    const playlist = await db.playlist.create({
+      data: {
+        id: playlistId,
+        name: 'Test Playlist',
+        ownerId: 1n,
+        isPublic: 0
+      }
+    });
     
-    // 3. Create a track bound to this album
+    // 3. Create a track bound to the album
     await db.track.create({
       data: {
         id: trackId,
@@ -79,6 +90,15 @@ async function runTest() {
         title: 'Test Track',
         duration: 180000,
         trackNumber: 1
+      }
+    });
+
+    // 3b. Link the track to the playlist
+    await db.playlistTrack.create({
+      data: {
+        playlistId: playlist.id,
+        trackId: trackId,
+        sortOrder: 0
       }
     });
 

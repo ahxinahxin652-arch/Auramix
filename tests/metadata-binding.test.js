@@ -50,18 +50,29 @@ async function runTest() {
   
   try {
     const albumId = nextId();
+    const playlistId = nextId();
     const trackId = nextId();
     const resourceId = nextId();
     const dummyFile = path.join(__dirname, 'dummy_test.mp3');
     fs.writeFileSync(dummyFile, 'dummy content');
 
-    // 1. Create a mock album
+    // 1. Create a mock album (required for Track.albumId NOT NULL)
     const album = await db.album.create({
       data: {
         id: albumId,
         title: 'Test Album',
         releaseDate: new Date(),
         albumType: 0
+      }
+    });
+
+    // 1b. Create a playlist (warehouse)
+    const playlist = await db.playlist.create({
+      data: {
+        id: playlistId,
+        name: 'Test Playlist',
+        ownerId: 1n,
+        isPublic: 0
       }
     });
     
@@ -85,6 +96,15 @@ async function runTest() {
         bitrate: 320000,
         streamUrl: dummyFile,
         size: 1024n
+      }
+    });
+
+    // 2b. Link the track to the playlist
+    await db.playlistTrack.create({
+      data: {
+        playlistId: playlist.id,
+        trackId: trackId,
+        sortOrder: 0
       }
     });
 
@@ -143,7 +163,7 @@ async function runTest() {
     }
 
     // 7. Verify getWarehouseTracksById returns artists field in Track instance
-    const warehouseTracksResult = await musicDao.getWarehouseTracksById(album.id.toString());
+    const warehouseTracksResult = await musicDao.getWarehouseTracksById(playlist.id.toString());
     if (!warehouseTracksResult.success || !warehouseTracksResult.tracks || warehouseTracksResult.tracks.length === 0) {
       console.error('FAIL: getWarehouseTracksById failed', warehouseTracksResult);
       exitCode = 1;

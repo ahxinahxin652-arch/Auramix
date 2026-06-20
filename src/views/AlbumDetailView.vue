@@ -53,7 +53,7 @@ async function loadAlbumData() {
         title: album.title,
         coverUrl: album.coverUrl || '',
         releaseDate: album.releaseDate,
-        albumType: album.albumType || 'album',
+        albumType: album.albumType ?? 0,
         artists: album.artists || []
       }
       tracks.value = album.tracks || []
@@ -322,7 +322,7 @@ async function handleSaveEdit() {
 
         <!-- 详细文本 -->
         <div class="album-text-details">
-          <span class="album-label">{{ albumInfo.albumType === 'single' ? '单曲' : '专辑' }}</span>
+          <span class="album-label">{{ albumInfo.albumType === 1 ? '单曲' : '专辑' }}</span>
           <h1 class="album-title">{{ albumInfo.title }}</h1>
           <div class="album-meta">
             <!-- 歌手列表 -->
@@ -796,6 +796,11 @@ async function handleSaveEdit() {
   padding-right: 24px;
 }
 
+.col-title {
+  min-width: 0;
+  overflow: hidden;
+}
+
 .col-duration {
   text-align: right;
   display: flex;
@@ -898,6 +903,8 @@ async function handleSaveEdit() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .track-title-text {

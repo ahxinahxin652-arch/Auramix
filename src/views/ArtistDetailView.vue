@@ -44,11 +44,20 @@ const mockTracks = ref([
   { id: 'mock-5', title: '稻香 (Rice Field)', album: '魔杰座', duration: 283, playCount: 4761928, cover: '' }
 ])
 
+const scrollToTop = () => {
+  const mainView = document.querySelector('.main-view')
+  if (mainView) {
+    mainView.scrollTop = 0
+  }
+}
+
 onMounted(async () => {
+  scrollToTop()
   await loadArtistData()
 })
 
 watch(artistId, async () => {
+  scrollToTop()
   await loadArtistData()
 })
 
