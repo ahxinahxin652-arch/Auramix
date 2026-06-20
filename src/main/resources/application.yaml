@@ -19,7 +19,22 @@ spring:
       connection-timeout: 30000
       max-lifetime: 1800000
       pool-name: AuramixHikariCP
-
+  # ============================ 邮件 ============================
+  mail:
+    host: ${SMTP_HOST:smtp.qq.com}
+    port: ${SMTP_PORT:465}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    protocol: smtps
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          starttls:
+            enable: true
+            required: true
   # ============================ Redis ============================
   data:
     redis:
@@ -81,23 +96,7 @@ aliyun:
     # 签名URL默认过期时间(秒)，默认 3600
     signed-url-expire-seconds: 3600
 
-# ============================ 邮件 ============================
-spring:
-  mail:
-    host: ${SMTP_HOST:smtp.qq.com}
-    port: ${SMTP_PORT:465}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    protocol: smtps
-    properties:
-      mail:
-        smtp:
-          auth: true
-          ssl:
-            enable: true
-          starttls:
-            enable: true
-            required: true
+
 
 # ============================ Admin / User Token ============================
 auramix:

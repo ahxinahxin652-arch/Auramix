@@ -119,9 +119,7 @@ public class OssService {
                 .withKeys(objectKeys)
                 .withQuiet(false);
         DeleteObjectsResult result = ossClient.deleteObjects(request);
-        List<String> deleted = result.getDeletedObjects().stream()
-                .map(DeleteObjectsResult.DeletedObject::getKey)
-                .toList();
+        List<String> deleted = result.getDeletedObjects();
         log.info("[OssService] 批量删除, count={}", deleted.size());
         return deleted;
     }
