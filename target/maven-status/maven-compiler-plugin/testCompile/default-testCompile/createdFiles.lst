@@ -1,0 +1,11 @@
+com\son\auramix\controller\admin\AdminManageControllerWebTest.class
+com\son\auramix\security\admin\AdminAuthenticationFilterTest.class
+com\son\auramix\service\admin\AdminAuthServiceTest.class
+com\son\auramix\service\admin\AdminTokenStoreTest.class
+com\son\auramix\bootstrap\AdminBootstrapRunnerTest.class
+com\son\auramix\integration\admin\AdminSelfProtectionIntegrationTest.class
+com\son\auramix\controller\admin\AdminAuthControllerWebTest.class
+com\son\auramix\service\admin\AdminManageServiceTest.class
+com\son\auramix\integration\admin\AdminAuthIntegrationTest.class
+com\son\auramix\AuramixApplicationTests.class
+com\son\auramix\integration\admin\AdminManageIntegrationTest.class
