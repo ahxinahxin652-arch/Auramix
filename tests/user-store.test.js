@@ -39,6 +39,10 @@ const mockPinia = {
   }
 };
 
+// Expose mocks globally for the evaluated module scope
+global.mockVue = mockVue;
+global.mockPinia = mockPinia;
+
 // We will mock fetch
 let fetchMock = null;
 global.fetch = async (url, options) => {
@@ -62,15 +66,17 @@ const userStoreContent = fs.readFileSync(
 // Transform files:
 // 1. Remove ES imports and exports.
 // 2. Supply mocks for vue, pinia, import.meta.env
+// 3. Mock dynamic import('../routers/index.js')
 let transformedApi = backendApiContent
   .replace(/export class ApiError/g, 'class ApiError')
   .replace(/export async function backendFetch/g, 'async function backendFetch')
   .replace(/import\.meta\.env/g, '{}');
 
 let transformedUserStore = userStoreContent
-  .replace(/import \{ defineStore \} from 'pinia'/g, 'const { defineStore } = mockPinia;')
-  .replace(/import \{ ref, computed \} from 'vue'/g, 'const { ref, computed } = mockVue;')
+  .replace(/import \{ defineStore \} from 'pinia'/g, 'const { defineStore } = global.mockPinia;')
+  .replace(/import \{ ref, computed \} from 'vue'/g, 'const { ref, computed } = global.mockVue;')
   .replace(/import \{ backendFetch \} from '\.\.\/utils\/backendApi'/g, '')
+  .replace(/import\('\.\.\/routers\/index\.js'\)/g, 'Promise.resolve({ default: { push: (path) => { global.routerRedirect = path; } } })')
   .replace(/export const useUserStore/g, 'const useUserStore');
 
 // Combine them into a single runnable context
@@ -161,7 +167,7 @@ async function runTests() {
     assert.deepStrictEqual(JSON.parse(localStorage.getItem('auramix_profile')), { name: 'Bob', email: 'test@example.com' });
     console.log('PASS: login stores credentials on success.');
 
-    // Test 5: fetchProfile
+    // Test 5: fetchProfile success
     fetchMock = async (url, options) => {
       assert.strictEqual(url, 'http://localhost:8080/api/user/auth/me');
       assert.strictEqual(options.headers.get('Authorization'), 'Bearer new-token-456');
@@ -181,14 +187,72 @@ async function runTests() {
     assert.deepStrictEqual(JSON.parse(localStorage.getItem('auramix_profile')), { name: 'Bob Updated', email: 'test@example.com' });
     console.log('PASS: fetchProfile retrieves and updates profile details.');
 
+    // Test 5b: fetchProfile invalid credentials logs out (e.g. 401 status)
+    localStorage.setItem('auramix_token', 'token-to-be-cleared');
+    store = useUserStore();
+    fetchMock = async (url, options) => {
+      return {
+        ok: false,
+        status: 401,
+        headers: new Map([['content-type', 'application/json']]),
+        json: async () => ({
+          code: 401,
+          message: '凭证无效'
+        })
+      };
+    };
+    global.routerRedirect = null;
+    try {
+      await store.fetchProfile();
+      assert.fail('Should have thrown an ApiError');
+    } catch (err) {
+      assert.strictEqual(err.status, 401);
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.strictEqual(store.token.value, null);
+    assert.strictEqual(store.profile.value, null);
+    assert.strictEqual(global.routerRedirect, '/login');
+    console.log('PASS: fetchProfile status 401 triggers logout.');
+
+    // Test 5c: fetchProfile invalid credentials logs out (e.g. 4106 business code)
+    localStorage.setItem('auramix_token', 'token-to-be-cleared-2');
+    store = useUserStore();
+    fetchMock = async (url, options) => {
+      return {
+        ok: true,
+        status: 200,
+        headers: new Map([['content-type', 'application/json']]),
+        json: async () => ({
+          code: 4106,
+          message: 'Token expired'
+        })
+      };
+    };
+    global.routerRedirect = null;
+    try {
+      await store.fetchProfile();
+      assert.fail('Should have thrown an ApiError');
+    } catch (err) {
+      assert.strictEqual(err.code, 4106);
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.strictEqual(store.token.value, null);
+    assert.strictEqual(store.profile.value, null);
+    assert.strictEqual(global.routerRedirect, '/login');
+    console.log('PASS: fetchProfile business code 4106 triggers logout.');
+
     // Test 6: logout
-    store.logout();
+    localStorage.setItem('auramix_token', 'some-token');
+    store = useUserStore();
+    global.routerRedirect = null;
+    await store.logout();
+    await new Promise(resolve => setTimeout(resolve, 0));
     assert.strictEqual(store.token.value, null);
     assert.strictEqual(store.profile.value, null);
     assert.strictEqual(store.isLoggedIn.value, false);
-    assert.strictEqual(localStorage.getItem('auramix_token'), undefined);
-    assert.strictEqual(localStorage.getItem('auramix_profile'), undefined);
-    assert.strictEqual(window.location.hash, '#/login');
+    assert.strictEqual(localStorage.getItem('auramix_token'), null);
+    assert.strictEqual(localStorage.getItem('auramix_profile'), null);
+    assert.strictEqual(global.routerRedirect, '/login');
     console.log('PASS: logout clears credentials and redirects.');
 
   } catch (error) {

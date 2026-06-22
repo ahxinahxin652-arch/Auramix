@@ -49,7 +49,7 @@ export const useUserStore = defineStore('user', () => {
       profile.value = data
       localStorage.setItem('auramix_profile', JSON.stringify(data))
     } catch (err) {
-      if (err.message.includes('凭证无效') || err.message.includes('4106') || err.message.includes('401')) {
+      if (err.status === 401 || err.code === 4106) {
         logout()
       }
       throw err
@@ -61,7 +61,7 @@ export const useUserStore = defineStore('user', () => {
     profile.value = null
     localStorage.removeItem('auramix_token')
     localStorage.removeItem('auramix_profile')
-    window.location.hash = '#/login'
+    import('../routers/index.js').then(m => m.default.push('/login'))
   }
 
   return {
