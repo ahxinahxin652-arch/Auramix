@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 import { setupPermissionGuard } from './permission'
 import { useAuthStore } from '@/store/modules/auth'
+import type { AdminProfile } from '@/types/admin'
 
 vi.mock('@/api/admin/auth', () => ({
   fetchProfileApi: vi.fn(),
@@ -25,7 +26,7 @@ function makeRouter(): Router {
   return createRouter({ history: createMemoryHistory(), routes })
 }
 
-const fakeProfile = {
+const fakeProfile: AdminProfile = {
   id: 1, username: 'u', email: 'e', isRoot: 1, status: 1,
   lastLoginTime: null, lastLoginIp: null, createdAt: '2026-06-01',
 }

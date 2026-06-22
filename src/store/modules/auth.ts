@@ -66,7 +66,7 @@ export const useAuthStore = defineStore(
     persist: {
       key: 'auramix-auth',
       storage: localStorage,
-      paths: ['token', 'profile'],
+      pick: ['token', 'profile'],
     },
   },
 )
