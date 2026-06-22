@@ -4,9 +4,12 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSidebarStore } from './stores/sidebar'
 import { useLocalStorageStore } from './stores/localStorage'
+import { useUserStore } from './stores/user'
 import { ElMessage } from 'element-plus'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
+
+const userStore = useUserStore()
 
 const router = useRouter()
 const sidebarStore = useSidebarStore()
@@ -97,10 +100,14 @@ function handleUserCommand(cmd) {
     premium: 'Upgrade to Premium',
     support: 'Support',
     private: 'Private session',
-    settings: 'Settings',
-    logout: 'Log out'
+    settings: 'Settings'
   }
-  ElMessage.success(`点击了: ${labelMap[cmd] || cmd}`)
+  if (cmd === 'logout') {
+    userStore.logout()
+    ElMessage.success('已成功登出账号')
+  } else {
+    ElMessage.success(`点击了: ${labelMap[cmd] || cmd}`)
+  }
 }
 
 // 切换右侧边栏（动画期间禁止重复点击）
@@ -127,9 +134,49 @@ function onSidebarAfterLeave() {
 </script>
 
 <template>
+  <!-- 歌词浮窗模式：无窗口修饰 -->
   <div v-if="currentRoute === 'LyricsWidget'" style="width: 100%; height: 100%;">
     <router-view />
   </div>
+
+  <!-- 登录页模式：只有标题栏拖拽区域与控制，隐藏侧边栏与播放条 -->
+  <div v-else-if="currentRoute === 'Login'" class="app login-layout">
+    <header class="titlebar" @dblclick="handleMaximize">
+      <div class="header-left">
+        <span class="logo-text">Auramix</span>
+      </div>
+      <div class="header-right">
+        <div class="traffic-lights">
+          <button class="traffic-btn minimize" @click.stop="handleMinimize" title="最小化">
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 5h8" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button class="traffic-btn maximize" @click.stop="handleMaximize" title="最大化">
+            <svg v-if="!isMaximized" width="10" height="10" viewBox="0 0 10 10">
+              <rect x="1.5" y="1.5" width="7" height="7" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" fill="none" rx="0.5"/>
+            </svg>
+            <svg v-else width="10" height="10" viewBox="0 0 10 10">
+              <rect x="2.5" y="2.5" width="5" height="5" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" fill="none" rx="0.5"/>
+              <path d="M1.5 4.5h3v3.5h-3.5v-3z" stroke="rgba(255,255,255,0.5)" stroke-width="1.1" fill="none" rx="0.3"/>
+            </svg>
+          </button>
+          <button class="traffic-btn close" @click.stop="handleClose" title="关闭">
+            <svg width="10" height="10" viewBox="0 0 10 10">
+              <path d="M1 1L9 9M9 1L1 9" stroke="rgba(255,255,255,0.5)" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    <div class="app-body" style="height: calc(100vh - var(--titlebar-h)); overflow: hidden;">
+      <main class="main-view" style="padding: 0; height: 100%;">
+        <router-view />
+      </main>
+    </div>
+  </div>
+
+  <!-- 主播放器界面：完整功能布局 -->
   <div v-else class="app">
     <!-- ===== 自定义标题栏 ===== -->
     <header class="titlebar" @dblclick="handleMaximize">
@@ -185,18 +232,15 @@ function onSidebarAfterLeave() {
       <div class="header-right">
         <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-profile-dropdown">
           <div class="user-avatar-btn">
-            <svg class="user-avatar-svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-            </svg>
+            <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" class="user-avatar-img" />
+            <div v-else class="user-avatar-placeholder">
+              {{ userStore.profile?.displayName?.charAt(0).toUpperCase() || 'U' }}
+            </div>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="account">Account</el-dropdown-item>
-              <el-dropdown-item command="profile">Profile</el-dropdown-item>
-              <el-dropdown-item command="recents">Recents</el-dropdown-item>
+              <el-dropdown-item command="profile">{{ userStore.profile?.displayName || 'User Profile' }}</el-dropdown-item>
               <el-dropdown-item command="premium" divided>Upgrade to Premium</el-dropdown-item>
-              <el-dropdown-item command="support">Support</el-dropdown-item>
-              <el-dropdown-item command="private">Private session</el-dropdown-item>
               <el-dropdown-item command="settings">Settings</el-dropdown-item>
               <el-dropdown-item command="logout" divided>Log out</el-dropdown-item>
             </el-dropdown-menu>

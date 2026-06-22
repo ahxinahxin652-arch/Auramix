@@ -405,3 +405,30 @@ body {
 .sidebar-slide-leave-to {
     width: 0;
 }
+
+/* ========== User Avatar & Login Layout ========== */
+.user-avatar-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    background-color: var(--accent);
+    color: var(--text-h);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.login-layout {
+    grid-template-rows: var(--titlebar-h) 1fr !important;
+    grid-template-columns: 1fr !important;
+    overflow: hidden;
+}
