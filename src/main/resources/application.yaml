@@ -4,6 +4,8 @@ server:
     context-path: /
 
 spring:
+  profiles:
+    active: dev
   application:
     name: Auramix
   # ============================ 数据源 ============================
@@ -21,11 +23,10 @@ spring:
       pool-name: AuramixHikariCP
   # ============================ 邮件 ============================
   mail:
-    host: ${SMTP_HOST:smtp.qq.com}
-    port: ${SMTP_PORT:465}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    protocol: smtps
+    host: smtp.qq.com
+    port: 465
+    username: 2919656482@qq.com
+    password: nwiyixvzwemndchj
     properties:
       mail:
         smtp:
@@ -84,26 +85,20 @@ logging:
 aliyun:
   oss:
     # 地域节点 (例: oss-cn-hangzhou.aliyuncs.com)
-    endpoint: ${ALIYUN_OSS_ENDPOINT:}
+    endpoint: oss-cn-hangzhou.aliyuncs.com
     # AccessKey ID (建议通过环境变量注入)
-    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:}
+    access-key-id: ***REMOVED***
     # AccessKey Secret
-    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:}
+    access-key-secret: ***REMOVED***
     # Bucket 名称
-    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:}
-    # 自定义域名(CDN加速域名)，选填
-    custom-domain: ${ALIYUN_OSS_CUSTOM_DOMAIN:}
-    # 签名URL默认过期时间(秒)，默认 3600
-    signed-url-expire-seconds: 3600
-
-
+    bucket-name: auramix
 
 # ============================ Admin / User Token ============================
 auramix:
   admin:
     bootstrap:
       username: admin
-      password: ${AURAMIX_ADMIN_BOOTSTRAP_PASSWORD:}
+      password: Auramix-SuperSecurity-Password-That-You-Can-Never-Guess-Out
     token:
       # 管理员 token 2 小时滑动过期
       ttl-seconds: 7200
