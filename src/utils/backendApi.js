@@ -5,13 +5,24 @@ export class ApiError extends Error {
     this.status = status
     this.code = code
     this.data = data
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, ApiError)
+    }
   }
 }
 
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 export async function backendFetch(url, options = {}) {
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auramix_token') : null
+  let token = null
+  if (typeof localStorage !== 'undefined') {
+    try {
+      token = localStorage.getItem('auramix_token')
+    } catch (e) {
+      console.warn('Unable to access localStorage:', e)
+    }
+  }
+  
   const headers = new Headers(options.headers || {})
   
   if (token && !headers.has('Authorization')) {
@@ -44,11 +55,12 @@ export async function backendFetch(url, options = {}) {
     fullUrl = `${cleanBase}${cleanUrl}`
   }
 
-  const response = await fetch(fullUrl, {
-    ...options,
-    headers, // Fetch API natively accepts Headers instances
-    body
-  })
+  const fetchOptions = { ...options, headers }
+  if (body != null) {
+    fetchOptions.body = body
+  }
+
+  const response = await fetch(fullUrl, fetchOptions)
 
   if (!response.ok) {
     let errData = {}
@@ -63,13 +75,18 @@ export async function backendFetch(url, options = {}) {
   if (response.status !== 204) {
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
-      result = await response.json()
+      result = await response.json().catch(() => ({}))
     }
   }
 
-  // Handle business result
-  if (result.code !== undefined && result.code !== 200) {
-    throw new ApiError(result.message || '业务请求失败', response.status, result.code, result.data)
+  // Handle business result wrapper (e.g. { code, message, data })
+  if (result.code !== undefined) {
+    if (result.code !== 200) {
+      throw new ApiError(result.message || '业务请求失败', response.status, result.code, result.data)
+    }
+    return result.data
   }
-  return result.data
+  
+  // Return raw JSON if there's no result code wrapper
+  return result
 }
