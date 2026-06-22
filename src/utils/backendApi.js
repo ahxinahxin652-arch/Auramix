@@ -12,27 +12,44 @@ const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 export async function backendFetch(url, options = {}) {
   const token = localStorage.getItem('auramix_token')
-  const headers = { ...options.headers }
+  
+  // Normalize header keys case-insensitively
+  const headers = {}
+  if (options.headers) {
+    for (const [key, val] of Object.entries(options.headers)) {
+      headers[key] = val
+    }
+  }
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  // Determine body and content-type
+  // Determine body type and JSON content-type
   let body = options.body
-  const isJsonBody = body && !(
+  const isJsonBody = body && typeof body !== 'string' && !(
     body instanceof FormData || 
     body instanceof Blob || 
     body instanceof ArrayBuffer || 
-    body instanceof URLSearchParams
+    body instanceof URLSearchParams ||
+    ArrayBuffer.isView(body)
   )
 
   if (isJsonBody) {
-    headers['Content-Type'] = 'application/json'
+    // Only set header if not already specified case-insensitively
+    const hasContentType = Object.keys(headers).some(h => h.toLowerCase() === 'content-type')
+    if (!hasContentType) {
+      headers['Content-Type'] = 'application/json'
+    }
     body = JSON.stringify(body)
   }
 
-  const response = await fetch(`${BACKEND_URL}${url}`, {
+  // Normalize URL slash concatenation
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`
+  const cleanBase = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL
+  const fullUrl = `${cleanBase}${cleanUrl}`
+
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
     body
