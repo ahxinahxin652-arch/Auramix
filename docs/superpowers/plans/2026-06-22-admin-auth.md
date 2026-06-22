@@ -701,7 +701,7 @@ describe('request interceptors', () => {
       await service.get('/test')
 
       const callArg = adapter.mock.calls[0][0]
-      expect(callArg.headers.Authorization).toBe('Bearer my-token')
+      expect(callArg.headers.get('Authorization')).toBe('Bearer my-token')
     })
 
     it('does not add Authorization header when no token', async () => {
@@ -711,7 +711,7 @@ describe('request interceptors', () => {
       await service.get('/test')
 
       const callArg = adapter.mock.calls[0][0]
-      expect(callArg.headers.Authorization).toBeUndefined()
+      expect(callArg.headers.get('Authorization')).toBeUndefined()
     })
   })
 
@@ -908,6 +908,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { createRouter, createMemoryHistory, type Router } from 'vue-router'
 import { setupPermissionGuard } from './permission'
+import { useAuthStore } from '@/store/modules/auth'
 
 vi.mock('@/api/admin/auth', () => ({
   fetchProfileApi: vi.fn(),
@@ -1700,7 +1701,7 @@ describe('auth flow integration', () => {
     service.defaults.adapter = vi.fn() as any
   })
 
-  it('login flow: store.login → state written → /me called via interceptor', async () => {
+  it('login flow: store.login → state written + persisted', async () => {
     vi.mocked(authApi.loginApi).mockResolvedValue({
       token: 'integration-tok',
       expiresAt: '2026-06-22T12:00:00',
