@@ -1,11 +1,25 @@
 @use './reset.scss';
 @use './variables.scss' as *;
 
-// 覆盖 Element Plus CSS 变量（运行时主题色；编译时 SCSS 变量覆盖需 unplugin-element-plus）
+// 同步 Element Plus CSS 变量 + 新增 admin 令牌
 :root {
+  // Element Plus
   --el-color-primary: #{$primary-color};
   --el-color-success: #{$success-color};
   --el-color-warning: #{$warning-color};
   --el-color-danger: #{$danger-color};
   --el-color-info: #{$info-color};
+
+  // Admin 自定义令牌(组件可消费)
+  --admin-text-primary: #{$text-primary};
+  --admin-text-secondary: #{$text-secondary};
+  --admin-text-tertiary: #{$text-tertiary};
+  --admin-bg-page: #{$bg-page};
+  --admin-bg-surface: #{$bg-surface};
+  --admin-bg-subtle: #{$bg-subtle};
+  --admin-border-base: #{$border-base};
+  --admin-border-subtle: #{$border-subtle};
+  --admin-primary-soft: #{$primary-soft};
+  --admin-radius-md: #{$radius-md};
+  --admin-shadow-card: #{$shadow-card};
 }
