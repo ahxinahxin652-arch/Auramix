@@ -11,18 +11,11 @@ export class ApiError extends Error {
 const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 export async function backendFetch(url, options = {}) {
-  const token = localStorage.getItem('auramix_token')
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('auramix_token') : null
+  const headers = new Headers(options.headers || {})
   
-  // Normalize header keys case-insensitively
-  const headers = {}
-  if (options.headers) {
-    for (const [key, val] of Object.entries(options.headers)) {
-      headers[key] = val
-    }
-  }
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
   }
 
   // Determine body type and JSON content-type
@@ -32,26 +25,28 @@ export async function backendFetch(url, options = {}) {
     body instanceof Blob || 
     body instanceof ArrayBuffer || 
     body instanceof URLSearchParams ||
-    ArrayBuffer.isView(body)
+    ArrayBuffer.isView(body) ||
+    (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream)
   )
 
   if (isJsonBody) {
-    // Only set header if not already specified case-insensitively
-    const hasContentType = Object.keys(headers).some(h => h.toLowerCase() === 'content-type')
-    if (!hasContentType) {
-      headers['Content-Type'] = 'application/json'
+    if (!headers.has('Content-Type')) {
+      headers.set('Content-Type', 'application/json')
     }
     body = JSON.stringify(body)
   }
 
-  // Normalize URL slash concatenation
-  const cleanUrl = url.startsWith('/') ? url : `/${url}`
-  const cleanBase = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL
-  const fullUrl = `${cleanBase}${cleanUrl}`
+  // Normalize URL slash concatenation or support absolute URLs
+  let fullUrl = url
+  if (!/^https?:\/\//i.test(url)) {
+    const cleanUrl = url.startsWith('/') ? url : `/${url}`
+    const cleanBase = BACKEND_URL.endsWith('/') ? BACKEND_URL.slice(0, -1) : BACKEND_URL
+    fullUrl = `${cleanBase}${cleanUrl}`
+  }
 
   const response = await fetch(fullUrl, {
     ...options,
-    headers,
+    headers, // Fetch API natively accepts Headers instances
     body
   })
 
