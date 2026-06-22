@@ -63,4 +63,12 @@ describe('StatCard', () => {
     await wrapper.trigger('click')
     expect(routerPush).toHaveBeenCalledWith('/song')
   })
+
+  it('triggers navigation on Enter keydown when href provided', async () => {
+    const wrapper = mount(StatCard, {
+      props: { icon: 'Headset', label: '歌曲数', value: 1284, href: '/song' },
+    })
+    await wrapper.trigger('keydown', { key: 'Enter' })
+    expect(routerPush).toHaveBeenCalledWith('/song')
+  })
 })

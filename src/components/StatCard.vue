@@ -37,17 +37,30 @@ const deltaText = computed(() => {
   return `${deltaSymbol.value} ${Math.abs(props.delta)}%`
 })
 
+const isLink = computed(() => !!props.href)
+
 function handleClick() {
   if (props.href) router.push(props.href)
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (!isLink.value) return
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    handleClick()
+  }
 }
 </script>
 
 <template>
   <div
     class="stat-card"
-    :class="{ 'stat-card--link': !!href }"
-    role="article"
+    :class="{ 'stat-card--link': isLink }"
+    :role="isLink ? 'button' : 'article'"
+    :tabindex="isLink ? 0 : undefined"
+    :aria-label="isLink ? `查看${label}` : undefined"
     @click="handleClick"
+    @keydown="handleKeydown"
   >
     <div class="stat-card__icon">
       <component :is="resolveIcon(icon)" :size="20" />
@@ -84,6 +97,11 @@ function handleClick() {
       transform: translateY(-1px);
       box-shadow: $shadow-card;
       border-color: $primary-color;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $primary-color;
+      outline-offset: 2px;
     }
   }
 
