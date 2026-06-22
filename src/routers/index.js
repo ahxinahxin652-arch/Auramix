@@ -66,9 +66,9 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('auramix_token')
   if (!token && to.name !== 'Login') {
-    next({ name: 'Login' })
+    next({ name: 'Login', replace: true })
   } else if (token && to.name === 'Login') {
-    next({ name: 'Home' })
+    next({ name: 'Home', replace: true })
   } else {
     next()
   }

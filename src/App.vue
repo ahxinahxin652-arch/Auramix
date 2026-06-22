@@ -23,8 +23,10 @@ const canForward = ref(false)
 const updateNavButtons = () => {
   nextTick(() => {
     const state = window.history.state
-    canBack.value = state && state.back !== null
-    canForward.value = state && state.forward !== null
+    const hasBack = state && state.back !== null
+    const hasForward = state && state.forward !== null
+    canBack.value = hasBack && typeof state.back === 'string' && !state.back.includes('login')
+    canForward.value = hasForward && typeof state.forward === 'string' && !state.forward.includes('login')
   })
 }
 
@@ -52,7 +54,14 @@ function handleClose() {
   window.electronAPI.closeWindow()
 }
 
-const currentRoute = ref(router.currentRoute.value.name)
+const getInitialRoute = () => {
+  const hash = window.location.hash
+  if (hash.includes('/lyrics-widget')) return 'LyricsWidget'
+  if (hash.includes('/login')) return 'Login'
+  if (!localStorage.getItem('auramix_token')) return 'Login'
+  return 'Home'
+}
+const currentRoute = ref(getInitialRoute())
 router.afterEach((to) => {
   currentRoute.value = to.name
   updateNavButtons()

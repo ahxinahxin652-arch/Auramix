@@ -61,7 +61,7 @@ export const useUserStore = defineStore('user', () => {
     profile.value = null
     localStorage.removeItem('auramix_token')
     localStorage.removeItem('auramix_profile')
-    import('../routers/index.js').then(m => m.default.push('/login'))
+    import('../routers/index.js').then(m => m.default.replace('/login'))
   }
 
   return {

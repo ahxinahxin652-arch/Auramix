@@ -161,7 +161,7 @@ async function handleSubmit() {
       await userStore.register(form.email, form.password, form.displayName, form.code)
       ElMessage.success('注册并登录成功！')
     }
-    router.push('/')
+    router.replace('/')
   } catch (err) {
     ElMessage.error(err.message || '操作失败')
   } finally {
