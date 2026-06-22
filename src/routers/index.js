@@ -2,6 +2,11 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/LoginView.vue'),
+  },
+  {
     path: '/',
     name: 'Home',
     component: () => import('../views/HomeView.vue'),
@@ -56,6 +61,17 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('auramix_token')
+  if (!token && to.name !== 'Login') {
+    next({ name: 'Login' })
+  } else if (token && to.name === 'Login') {
+    next({ name: 'Home' })
+  } else {
+    next()
+  }
 })
 
 export default router
