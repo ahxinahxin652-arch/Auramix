@@ -3,13 +3,16 @@ import type { RouteRecordRaw } from 'vue-router'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
+    component: () => import('@/layouts/AdminLayout.vue'),
     redirect: '/home',
-  },
-  {
-    path: '/home',
-    name: 'Home',
-    component: () => import('@/views/home/Index.vue'),
-    meta: { requiresAuth: true, title: '主页' },
+    children: [
+      {
+        path: 'home',
+        name: 'Home',
+        component: () => import('@/views/home/Index.vue'),
+        meta: { requiresAuth: true, title: '主页' },
+      },
+    ],
   },
   {
     path: '/login',
