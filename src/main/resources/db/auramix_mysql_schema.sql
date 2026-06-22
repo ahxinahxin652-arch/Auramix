@@ -8,8 +8,8 @@
 -- DROP TABLES IF EXISTS (In order of dependencies if keys are added later)
 -- ------------------------------------------------------------------------------
 
-create database auramix;
-use auramix;
+# create database auramix;
+# use auramix;
 
 DROP table IF EXISTS `admin`;
 DROP TABLE IF EXISTS `playback_history`;
@@ -81,7 +81,7 @@ CREATE TABLE `tracks` (
   `title` VARCHAR(255) NOT NULL,
   `duration` INT NOT NULL COMMENT '时长（毫秒）',
   `lyrics_url` VARCHAR(255) NULL COMMENT '云端LRC歌词文件URL',
-  `status` INT NOT NULL DEFAULT 0 COMMENT '歌曲状态: 0为正常播放, -1为已下架, -2为暂无版权',
+  `status` INT NOT NULL DEFAULT 0 COMMENT '歌曲状态: 0:待审核, 1:为已下架, 2:为暂无版权',
   `liked_count` INT NOT NULL DEFAULT 0 COMMENT '被收藏红心总次数',
   `play_count` BIGINT NOT NULL DEFAULT 0 COMMENT '流媒体总播放/播放次数',
   `track_number` INT NOT NULL COMMENT '该曲目在专辑/碟片中的音轨顺序(从1开始)',
