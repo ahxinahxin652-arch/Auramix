@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
@@ -64,6 +65,11 @@ export default defineConfig(({ mode }) => {
       target: 'es2015',
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1500,
+    },
+    test: {
+      environment: 'happy-dom',
+      globals: true,
+      include: ['src/**/*.{test,spec}.ts'],
     },
   }
 })
