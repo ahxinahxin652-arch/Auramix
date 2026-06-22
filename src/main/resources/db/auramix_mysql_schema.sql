@@ -8,7 +8,7 @@
 -- DROP TABLES IF EXISTS (In order of dependencies if keys are added later)
 -- ------------------------------------------------------------------------------
 
-create database auramix;
+create database IF NOT EXISTS auramix;
 use auramix;
 
 DROP table IF EXISTS `admin`;
