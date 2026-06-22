@@ -70,6 +70,11 @@ export default defineConfig(({ mode }) => {
       environment: 'happy-dom',
       globals: true,
       include: ['src/**/*.{test,spec}.ts'],
+      server: {
+        deps: {
+          inline: ['element-plus', '@element-plus/icons-vue'],
+        },
+      },
     },
   }
 })
