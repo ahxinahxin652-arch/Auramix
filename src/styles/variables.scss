@@ -1,25 +1,55 @@
-// 主题主色（与 Element Plus CSS 变量保持一致）
-$primary-color: #409eff;
-$success-color: #67c23a;
-$warning-color: #e6a23c;
-$danger-color: #f56c6c;
+// ========== 主色(玫红) ==========
+$primary-color: #f43f5e;
+$primary-soft: #ffe4e6;
+$primary-dark: #be123c;
+
+// ========== 反馈色 ==========
+$success-color: #10b981;
+$warning-color: #f59e0b;
+$danger-color: #ef4444;
 $info-color: #909399;
 
-// 布局尺寸
+// ========== 中性色 ==========
+$text-primary: #0f172a;
+$text-secondary: #475569;
+$text-tertiary: #94a3b8;
+$bg-page: #f8fafc;
+$bg-surface: #ffffff;
+$bg-subtle: #fafafa;
+$border-base: #e2e8f0;
+$border-subtle: #f1f5f9;
+
+// ========== 布局尺寸 ==========
 $sidebar-width: 220px;
 $sidebar-collapsed-width: 64px;
 $header-height: 56px;
+$breadcrumb-height: 40px;
 
-// 间距
+// ========== 间距 ==========
 $spacing-xs: 4px;
 $spacing-sm: 8px;
 $spacing-md: 16px;
 $spacing-lg: 24px;
 $spacing-xl: 32px;
 
-// 字号
+// ========== 字号 ==========
+$font-size-2xs: 11px;
 $font-size-xs: 12px;
 $font-size-sm: 14px;
 $font-size-md: 16px;
 $font-size-lg: 18px;
 $font-size-xl: 20px;
+$font-size-2xl: 22px;
+
+// ========== 圆角 ==========
+$radius-sm: 4px;
+$radius-md: 6px;
+$radius-lg: 8px;
+
+// ========== 阴影 ==========
+$shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04);
+$shadow-popover: 0 4px 12px rgba(15, 23, 42, 0.08);
+
+// ========== 字体栈 ==========
+$font-family: -apple-system, BlinkMacSystemFont, 'Inter',
+  'PingFang SC', 'Microsoft YaHei', sans-serif;
