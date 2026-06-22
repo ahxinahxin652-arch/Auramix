@@ -271,7 +271,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Code\\Project\\MyTools\\FlacConverter\\server\\generated\\prisma-client",
+      "value": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\server\\generated\\prisma-client",
       "fromEnvVar": null
     },
     "config": {
@@ -285,12 +285,11 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\Code\\Project\\MyTools\\FlacConverter\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "../../../prisma",
   "clientVersion": "5.22.0",
@@ -299,7 +298,7 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
-  "postinstall": false,
+  "postinstall": true,
   "inlineDatasources": {
     "db": {
       "url": {
