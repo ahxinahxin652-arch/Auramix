@@ -167,14 +167,15 @@ export function fetchProfileApi(): Promise<AdminProfile | null>
 // state
 token: string         // ''
 profile: AdminProfile | null  // null
+loading: boolean      // false,用于登录按钮的 loading 状态
 
 // getters
 isLoggedIn: boolean   // token !== ''
 
 // actions
-login(payload)        // 调 loginApi → 写 state(自动持久化)
+login(payload)        // 调 loginApi → 期间 loading=true → 写 state(自动持久化)→ loading=false
 logout()              // 调 logoutApi(忽略错误)→ clearAuth()
-fetchProfile()        // 调 fetchProfileApi → 写 profile
+fetchProfile()        // 调 fetchProfileApi → 写 profile(若返回 null 则清 profile)
 clearAuth()           // 清 state + 清持久化(拦截器专用)
 ```
 
@@ -187,7 +188,7 @@ clearAuth()           // 清 state + 清持久化(拦截器专用)
 
 ### 4.6 路由守卫 `src/permission.ts`
 
-`router.beforeEach` 内的 6 个分支:
+`router.beforeEach` 内的 5 个分支:
 
 | 情况 | 处理 |
 |---|---|
@@ -349,4 +350,5 @@ clearAuth()           // 清 state + 清持久化(拦截器专用)
 - [ ] 修改 `src/views/home/Index.vue`
 - [ ] 单元测试(4 个 spec)
 - [ ] 集成测试(3 个 spec)
+- [ ] 安装测试依赖:`vitest`、`@vue/test-utils`、`happy-dom`、`@vitest/coverage-v8`(可选)
 - [ ] 手动联调 checklist(配合后端 dev server)
