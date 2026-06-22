@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const router = useRouter()
 
 interface Crumb {
   title: string
@@ -20,11 +19,6 @@ const crumbs = computed<Crumb[]>(() => {
     path: i === matched.length - 1 ? '' : c.path,
   }))
 })
-
-function handleClick(c: Crumb) {
-  if (!c.path) return
-  router.push(c.path)
-}
 </script>
 
 <template>
@@ -34,12 +28,12 @@ function handleClick(c: Crumb) {
         v-if="i > 0"
         class="breadcrumb__sep"
       >/</span>
-      <a
+      <router-link
         v-if="c.path"
+        :to="c.path"
         class="breadcrumb__link"
-        @click.prevent="handleClick(c)"
-      >{{ c.title }}</a>
-      <span v-else class="breadcrumb__current">{{ c.title }}</span>
+      >{{ c.title }}</router-link>
+      <span v-else class="breadcrumb__current" aria-current="page">{{ c.title }}</span>
     </template>
   </nav>
 </template>
