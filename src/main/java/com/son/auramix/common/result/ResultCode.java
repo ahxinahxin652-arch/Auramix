@@ -22,33 +22,33 @@ public enum ResultCode {
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不被允许"),
 
-    BUSINESS_ERROR(4000, "业务异常"),
+    BUSINESS_ERROR(400, "业务异常"),
 
-    INTERNAL_ERROR(5000, "系统内部错误"),
-    SERVICE_UNAVAILABLE(5001, "服务暂不可用"),
+    INTERNAL_ERROR(500, "系统内部错误"),
+    SERVICE_UNAVAILABLE(501, "服务暂不可用"),
 
     // ============================ 管理员域 ============================
 
     /** 用户名或密码错误（不区分用户名是否存在，避免枚举） */
-    ADMIN_BAD_CREDENTIALS(4011, "用户名或密码错误"),
+    ADMIN_BAD_CREDENTIALS(411, "用户名或密码错误"),
     /** 账号已被停用 */
-    ADMIN_DISABLED(4031, "账号已被停用"),
+    ADMIN_DISABLED(431, "账号已被停用"),
     /** 管理员不存在 */
-    ADMIN_NOT_FOUND(4041, "管理员不存在"),
+    ADMIN_NOT_FOUND(441, "管理员不存在"),
     /** 用户名已被占用 */
-    ADMIN_USERNAME_TAKEN(4001, "用户名已被占用"),
+    ADMIN_USERNAME_TAKEN(401, "用户名已被占用"),
     /** 邮箱已被占用 */
-    ADMIN_EMAIL_TAKEN(4002, "邮箱已被占用"),
+    ADMIN_EMAIL_TAKEN(402, "邮箱已被占用"),
     /** 不能对自己进行此操作 */
-    ADMIN_CANNOT_MODIFY_SELF(4003, "不能对自己进行此操作"),
+    ADMIN_CANNOT_MODIFY_SELF(403, "不能对自己进行此操作"),
     /** 不能操作初始管理员 */
-    ADMIN_CANNOT_MODIFY_ROOT(4004, "不能操作初始管理员"),
+    ADMIN_CANNOT_MODIFY_ROOT(404, "不能操作初始管理员"),
     /** 登录凭证无效或已过期 */
-    ADMIN_TOKEN_INVALID(4012, "登录凭证无效或已过期"),
+    ADMIN_TOKEN_INVALID(412, "登录凭证无效或已过期"),
     /** 无管理员操作权限 */
-    ADMIN_FORBIDDEN(4032, "无管理员操作权限"),
+    ADMIN_FORBIDDEN(432, "无管理员操作权限"),
     /** 当前不支持启用账号 */
-    ADMIN_ENABLE_NOT_SUPPORTED(4005, "当前不支持启用账号"),
+    ADMIN_ENABLE_NOT_SUPPORTED(405, "当前不支持启用账号"),
 
     // ============================ 用户域 ============================
 

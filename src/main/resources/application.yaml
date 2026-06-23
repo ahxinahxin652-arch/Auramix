@@ -98,7 +98,7 @@ auramix:
   admin:
     bootstrap:
       username: admin
-      password: Auramix-SuperSecurity-Password-That-You-Can-Never-Guess-Out
+      password: wjjismyson
     token:
       # 管理员 token 2 小时滑动过期
       ttl-seconds: 7200
