@@ -29,7 +29,9 @@ public class UserManageService {
      * 分页查询用户列表
      */
     public PageResult<UserListItemResponse> listUsers(String query, Integer status, Integer pageNum, Integer pageSize) {
-        Page<User> page = new Page<>(pageNum == null ? 1 : pageNum, pageSize == null ? 10 : pageSize);
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+        Page<User> page = new Page<>(current, size);
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
         
         if (query != null && !query.isBlank()) {
