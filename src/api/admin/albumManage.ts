@@ -11,9 +11,9 @@ export interface AlbumQuickCreate {
   coverUrl?: string
   releaseDate?: string
 }
-export function searchAlbums(query?: string) {
-  return request.get<AlbumSearchItem[]>(`/api/admin/manage/albums/search`, { params: { query } })
+export function searchAlbums(query?: string): Promise<AlbumSearchItem[]> {
+  return request.get<unknown, AlbumSearchItem[]>('/admin/manage/albums/search', { params: { query } })
 }
-export function quickCreateAlbum(data: AlbumQuickCreate) {
-  return request.post<AlbumSearchItem>(`/api/admin/manage/albums/quick`, data)
+export function quickCreateAlbum(data: AlbumQuickCreate): Promise<AlbumSearchItem> {
+  return request.post<unknown, AlbumSearchItem>('/admin/manage/albums/quick', data)
 }

@@ -4,6 +4,6 @@ export interface ArtistSearchItem {
   name: string
   coverImg: string
 }
-export function searchArtists(query?: string) {
-  return request.get<ArtistSearchItem[]>(`/api/admin/manage/artists/search`, { params: { query } })
+export function searchArtists(query?: string): Promise<ArtistSearchItem[]> {
+  return request.get<unknown, ArtistSearchItem[]>('/admin/manage/artists/search', { params: { query } })
 }

@@ -7,6 +7,6 @@ export interface OssPolicy {
   host: string
   expire: number
 }
-export function getOssPolicy(type: 'audio' | 'video' | 'lyrics' | 'cover') {
-  return request.get<OssPolicy>(`/api/admin/manage/oss/policy`, { params: { type } })
+export function getOssPolicy(type: 'audio' | 'video' | 'lyrics' | 'cover'): Promise<OssPolicy> {
+  return request.get<unknown, OssPolicy>('/admin/manage/oss/policy', { params: { type } })
 }

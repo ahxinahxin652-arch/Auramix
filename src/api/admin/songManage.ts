@@ -51,18 +51,31 @@ export interface TrackDetail {
   audioResources: TrackAudioResource[]
   videoResources: TrackVideoResource[]
 }
-export function listTracks(params: { query?: string; albumId?: string; status?: number; pageNum: number; pageSize: number }) {
-  return request.get<{ list: TrackListItem[]; total: number }>(`/api/admin/manage/tracks`, { params })
+export interface PageResult<T> {
+  current: number
+  size: number
+  total: number
+  pages: number
+  records: T[]
 }
-export function getTrack(id: string) {
-  return request.get<TrackDetail>(`/api/admin/manage/tracks/${id}`)
+
+export function listTracks(params: { query?: string; albumId?: string; status?: number; pageNum: number; pageSize: number }): Promise<PageResult<TrackListItem>> {
+  return request.get<unknown, PageResult<TrackListItem>>('/admin/manage/tracks', { params })
 }
-export function createTrack(data: TrackDetail) {
-  return request.post<void>(`/api/admin/manage/tracks`, data)
+
+export function getTrack(id: string): Promise<TrackDetail> {
+  return request.get<unknown, TrackDetail>(`/admin/manage/tracks/${id}`)
 }
-export function updateTrack(id: string, data: TrackDetail) {
-  return request.put<void>(`/api/admin/manage/tracks/${id}`, data)
+
+export function createTrack(data: TrackDetail): Promise<void> {
+  return request.post<unknown, void>('/admin/manage/tracks', data)
 }
-export function deleteTrack(id: string) {
-  return request.delete<void>(`/api/admin/manage/tracks/${id}`)
+
+export function updateTrack(id: string, data: TrackDetail): Promise<void> {
+  return request.put<unknown, void>(`/admin/manage/tracks/${id}`, data)
 }
+
+export function deleteTrack(id: string): Promise<void> {
+  return request.delete<unknown, void>(`/admin/manage/tracks/${id}`)
+}
+
