@@ -60,12 +60,20 @@ public class AdminManageController {
         return Result.success();
     }
 
-    /** PUT /api/admin/manage/admins/{id}/status — 启停账号。停用（status=0）撤销所有 token；启用暂不支持。 */
+    /** PUT /api/admin/manage/admins/{id}/status — 启停账号。停用（status=0）或启用（status=1）。 */
     @PutMapping("/admins/{id}/status")
     public Result<Void> updateStatus(@PathVariable Integer id,
                                      @Valid @RequestBody AdminStatusUpdateRequest req,
                                      @AuthenticationPrincipal AdminUserDetails current) {
         manageService.updateStatus(id, req.getStatus(), current.getAdminId());
+        return Result.success();
+    }
+
+    /** DELETE /api/admin/manage/admins/{id} — 删除管理员。 */
+    @org.springframework.web.bind.annotation.DeleteMapping("/admins/{id}")
+    public Result<Void> delete(@PathVariable Integer id,
+                               @AuthenticationPrincipal AdminUserDetails current) {
+        manageService.deleteAdmin(id, current.getAdminId());
         return Result.success();
     }
 }
