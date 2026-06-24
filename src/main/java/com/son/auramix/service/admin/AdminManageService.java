@@ -81,14 +81,28 @@ public class AdminManageService {
         if (target.getIsRoot() != null && target.getIsRoot() == 1) {
             throw new BusinessException(ResultCode.ADMIN_CANNOT_MODIFY_ROOT);
         }
-        // 本设计仅支持停用（0），启用（1）暂不实现
-        if (newStatus == null || newStatus != 0) {
-            throw new BusinessException(ResultCode.ADMIN_ENABLE_NOT_SUPPORTED);
+        if (newStatus == null || (newStatus != 0 && newStatus != 1)) {
+            throw new BusinessException(ResultCode.BAD_REQUEST);
         }
-        target.setStatus(0);
+        target.setStatus(newStatus);
         adminMapper.updateById(target);
+        if (newStatus == 0) {
+            tokenStore.revokeAllTokens(targetId);
+        }
+        log.info("[AdminManageService] updated status to {} for adminId={} by currentAdminId={}", newStatus, targetId, currentAdminId);
+    }
+
+    public void deleteAdmin(Integer targetId, Integer currentAdminId) {
+        Admin target = mustExist(targetId);
+        if (targetId.equals(currentAdminId)) {
+            throw new BusinessException(ResultCode.ADMIN_CANNOT_MODIFY_SELF);
+        }
+        if (target.getIsRoot() != null && target.getIsRoot() == 1) {
+            throw new BusinessException(ResultCode.ADMIN_CANNOT_MODIFY_ROOT);
+        }
+        adminMapper.deleteById(targetId);
         tokenStore.revokeAllTokens(targetId);
-        log.info("[AdminManageService] deactivated adminId={} by currentAdminId={}", targetId, currentAdminId);
+        log.info("[AdminManageService] deleted adminId={} by currentAdminId={}", targetId, currentAdminId);
     }
 
     private Admin mustExist(Integer id) {

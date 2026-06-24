@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.*;
 import com.son.auramix.config.OssProperties;
+import com.son.auramix.domain.dto.admin.OssPolicyResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -232,6 +233,33 @@ public class OssService {
         }
         return String.format("https://%s.%s/%s",
                 ossProperties.getBucketName(), ossProperties.getEndpoint(), objectKey);
+    }
+
+    /**
+     * 生成 Post Policy 上传凭证
+     */
+    public OssPolicyResponse generatePostPolicy(String dir) {
+        long expireTime = 300; // 5分钟有效期
+        long expireEndTime = System.currentTimeMillis() + expireTime * 1000;
+        Date expiration = new Date(expireEndTime);
+        
+        PolicyConditions policyConds = new PolicyConditions();
+        policyConds.addConditionItem(PolicyConditions.COND_CONTENT_LENGTH_RANGE, 0, 1048576000); // 最大1GB
+        policyConds.addConditionItem(MatchMode.StartWith, PolicyConditions.COND_KEY, dir);
+
+        String postPolicy = ossClient.generatePostPolicy(expiration, policyConds);
+        byte[] binaryData = postPolicy.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        String encodedPolicy = cn.hutool.core.codec.Base64.encode(binaryData);
+        String postSignature = ossClient.calculatePostSignature(postPolicy);
+
+        OssPolicyResponse response = new OssPolicyResponse();
+        response.setAccessKeyId(ossProperties.getAccessKeyId());
+        response.setPolicy(encodedPolicy);
+        response.setSignature(postSignature);
+        response.setDir(dir);
+        response.setHost("https://" + ossProperties.getBucketName() + "." + ossProperties.getEndpoint());
+        response.setExpire(expireEndTime / 1000);
+        return response;
     }
 
     // ============================ 私有方法 ============================
