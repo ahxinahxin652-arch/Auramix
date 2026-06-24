@@ -19,6 +19,7 @@ public class AlbumQuickCreateRequest {
     
     private String coverUrl;
     
+    @NotBlank(message = "Release date is required")
     @Pattern(regexp = "^\\d{4}-\\d{2}-\\d{2}$", message = "Release date must be in YYYY-MM-DD format")
     private String releaseDate; // YYYY-MM-DD
 }
