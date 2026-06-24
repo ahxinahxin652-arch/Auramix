@@ -290,9 +290,10 @@ public class TrackServiceImpl implements TrackService {
         }
 
         // Validation: trackNumber uniqueness
+        Integer targetDisc = req.getDiscNumber() != null ? req.getDiscNumber() : t.getDiscNumber();
         Long count = trackMapper.selectCount(new LambdaQueryWrapper<Track>()
                 .eq(Track::getAlbumId, req.getAlbumId())
-                .eq(Track::getDiscNumber, req.getDiscNumber() != null ? req.getDiscNumber() : 1)
+                .eq(Track::getDiscNumber, targetDisc)
                 .eq(Track::getTrackNumber, req.getTrackNumber())
                 .ne(Track::getId, id)
         );
