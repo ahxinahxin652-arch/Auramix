@@ -1,6 +1,7 @@
 package com.son.auramix.domain.dto.admin;
 
 import lombok.Data;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
@@ -15,7 +16,14 @@ public class TrackUpdateRequest {
     private Integer discNumber;
     private Integer status;
     private String lyricsUrl;
+    private Integer duration; // in milliseconds
+    
+    @Valid
     private List<TrackArtistDto> artists;
+    
+    @Valid
     private List<TrackAudioResourceDto> audioResources;
+    
+    @Valid
     private List<TrackVideoResourceDto> videoResources;
 }

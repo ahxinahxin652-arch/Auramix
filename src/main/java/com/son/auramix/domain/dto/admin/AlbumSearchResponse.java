@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class AlbumSearchResponse {
-    private String id;
+    private Long id;
     private String title;
     private Integer albumType;
     private String coverUrl;
