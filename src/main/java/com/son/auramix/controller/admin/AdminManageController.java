@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,7 +40,7 @@ public class AdminManageController {
         return Result.success(manageService.createAdmin(req));
     }
 
-    /** GET /api/admin/manage/admins — 全量列表（按 id 升序）。 */
+    /** GET /api/admin/manage/admins — 全量列表（按 id 降序）。 */
     @GetMapping("/admins")
     public Result<List<AdminListItemResponse>> list() {
         return Result.success(manageService.listAdmins());
@@ -70,7 +71,7 @@ public class AdminManageController {
     }
 
     /** DELETE /api/admin/manage/admins/{id} — 删除管理员。 */
-    @org.springframework.web.bind.annotation.DeleteMapping("/admins/{id}")
+    @DeleteMapping("/admins/{id}")
     public Result<Void> delete(@PathVariable Integer id,
                                @AuthenticationPrincipal AdminUserDetails current) {
         manageService.deleteAdmin(id, current.getAdminId());

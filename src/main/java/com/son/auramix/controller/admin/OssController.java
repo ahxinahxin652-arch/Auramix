@@ -17,6 +17,9 @@ public class OssController {
 
     @GetMapping("/policy")
     public Result<OssPolicyResponse> getPostPolicy(@RequestParam String type) {
+        if (!"audio".equals(type) && !"video".equals(type) && !"image".equals(type) && !"lyrics".equals(type) && !"cover".equals(type)) {
+            throw new com.son.auramix.common.exception.BusinessException(com.son.auramix.common.result.ResultCode.BAD_REQUEST, "Invalid upload type");
+        }
         String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         String dir = type + "/" + dateDir + "/";
         return Result.success(ossService.generatePostPolicy(dir));

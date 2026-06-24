@@ -8,6 +8,7 @@ import com.son.auramix.domain.dto.admin.AdminLoginResponse;
 import com.son.auramix.domain.dto.admin.AdminProfileResponse;
 import com.son.auramix.service.admin.AdminAuthService;
 import com.son.auramix.service.admin.AdminTokenStore;
+import com.son.auramix.service.user.UserTokenStore;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -36,11 +37,14 @@ class AdminAuthControllerWebTest {
     private AdminAuthService authService;
 
     /**
-     * AdminAuthenticationFilter 是 @Component，@WebMvcTest 会尝试加载它，
-     * 需要提供一个 AdminTokenStore Mock 以满足构造器注入。
+     * AdminAuthenticationFilter 和 UserAuthenticationFilter 是 @Component，@WebMvcTest 会尝试加载它们，
+     * 需要提供 TokenStore Mock 以满足构造器注入。
      */
     @MockBean
     private AdminTokenStore adminTokenStore;
+
+    @MockBean
+    private UserTokenStore userTokenStore;
 
     @Autowired
     private ObjectMapper objectMapper;

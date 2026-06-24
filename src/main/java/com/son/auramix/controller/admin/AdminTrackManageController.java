@@ -30,7 +30,11 @@ public class AdminTrackManageController {
 
     @GetMapping("/{id}")
     public Result<TrackDetailResponse> get(@PathVariable Long id) {
-        return Result.success(trackService.getTrackDetail(id));
+        TrackDetailResponse detail = trackService.getTrackDetail(id);
+        if (detail == null) {
+            throw new com.son.auramix.common.exception.BusinessException(com.son.auramix.common.result.ResultCode.NOT_FOUND);
+        }
+        return Result.success(detail);
     }
 
     @PostMapping

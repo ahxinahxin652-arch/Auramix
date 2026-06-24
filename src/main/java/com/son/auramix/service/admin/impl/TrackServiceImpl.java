@@ -31,7 +31,9 @@ public class TrackServiceImpl implements TrackService {
 
     @Override
     public PageResult<TrackListItemResponse> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
-        Page<Track> page = new Page<>(pageNum, pageSize);
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+        Page<Track> page = new Page<>(current, size);
         LambdaQueryWrapper<Track> wrapper = new LambdaQueryWrapper<>();
         if (query != null && !query.trim().isEmpty()) {
             wrapper.like(Track::getTitle, query);
