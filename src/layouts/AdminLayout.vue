@@ -11,6 +11,7 @@ import {
   Headset,
   Collection,
   CircleCheck,
+  Avatar,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import UserDropdown from '@/components/UserDropdown.vue'
@@ -84,6 +85,7 @@ const allMenus: MenuItem[] = [
   { path: '/user', label: '用户管理', icon: User },
   { path: '/song', label: '歌曲管理', icon: Headset },
   { path: '/album', label: '专辑管理', icon: Collection },
+  { path: '/artist', label: '歌手管理', icon: Avatar },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
 ]
 

@@ -17,8 +17,7 @@ import {
 } from '@/api/admin/songManage'
 import { searchAlbums, quickCreateAlbum, type AlbumSearchItem } from '@/api/admin/albumManage'
 import { searchArtists, type ArtistSearchItem } from '@/api/admin/artistManage'
-import { getOssPolicy } from '@/api/admin/oss'
-import axios from 'axios'
+import { uploadFile } from '@/api/admin/oss'
 
 // ---- Paging & Table data ----
 const list = ref<TrackListItem[]>([])
@@ -250,38 +249,25 @@ function removeArtistRow(index: number) {
   form.artists.splice(index, 1)
 }
 
-// ---- OSS direct uploads ----
-async function uploadToOss(file: File, type: 'audio' | 'video' | 'lyrics'): Promise<string> {
-  const policy = await getOssPolicy(type)
-  const ext = file.name.substring(file.name.lastIndexOf('.'))
-  const randomSuffix = Math.random().toString(36).substring(2, 8)
-  const filename = `${Date.now()}_${randomSuffix}${ext}`
-  const key = `${policy.dir}${filename}`
-
-  const formData = new FormData()
-  formData.append('key', key)
-  formData.append('policy', policy.policy)
-  formData.append('OSSAccessKeyId', policy.accessKeyId)
-  formData.append('success_action_status', '200')
-  formData.append('signature', policy.signature)
-  formData.append('file', file)
-
+// ---- OSS 后端代理上传 ----
+async function uploadToOss(file: File, type: 'audio' | 'video' | 'lyrics' | 'cover'): Promise<string> {
   uploadingFile.value = file.name
   uploadPercent.value = 0
   isUploading.value = true
 
   try {
-    await axios.post(policy.host, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          uploadPercent.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-        }
+    // 模拟进度（后端代理上传暂无法获取实时进度，使用假进度提示用户等待）
+    const progressTimer = setInterval(() => {
+      if (uploadPercent.value < 90) {
+        uploadPercent.value += 10
       }
-    })
-    return `${policy.host}/${key}`
+    }, 300)
+
+    const result = await uploadFile(file, type)
+
+    clearInterval(progressTimer)
+    uploadPercent.value = 100
+    return result.url
   } catch (err) {
     console.error('OSS上传失败:', err)
     ElMessage.error(`上传文件 ${file.name} 失败，请检查网络后重试`)
