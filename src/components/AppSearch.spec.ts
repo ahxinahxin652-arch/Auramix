@@ -30,9 +30,7 @@ describe('AppSearch', () => {
     const input = wrapper.find('input').element as HTMLInputElement
     const focusSpy = vi.spyOn(input, 'focus')
 
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }),
-    )
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }))
     await wrapper.vm.$nextTick()
 
     expect(focusSpy).toHaveBeenCalled()

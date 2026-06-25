@@ -11,8 +11,8 @@ interface Crumb {
 
 const crumbs = computed<Crumb[]>(() => {
   const matched = route.matched
-    .filter(r => r.meta?.title)
-    .map(r => ({ title: r.meta.title as string, path: r.path }))
+    .filter((r) => r.meta?.title)
+    .map((r) => ({ title: r.meta.title as string, path: r.path }))
   // 末级不可点:除最后一项外都加 path,最后一项用空 path
   return matched.map((c, i) => ({
     title: c.title,
@@ -24,15 +24,8 @@ const crumbs = computed<Crumb[]>(() => {
 <template>
   <nav class="breadcrumb" aria-label="breadcrumb">
     <template v-for="(c, i) in crumbs" :key="c.path || i">
-      <span
-        v-if="i > 0"
-        class="breadcrumb__sep"
-      >/</span>
-      <router-link
-        v-if="c.path"
-        :to="c.path"
-        class="breadcrumb__link"
-      >{{ c.title }}</router-link>
+      <span v-if="i > 0" class="breadcrumb__sep">/</span>
+      <router-link v-if="c.path" :to="c.path" class="breadcrumb__link">{{ c.title }}</router-link>
       <span v-else class="breadcrumb__current" aria-current="page">{{ c.title }}</span>
     </template>
   </nav>

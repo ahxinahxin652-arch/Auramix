@@ -25,8 +25,7 @@ export function setupPermissionGuard(router: Router) {
     if (to.meta.requiresAuth && auth.isLoggedIn && !auth.profile) {
       try {
         await auth.fetchProfile()
-      }
-      catch {
+      } catch {
         // /me 失败 → token 失效,清掉 auth 避免 /login → /home 死循环
         auth.clearAuth()
         return { path: '/login' }

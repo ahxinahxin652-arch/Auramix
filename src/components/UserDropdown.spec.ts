@@ -61,7 +61,7 @@ describe('UserDropdown', () => {
     })
     // 找下拉里的"退出登录"项并点击
     const items = wrapper.findAllComponents(ElDropdownItemStub)
-    const logoutItem = items.find(i => i.text().includes('退出登录'))
+    const logoutItem = items.find((i) => i.text().includes('退出登录'))
     expect(logoutItem).toBeTruthy()
     await logoutItem!.trigger('click')
     expect(wrapper.emitted('logout')).toBeTruthy()

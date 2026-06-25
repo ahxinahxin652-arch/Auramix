@@ -1,6 +1,10 @@
 @use './reset.scss';
 @use './variables.scss' as *;
 
+// 导入命令式组件样式以解决按需引入导致JS调用样式丢失的问题
+@import 'element-plus/theme-chalk/el-message.css';
+@import 'element-plus/theme-chalk/el-message-box.css';
+
 // 同步 Element Plus CSS 变量 + 新增 admin 令牌
 :root {
   // Element Plus

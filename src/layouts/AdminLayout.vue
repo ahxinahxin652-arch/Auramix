@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, Expand, Fold, House, User, UserFilled, Headset, Collection, CircleCheck } from '@element-plus/icons-vue'
+import {
+  Bell,
+  Expand,
+  Fold,
+  House,
+  User,
+  UserFilled,
+  Headset,
+  Collection,
+  CircleCheck,
+} from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import UserDropdown from '@/components/UserDropdown.vue'
 import AppSearch from '@/components/AppSearch.vue'
@@ -20,8 +30,7 @@ const drawerVisible = ref(false)
 function readCollapsedFromStorage(): boolean {
   try {
     return localStorage.getItem(STORAGE_KEY) === '1'
-  }
-  catch {
+  } catch {
     return false
   }
 }
@@ -29,8 +38,7 @@ function readCollapsedFromStorage(): boolean {
 function writeCollapsedToStorage(v: boolean) {
   try {
     localStorage.setItem(STORAGE_KEY, v ? '1' : '0')
-  }
-  catch {
+  } catch {
     // localStorage 不可用时静默忽略
   }
 }
@@ -52,8 +60,7 @@ function onResize() {
 function toggleCollapsed() {
   if (isMobile.value) {
     drawerVisible.value = !drawerVisible.value
-  }
-  else {
+  } else {
     collapsed.value = !collapsed.value
     writeCollapsedToStorage(collapsed.value)
   }
@@ -73,15 +80,15 @@ interface MenuItem {
 
 const allMenus: MenuItem[] = [
   { path: '/home', label: '主页', icon: House },
-  { path: '/user', label: '用户管理', icon: User },
   { path: '/admin', label: '管理员管理', icon: UserFilled, rootOnly: true },
+  { path: '/user', label: '用户管理', icon: User },
   { path: '/song', label: '歌曲管理', icon: Headset },
   { path: '/album', label: '专辑管理', icon: Collection },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
 ]
 
 const visibleMenus = computed(() =>
-  allMenus.filter(m => !m.rootOnly || auth.profile?.isRoot === 1),
+  allMenus.filter((m) => !m.rootOnly || auth.profile?.isRoot === 1),
 )
 
 const SIDEBAR_WIDTH = 220
@@ -136,11 +143,7 @@ const sidebarWidth = computed(() => (collapsed.value ? SIDEBAR_COLLAPSED_WIDTH :
           router
           class="admin-menu"
         >
-          <el-menu-item
-            v-for="m in visibleMenus"
-            :key="m.path"
-            :index="m.path"
-          >
+          <el-menu-item v-for="m in visibleMenus" :key="m.path" :index="m.path">
             <el-icon><component :is="m.icon" /></el-icon>
             <template #title>{{ m.label }}</template>
           </el-menu-item>
@@ -161,11 +164,7 @@ const sidebarWidth = computed(() => (collapsed.value ? SIDEBAR_COLLAPSED_WIDTH :
           class="admin-menu"
           @select="drawerVisible = false"
         >
-          <el-menu-item
-            v-for="m in visibleMenus"
-            :key="m.path"
-            :index="m.path"
-          >
+          <el-menu-item v-for="m in visibleMenus" :key="m.path" :index="m.path">
             <el-icon><component :is="m.icon" /></el-icon>
             <template #title>{{ m.label }}</template>
           </el-menu-item>

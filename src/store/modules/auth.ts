@@ -22,8 +22,7 @@ export const useAuthStore = defineStore(
         token.value = result.token
         profile.value = result.profile
         return result
-      }
-      finally {
+      } finally {
         loading.value = false
       }
     }
@@ -31,11 +30,9 @@ export const useAuthStore = defineStore(
     async function logout() {
       try {
         await logoutApi()
-      }
-      catch {
+      } catch {
         // 忽略错误,无论成败都清本地
-      }
-      finally {
+      } finally {
         clearAuth()
       }
     }

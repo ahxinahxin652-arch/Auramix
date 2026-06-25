@@ -45,12 +45,8 @@ const roleLabel = computed(() => (props.isRoot === 1 ? '超级管理员' : '普�
             </div>
           </div>
         </div>
-        <el-dropdown-item disabled @click="$emit('profile')">
-          个人中心
-        </el-dropdown-item>
-        <el-dropdown-item divided @click="$emit('logout')">
-          退出登录
-        </el-dropdown-item>
+        <el-dropdown-item disabled @click="$emit('profile')"> 个人中心 </el-dropdown-item>
+        <el-dropdown-item divided @click="$emit('logout')"> 退出登录 </el-dropdown-item>
       </el-dropdown-menu>
     </template>
   </el-dropdown>
