@@ -105,7 +105,7 @@ auramix:
   admin:
     bootstrap:
       username: admin
-      password: lsxshigoudongxi
+      password: 123456
     token:
       # 管理员 token 2 小时滑动过期
       ttl-seconds: 7200
