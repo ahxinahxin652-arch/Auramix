@@ -83,6 +83,7 @@ public class UserAuthService {
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         user.setDisplayName(displayName);
         user.setProduct(0); // 默认免费用户
+        user.setStatus(User.STATUS_ACTIVE);
         userMapper.insert(user);
 
         log.info("[UserAuthService] 注册成功, email={}, id={}", email, user.getId());
@@ -102,6 +103,10 @@ public class UserAuthService {
         if (user == null) {
             log.warn("[UserAuthService] 登录失败: 邮箱不存在, email={}", email);
             throw new BusinessException(ResultCode.USER_BAD_CREDENTIALS);
+        }
+        if (user.getStatus() != null && user.getStatus() == User.STATUS_BANNED) {
+            log.warn("[UserAuthService] 登录失败: 账号已被封禁, email={}", email);
+            throw new BusinessException(ResultCode.USER_BANNED);
         }
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             log.warn("[UserAuthService] 登录失败: 密码错误, email={}", email);

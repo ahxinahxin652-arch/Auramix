@@ -112,7 +112,7 @@ public class GlobalExceptionHandler {
         log.error("[系统异常] {} {}", request.getMethod(), request.getRequestURI(), ex);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error(ResultCode.INTERNAL_ERROR, "服务器内部错误: " + ex.getClass().getSimpleName()));
+                .body(Result.error(ResultCode.INTERNAL_ERROR, "服务器内部错误: " + ex.getClass().getSimpleName() + " - " + ex.getMessage()));
     }
 
     // ============================ 辅助 ============================
