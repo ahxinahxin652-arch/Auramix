@@ -3,8 +3,8 @@ package com.son.auramix.service.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminLoginResponse;
-import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.vo.admin.AdminLoginVO;
+import com.son.auramix.domain.vo.admin.AdminProfileVO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class AdminAuthService {
     @Value("${auramix.admin.token.ttl-seconds:7200}")
     private long ttlSeconds;
 
-    public AdminLoginResponse login(String username, String rawPassword, String clientIp) {
+    public AdminLoginVO login(String username, String rawPassword, String clientIp) {
         Admin admin = adminMapper.selectOne(
                 new LambdaQueryWrapper<Admin>().eq(Admin::getUsername, username));
         if (admin == null) {
@@ -63,7 +63,7 @@ public class AdminAuthService {
             log.warn("[AdminAuthService] update last_login failed, id={}", admin.getId(), e);
         }
 
-        return AdminLoginResponse.builder()
+        return AdminLoginVO.builder()
                 .token(token)
                 .expiresAt(LocalDateTime.now().plusSeconds(ttlSeconds))
                 .profile(toProfile(admin))
@@ -74,7 +74,7 @@ public class AdminAuthService {
         tokenStore.revokeToken(adminId, token);
     }
 
-    public AdminProfileResponse getProfile(Integer adminId) {
+    public AdminProfileVO getProfile(Integer adminId) {
         Admin admin = adminMapper.selectById(adminId);
         if (admin == null) {
             throw new BusinessException(ResultCode.ADMIN_NOT_FOUND);
@@ -82,8 +82,8 @@ public class AdminAuthService {
         return toProfile(admin);
     }
 
-    private AdminProfileResponse toProfile(Admin admin) {
-        return AdminProfileResponse.builder()
+    private AdminProfileVO toProfile(Admin admin) {
+        return AdminProfileVO.builder()
                 .id(admin.getId())
                 .username(admin.getUsername())
                 .email(admin.getEmail())

@@ -1,7 +1,7 @@
 package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.OssPolicyResponse;
+import com.son.auramix.domain.vo.admin.OssPolicyVO;
 import com.son.auramix.service.oss.OssService;
 import com.son.auramix.service.oss.OssUploadResult;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class OssController {
     // ============================ Policy（兼容旧流程） ============================
 
     @GetMapping("/policy")
-    public Result<OssPolicyResponse> getPostPolicy(@RequestParam String type) {
+    public Result<OssPolicyVO> getPostPolicy(@RequestParam String type) {
         if (!VALID_TYPES.contains(type)) {
             throw new com.son.auramix.common.exception.BusinessException(
                     com.son.auramix.common.result.ResultCode.BAD_REQUEST, "Invalid upload type");

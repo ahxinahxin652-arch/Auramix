@@ -1,10 +1,10 @@
 package com.son.auramix.controller.admin;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.TrackCreateRequest;
-import com.son.auramix.domain.dto.admin.TrackDetailResponse;
-import com.son.auramix.domain.dto.admin.TrackListItemResponse;
-import com.son.auramix.domain.dto.admin.TrackUpdateRequest;
+import com.son.auramix.domain.dto.admin.TrackCreateDTO;
+import com.son.auramix.domain.vo.admin.TrackDetailVO;
+import com.son.auramix.domain.vo.admin.TrackListItemVO;
+import com.son.auramix.domain.dto.admin.TrackUpdateDTO;
 import com.son.auramix.service.admin.TrackService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ public class AdminTrackManageController {
     private final TrackService trackService;
 
     @GetMapping
-    public Result<PageResult<TrackListItemResponse>> list(
+    public Result<PageResult<TrackListItemVO>> list(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) Long albumId,
             @RequestParam(required = false) Integer status,
@@ -29,8 +29,8 @@ public class AdminTrackManageController {
     }
 
     @GetMapping("/{id}")
-    public Result<TrackDetailResponse> get(@PathVariable Long id) {
-        TrackDetailResponse detail = trackService.getTrackDetail(id);
+    public Result<TrackDetailVO> get(@PathVariable Long id) {
+        TrackDetailVO detail = trackService.getTrackDetail(id);
         if (detail == null) {
             throw new com.son.auramix.common.exception.BusinessException(com.son.auramix.common.result.ResultCode.NOT_FOUND);
         }
@@ -38,13 +38,13 @@ public class AdminTrackManageController {
     }
 
     @PostMapping
-    public Result<Void> create(@Valid @RequestBody TrackCreateRequest req) {
+    public Result<Void> create(@Valid @RequestBody TrackCreateDTO req) {
         trackService.createTrack(req);
         return Result.success();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody TrackUpdateRequest req) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody TrackUpdateDTO req) {
         trackService.updateTrack(id, req);
         return Result.success();
     }

@@ -3,11 +3,11 @@ package com.son.auramix.controller.user;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.user.SendCodeRequest;
-import com.son.auramix.domain.dto.user.UserLoginRequest;
-import com.son.auramix.domain.dto.user.UserLoginResponse;
-import com.son.auramix.domain.dto.user.UserRegisterRequest;
-import com.son.auramix.domain.dto.user.UserProfileResponse;
+import com.son.auramix.domain.dto.user.SendCodeDTO;
+import com.son.auramix.domain.dto.user.UserLoginDTO;
+import com.son.auramix.domain.vo.user.UserLoginVO;
+import com.son.auramix.domain.dto.user.UserRegisterDTO;
+import com.son.auramix.domain.vo.user.UserProfileVO;
 import com.son.auramix.service.user.EmailService;
 import com.son.auramix.service.user.UserAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +29,7 @@ public class UserAuthController {
     // ============================ 发送验证码 ============================
 
     @PostMapping("/send-code")
-    public Result<Void> sendCode(@Valid @RequestBody SendCodeRequest request) {
+    public Result<Void> sendCode(@Valid @RequestBody SendCodeDTO request) {
         userAuthService.sendVerificationCode(request.getEmail(), emailService);
         return Result.success(null, "验证码已发送");
     }
@@ -37,9 +37,9 @@ public class UserAuthController {
     // ============================ 注册 ============================
 
     @PostMapping("/register")
-    public Result<UserLoginResponse> register(@Valid @RequestBody UserRegisterRequest request,
+    public Result<UserLoginVO> register(@Valid @RequestBody UserRegisterDTO request,
                                                HttpServletRequest httpRequest) {
-        UserLoginResponse resp = userAuthService.register(
+        UserLoginVO resp = userAuthService.register(
                 request.getEmail(),
                 request.getPassword(),
                 request.getDisplayName(),
@@ -52,9 +52,9 @@ public class UserAuthController {
     // ============================ 登录 ============================
 
     @PostMapping("/login")
-    public Result<UserLoginResponse> login(@Valid @RequestBody UserLoginRequest request,
+    public Result<UserLoginVO> login(@Valid @RequestBody UserLoginDTO request,
                                             HttpServletRequest httpRequest) {
-        UserLoginResponse resp = userAuthService.login(
+        UserLoginVO resp = userAuthService.login(
                 request.getEmail(),
                 request.getPassword(),
                 getClientIp(httpRequest)
@@ -81,7 +81,7 @@ public class UserAuthController {
     // ============================ 当前用户信息 ============================
 
     @GetMapping("/me")
-    public Result<UserProfileResponse> me(HttpServletRequest request) {
+    public Result<UserProfileVO> me(HttpServletRequest request) {
         String token = extractToken(request);
         if (token == null) {
             throw new BusinessException(ResultCode.USER_TOKEN_INVALID);
@@ -90,7 +90,7 @@ public class UserAuthController {
         if (session == null) {
             throw new BusinessException(ResultCode.USER_TOKEN_INVALID);
         }
-        UserProfileResponse profile = userAuthService.getProfile(session.getId());
+        UserProfileVO profile = userAuthService.getProfile(session.getId());
         return Result.success(profile);
     }
 

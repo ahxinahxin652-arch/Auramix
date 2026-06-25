@@ -2,11 +2,11 @@ package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.ArtistCreateRequest;
-import com.son.auramix.domain.dto.admin.ArtistDetailResponse;
-import com.son.auramix.domain.dto.admin.ArtistListItemResponse;
-import com.son.auramix.domain.dto.admin.ArtistSearchResponse;
-import com.son.auramix.domain.dto.admin.ArtistUpdateRequest;
+import com.son.auramix.domain.dto.admin.ArtistCreateDTO;
+import com.son.auramix.domain.vo.admin.ArtistDetailVO;
+import com.son.auramix.domain.vo.admin.ArtistListItemVO;
+import com.son.auramix.domain.vo.admin.ArtistSearchVO;
+import com.son.auramix.domain.dto.admin.ArtistUpdateDTO;
 import com.son.auramix.service.admin.ArtistManageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +23,12 @@ public class AdminArtistManageController {
     private final ArtistManageService artistService;
 
     @GetMapping("/search")
-    public Result<List<ArtistSearchResponse>> search(@RequestParam(required = false) String query) {
+    public Result<List<ArtistSearchVO>> search(@RequestParam(required = false) String query) {
         return Result.success(artistService.searchArtists(query));
     }
 
     @GetMapping
-    public Result<PageResult<ArtistListItemResponse>> list(
+    public Result<PageResult<ArtistListItemVO>> list(
             @RequestParam(required = false) String query,
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
@@ -36,18 +36,18 @@ public class AdminArtistManageController {
     }
 
     @GetMapping("/{id}")
-    public Result<ArtistDetailResponse> get(@PathVariable Long id) {
+    public Result<ArtistDetailVO> get(@PathVariable Long id) {
         return Result.success(artistService.getArtistDetail(id));
     }
 
     @PostMapping
-    public Result<Void> create(@Valid @RequestBody ArtistCreateRequest req) {
+    public Result<Void> create(@Valid @RequestBody ArtistCreateDTO req) {
         artistService.createArtist(req);
         return Result.success();
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody ArtistUpdateRequest req) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody ArtistUpdateDTO req) {
         artistService.updateArtist(id, req);
         return Result.success();
     }

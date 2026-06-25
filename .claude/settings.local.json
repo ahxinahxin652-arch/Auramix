@@ -17,7 +17,15 @@
       "Bash(mv test-rm-rf.json /tmp/_t1.json)",
       "Bash(mv test-mvn.json /tmp/_t2.json)",
       "Bash(mv test-clean.json /tmp/_t3.json)",
-      "Bash(mv test-reset.json /tmp/_t4.json)"
+      "Bash(mv test-reset.json /tmp/_t4.json)",
+      "mcp__codegraph__codegraph_explore",
+      "Bash(./mvnw compile:*)",
+      "Bash(mvn -q compile)",
+      "Bash(JAVA_HOME=\"D:/Program Files/Java/jdk-21\" mvn -q compile)",
+      "Bash(cd:*)",
+      "Bash(JAVA_HOME=\"D:/Program Files/Java/jdk-21\" mvn -q test-compile)",
+      "Bash(JAVA_HOME=\"D:/Program Files/Java/jdk-21\" ./mvnw compile -q)",
+      "Bash(JAVA_HOME=\"D:/Program Files/Java/jdk-21\" mvn compile -q)"
     ]
   }
 }

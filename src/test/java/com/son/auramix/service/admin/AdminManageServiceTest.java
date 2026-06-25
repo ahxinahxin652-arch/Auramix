@@ -3,7 +3,7 @@ package com.son.auramix.service.admin;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminCreateRequest;
+import com.son.auramix.domain.dto.admin.AdminCreateDTO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ class AdminManageServiceTest {
     void create_throwsUsernameTaken() {
         when(adminMapper.selectCount(any(Wrapper.class))).thenReturn(1L);
 
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         req.setUsername("alice");
         req.setPassword("password123");
         req.setEmail("a@x.com");
@@ -66,7 +66,7 @@ class AdminManageServiceTest {
         when(adminMapper.selectCount(any(Wrapper.class)))
                 .thenReturn(0L, 1L);
 
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         req.setUsername("alice");
         req.setPassword("password123");
         req.setEmail("a@x.com");
@@ -81,7 +81,7 @@ class AdminManageServiceTest {
         when(adminMapper.selectCount(any(Wrapper.class))).thenReturn(0L);
         when(passwordEncoder.encode("password123")).thenReturn("HASH");
 
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         req.setUsername("alice");
         req.setPassword("password123");
         req.setEmail("a@x.com");
