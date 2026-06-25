@@ -8,6 +8,12 @@ spring:
     active: dev
   application:
     name: Auramix
+  # ============================ 文件上传 ============================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 30MB
+      max-request-size: 30MB
   # ============================ 数据源 ============================
   datasource:
     url: jdbc:mysql://localhost:3306/auramix?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&serverTimezone=UTC
@@ -92,6 +98,7 @@ aliyun:
     access-key-secret: ***REMOVED***
     # Bucket 名称
     bucket-name: auramix
+
 
 # ============================ Admin / User Token ============================
 auramix:
