@@ -9,6 +9,7 @@ import com.son.auramix.domain.dto.admin.AdminProfileResponse;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminManageService;
 import com.son.auramix.service.admin.AdminTokenStore;
+import com.son.auramix.service.user.UserTokenStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,9 +44,12 @@ class AdminManageControllerWebTest {
     @MockBean
     private AdminManageService manageService;
 
-    /** AdminAuthenticationFilter 是 @Component，需要 AdminTokenStore Mock */
+    /** AdminAuthenticationFilter 和 UserAuthenticationFilter 是 @Component，需要 TokenStore Mock */
     @MockBean
     private AdminTokenStore adminTokenStore;
+
+    @MockBean
+    private UserTokenStore userTokenStore;
 
     @Autowired
     private ObjectMapper objectMapper;

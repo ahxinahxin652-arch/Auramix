@@ -36,6 +36,11 @@ public class User implements Serializable {
 
     private Integer product;
 
+    private Integer status;
+
+    public static final int STATUS_ACTIVE = 0;
+    public static final int STATUS_BANNED = -1;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 

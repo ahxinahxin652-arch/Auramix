@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,7 +40,7 @@ public class AdminManageController {
         return Result.success(manageService.createAdmin(req));
     }
 
-    /** GET /api/admin/manage/admins — 全量列表（按 id 升序）。 */
+    /** GET /api/admin/manage/admins — 全量列表（按 id 降序）。 */
     @GetMapping("/admins")
     public Result<List<AdminListItemResponse>> list() {
         return Result.success(manageService.listAdmins());
@@ -60,12 +61,20 @@ public class AdminManageController {
         return Result.success();
     }
 
-    /** PUT /api/admin/manage/admins/{id}/status — 启停账号。停用（status=0）撤销所有 token；启用暂不支持。 */
+    /** PUT /api/admin/manage/admins/{id}/status — 启停账号。停用（status=0）或启用（status=1）。 */
     @PutMapping("/admins/{id}/status")
     public Result<Void> updateStatus(@PathVariable Integer id,
                                      @Valid @RequestBody AdminStatusUpdateRequest req,
                                      @AuthenticationPrincipal AdminUserDetails current) {
         manageService.updateStatus(id, req.getStatus(), current.getAdminId());
+        return Result.success();
+    }
+
+    /** DELETE /api/admin/manage/admins/{id} — 删除管理员。 */
+    @DeleteMapping("/admins/{id}")
+    public Result<Void> delete(@PathVariable Integer id,
+                               @AuthenticationPrincipal AdminUserDetails current) {
+        manageService.deleteAdmin(id, current.getAdminId());
         return Result.success();
     }
 }

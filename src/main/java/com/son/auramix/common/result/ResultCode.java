@@ -65,7 +65,9 @@ public enum ResultCode {
     /** 登录凭证无效或已过期 */
     USER_TOKEN_INVALID(4106, "登录凭证无效或已过期"),
     /** 无用户操作权限 */
-    USER_FORBIDDEN(4107, "无用户操作权限");
+    USER_FORBIDDEN(4107, "无用户操作权限"),
+    /** 该账号已被封禁 */
+    USER_BANNED(4108, "该账号已被封禁，无法登录");
 
     private final int code;
     private final String message;

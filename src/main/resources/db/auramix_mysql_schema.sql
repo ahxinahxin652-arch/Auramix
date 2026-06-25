@@ -41,6 +41,7 @@ CREATE TABLE `users` (
   `avatar_url` VARCHAR(500) NULL,
   `country` CHAR(2) NOT NULL DEFAULT 'CN' COMMENT '国家代码 (ISO-3166 2位代码)',
   `product` INT NOT NULL DEFAULT 0 COMMENT '产品等级/订阅类型: 0为免费用户(free), 1为会员用户(premium)',
+  `status` INT NOT NULL DEFAULT 0 COMMENT '用户状态: 0为正常(active), -1为封禁(banned)',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY `users_email_key` (`email`)

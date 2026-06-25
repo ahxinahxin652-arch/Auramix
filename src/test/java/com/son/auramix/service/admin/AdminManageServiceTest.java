@@ -137,15 +137,6 @@ class AdminManageServiceTest {
 
     // ============ updateStatus ============
 
-    @Test
-    void updateStatus_throwsEnableNotSupported() {
-        Admin target = admin(5, 0, 0);
-        when(adminMapper.selectById(5)).thenReturn(target);
-
-        assertThatThrownBy(() -> service.updateStatus(5, 1, 1))
-                .isInstanceOf(BusinessException.class)
-                .extracting("code").isEqualTo(ResultCode.ADMIN_ENABLE_NOT_SUPPORTED.getCode());
-    }
 
     @Test
     void updateStatus_throwsSelfProtection() {

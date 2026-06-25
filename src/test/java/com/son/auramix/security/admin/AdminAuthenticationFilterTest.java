@@ -59,6 +59,7 @@ class AdminAuthenticationFilterTest {
     @Test
     void doesNotSetContextWhenTokenInvalid() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setRequestURI("/api/admin/test");
         req.addHeader("Authorization", "Bearer bad-token");
         MockHttpServletResponse resp = new MockHttpServletResponse();
 
@@ -72,6 +73,7 @@ class AdminAuthenticationFilterTest {
     @Test
     void setsContextWhenTokenValid() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest();
+        req.setRequestURI("/api/admin/test");
         req.addHeader("Authorization", "Bearer good-token");
         MockHttpServletResponse resp = new MockHttpServletResponse();
 
