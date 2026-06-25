@@ -22,8 +22,6 @@ docs/
 src/auto-imports.d.ts
 src/components.d.ts
 .eslintrc-auto-import.json
-vite.config.d.ts
-vite.config.js
 *.tsbuildinfo
 
 # logs
