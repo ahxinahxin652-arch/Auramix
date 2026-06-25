@@ -13,9 +13,19 @@ import com.son.auramix.domain.dto.admin.AlbumUpdateRequest;
 import com.son.auramix.domain.entity.Album;
 import com.son.auramix.domain.entity.AlbumArtist;
 import com.son.auramix.domain.entity.Artist;
+import com.son.auramix.domain.entity.Track;
+import com.son.auramix.domain.entity.TrackArtist;
+import com.son.auramix.domain.entity.TrackAudioResource;
+import com.son.auramix.domain.entity.TrackVideoResource;
+import com.son.auramix.domain.entity.TrackGenre;
 import com.son.auramix.mapper.AlbumArtistMapper;
 import com.son.auramix.mapper.AlbumMapper;
 import com.son.auramix.mapper.ArtistMapper;
+import com.son.auramix.mapper.TrackMapper;
+import com.son.auramix.mapper.TrackArtistMapper;
+import com.son.auramix.mapper.TrackAudioResourceMapper;
+import com.son.auramix.mapper.TrackVideoResourceMapper;
+import com.son.auramix.mapper.TrackGenreMapper;
 import com.son.auramix.service.admin.AlbumManageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +44,11 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     private final AlbumMapper albumMapper;
     private final AlbumArtistMapper albumArtistMapper;
     private final ArtistMapper artistMapper;
+    private final TrackMapper trackMapper;
+    private final TrackArtistMapper trackArtistMapper;
+    private final TrackAudioResourceMapper trackAudioResourceMapper;
+    private final TrackVideoResourceMapper trackVideoResourceMapper;
+    private final TrackGenreMapper trackGenreMapper;
 
     @Override
     public List<AlbumSearchResponse> searchAlbums(String query) {
@@ -193,8 +208,27 @@ public class AlbumManageServiceImpl implements AlbumManageService {
         if (album == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
-        // Clean up artist associations
+
+        // 查出专辑下所有歌曲 ID，级联清理
+        List<Track> tracks = trackMapper.selectList(
+                new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, id));
+        if (tracks != null && !tracks.isEmpty()) {
+            List<Long> trackIds = tracks.stream().map(Track::getId).collect(Collectors.toList());
+            // 歌曲-流派关联
+            trackGenreMapper.delete(new LambdaQueryWrapper<TrackGenre>().in(TrackGenre::getTrackId, trackIds));
+            // 歌曲-歌手关联
+            trackArtistMapper.delete(new LambdaQueryWrapper<TrackArtist>().in(TrackArtist::getTrackId, trackIds));
+            // 音源资源
+            trackAudioResourceMapper.delete(new LambdaQueryWrapper<TrackAudioResource>().in(TrackAudioResource::getTrackId, trackIds));
+            // 视频资源
+            trackVideoResourceMapper.delete(new LambdaQueryWrapper<TrackVideoResource>().in(TrackVideoResource::getTrackId, trackIds));
+            // 歌曲本身
+            trackMapper.delete(new LambdaQueryWrapper<Track>().in(Track::getId, trackIds));
+        }
+
+        // 专辑-歌手关联
         albumArtistMapper.delete(new LambdaQueryWrapper<AlbumArtist>().eq(AlbumArtist::getAlbumId, id));
+        // 专辑本身
         albumMapper.deleteById(id);
     }
 }
