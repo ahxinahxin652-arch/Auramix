@@ -35,8 +35,14 @@ function makeRouter(): Router {
 }
 
 const fakeProfile: AdminProfile = {
-  id: 1, username: 'admin', email: 'admin@auramix.com', isRoot: 1, status: 1,
-  lastLoginTime: '2026-06-22 10:00:00', lastLoginIp: '127.0.0.1', createdAt: '2026-01-01 00:00:00',
+  id: 1,
+  username: 'admin',
+  email: 'admin@auramix.com',
+  isRoot: 1,
+  status: 1,
+  lastLoginTime: '2026-06-22 10:00:00',
+  lastLoginIp: '127.0.0.1',
+  createdAt: '2026-01-01 00:00:00',
 }
 
 function freshPinia() {

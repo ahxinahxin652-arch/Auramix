@@ -27,8 +27,14 @@ function makeRouter(): Router {
 }
 
 const fakeProfile: AdminProfile = {
-  id: 1, username: 'u', email: 'e', isRoot: 1, status: 1,
-  lastLoginTime: null, lastLoginIp: null, createdAt: '2026-06-01',
+  id: 1,
+  username: 'u',
+  email: 'e',
+  isRoot: 1,
+  status: 1,
+  lastLoginTime: null,
+  lastLoginIp: null,
+  createdAt: '2026-06-01',
 }
 
 describe('permission guard', () => {

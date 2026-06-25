@@ -21,6 +21,13 @@ service.interceptors.request.use(
     if (auth.token) {
       config.headers.set('Authorization', `Bearer ${auth.token}`)
     }
+
+    // 容错纠正：若接口 url 中已包含 /api，与 baseURL 重叠会导致双重 /api/api
+    if (config.url && config.url.startsWith('/api')) {
+      config.url = config.url.substring(4)
+    }
+
+    console.log('[Axios Request] url:', config.url, 'baseURL:', config.baseURL)
     return config
   },
   (error) => Promise.reject(error),

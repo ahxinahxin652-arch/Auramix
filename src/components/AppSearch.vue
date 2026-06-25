@@ -2,10 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 
-withDefaults(
-  defineProps<{ placeholder?: string }>(),
-  { placeholder: '搜索 ⌘K' },
-)
+withDefaults(defineProps<{ placeholder?: string }>(), { placeholder: '搜索 ⌘K' })
 
 const inputRef = ref<HTMLInputElement | null>(null)
 
@@ -35,7 +32,7 @@ onBeforeUnmount(() => {
       class="app-search__input"
       :placeholder="placeholder"
       @change="(e) => console.log('search:', (e.target as HTMLInputElement).value)"
-    >
+    />
     <span class="app-search__shortcut">⌘K</span>
   </div>
 </template>
@@ -51,7 +48,9 @@ onBeforeUnmount(() => {
   border: 1px solid $border-base;
   border-radius: $radius-md;
   max-width: 320px;
-  transition: border-color 150ms, background 150ms;
+  transition:
+    border-color 150ms,
+    background 150ms;
 
   &:focus-within {
     border-color: $primary-color;
@@ -61,7 +60,9 @@ onBeforeUnmount(() => {
   &__icon {
     color: $text-tertiary;
     margin-right: $spacing-sm;
-    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
   }
 
   &__input {

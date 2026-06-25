@@ -74,7 +74,11 @@ describe('auth store', () => {
 
     it('toggles loading during login', async () => {
       let resolveLogin: (v: any) => void = () => {}
-      vi.mocked(authApi.loginApi).mockReturnValue(new Promise((r) => { resolveLogin = r }) as any)
+      vi.mocked(authApi.loginApi).mockReturnValue(
+        new Promise((r) => {
+          resolveLogin = r
+        }) as any,
+      )
       const store = useAuthStore()
       const promise = store.login({ username: 'a', password: 'b' })
       expect(store.loading).toBe(true)

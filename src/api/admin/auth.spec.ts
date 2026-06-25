@@ -15,7 +15,16 @@ describe('auth api', () => {
     const mockResult = {
       token: 'tok',
       expiresAt: '2026-06-22T12:00:00',
-      profile: { id: 1, username: 'admin', email: 'a@b.c', isRoot: 1, status: 1, lastLoginTime: null, lastLoginIp: null, createdAt: '2026-06-01' },
+      profile: {
+        id: 1,
+        username: 'admin',
+        email: 'a@b.c',
+        isRoot: 1,
+        status: 1,
+        lastLoginTime: null,
+        lastLoginIp: null,
+        createdAt: '2026-06-01',
+      },
     }
     vi.mocked(request.post).mockResolvedValue(mockResult)
 
@@ -34,7 +43,16 @@ describe('auth api', () => {
   })
 
   it('fetchProfileApi GETs /admin/auth/me', async () => {
-    const profile = { id: 1, username: 'admin', email: 'a@b.c', isRoot: 1, status: 1, lastLoginTime: null, lastLoginIp: null, createdAt: '2026-06-01' }
+    const profile = {
+      id: 1,
+      username: 'admin',
+      email: 'a@b.c',
+      isRoot: 1,
+      status: 1,
+      lastLoginTime: null,
+      lastLoginIp: null,
+      createdAt: '2026-06-01',
+    }
     vi.mocked(request.get).mockResolvedValue(profile)
 
     const result = await fetchProfileApi()

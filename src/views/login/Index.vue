@@ -33,8 +33,7 @@ async function handleSubmit() {
     await auth.login({ username: form.username, password: form.password })
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
     await router.push(redirect)
-  }
-  catch {
+  } catch {
     // 校验失败或登录失败,拦截器已弹 ElMessage
   }
 }
@@ -51,7 +50,7 @@ async function handleSubmit() {
       <div class="page-login__brand-middle">
         <h1 class="page-login__brand-title">管理你的音乐世界</h1>
         <p class="page-login__brand-sub">
-          歌曲 / 专辑 / 智能审批<br>
+          歌曲 / 专辑 / 智能审批<br />
           一站式后台
         </p>
       </div>
@@ -73,13 +72,7 @@ async function handleSubmit() {
           class="page-login__tip"
         />
 
-        <el-form
-          ref="formRef"
-          :model="form"
-          :rules="rules"
-          label-position="top"
-          autocomplete="off"
-        >
+        <el-form ref="formRef" :model="form" :rules="rules" label-position="top" autocomplete="off">
           <el-form-item label="用户名" prop="username">
             <el-input v-model="form.username" placeholder="请输入用户名" />
           </el-form-item>

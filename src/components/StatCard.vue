@@ -68,11 +68,7 @@ function handleKeydown(e: KeyboardEvent) {
     <div class="stat-card__body">
       <div class="stat-card__label">{{ label }}</div>
       <div class="stat-card__value">{{ value }}</div>
-      <div
-        v-if="deltaTone"
-        class="stat-card__delta"
-        :class="`stat-card__delta--${deltaTone}`"
-      >
+      <div v-if="deltaTone" class="stat-card__delta" :class="`stat-card__delta--${deltaTone}`">
         {{ deltaText }}
       </div>
     </div>
@@ -88,7 +84,10 @@ function handleKeydown(e: KeyboardEvent) {
   background: $bg-surface;
   border: 1px solid $border-base;
   border-radius: $radius-md;
-  transition: transform 150ms ease-out, box-shadow 150ms ease-out, border-color 150ms;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    border-color 150ms;
 
   &--link {
     cursor: pointer;
