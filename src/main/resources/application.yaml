@@ -121,3 +121,6 @@ auramix:
     token:
       # 用户 token 30 天滑动过期
       ttl-seconds: 2592000
+  # 内部 API Key — 用于桌面端 Express Server → Java 后端之间的服务间调用
+  # 桌面端通过 X-Internal-Api-Key 请求头传递此密钥，绕过 Admin JWT 认证
+  internal-api-key: auramix-desktop-internal-key-2026

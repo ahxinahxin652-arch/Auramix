@@ -19,4 +19,7 @@ public class PlaylistUpdateDTO {
 
     /** 0=私密 1=公开 */
     private Boolean isPublic;
+
+    /** 是否清除封面（设为 true 时 coverUrl 置空） */
+    private Boolean clearCover;
 }
