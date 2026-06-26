@@ -134,6 +134,7 @@ public class TrackServiceImpl implements TrackService {
             item.setStatus(t.getStatus());
             item.setTrackNumber(t.getTrackNumber());
             item.setDiscNumber(t.getDiscNumber());
+            item.setMember(t.getMember());
             item.setDuration(t.getDuration());
             item.setLikedCount(t.getLikedCount());
             item.setPlayCount(t.getPlayCount());
@@ -171,6 +172,7 @@ public class TrackServiceImpl implements TrackService {
         detail.setAlbumId(t.getAlbumId());
         detail.setTrackNumber(t.getTrackNumber());
         detail.setDiscNumber(t.getDiscNumber());
+        detail.setMember(t.getMember());
         detail.setStatus(t.getStatus());
         detail.setLyricsUrl(t.getLyricsUrl());
         detail.setDuration(t.getDuration());
@@ -258,6 +260,7 @@ public class TrackServiceImpl implements TrackService {
         t.setAlbumId(req.getAlbumId());
         t.setTrackNumber(req.getTrackNumber());
         t.setDiscNumber(req.getDiscNumber() != null ? req.getDiscNumber() : 1);
+        t.setMember(req.getMember() != null ? req.getMember() : 0);
         t.setStatus(req.getStatus() != null ? req.getStatus() : 0);
         t.setLyricsUrl(req.getLyricsUrl());
         t.setDuration(req.getDuration() != null ? req.getDuration() : 0);
@@ -303,10 +306,12 @@ public class TrackServiceImpl implements TrackService {
             throw new BusinessException(ResultCode.BAD_REQUEST, "Track number already exists in this album/disc");
         }
 
+
         t.setTitle(req.getTitle());
         t.setAlbumId(req.getAlbumId());
         t.setTrackNumber(req.getTrackNumber());
         t.setDiscNumber(req.getDiscNumber() != null ? req.getDiscNumber() : t.getDiscNumber());
+        t.setMember(req.getMember() != null ? req.getMember() : t.getMember());
         t.setStatus(req.getStatus() != null ? req.getStatus() : t.getStatus());
         t.setLyricsUrl(req.getLyricsUrl());
         t.setDuration(req.getDuration() != null ? req.getDuration() : t.getDuration());

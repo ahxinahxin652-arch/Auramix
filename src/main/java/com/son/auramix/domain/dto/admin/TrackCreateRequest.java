@@ -21,6 +21,7 @@ public class TrackCreateRequest {
     private Integer trackNumber;
     
     private Integer discNumber;
+    private Integer member;
     private Integer status;
     private String lyricsUrl;
     

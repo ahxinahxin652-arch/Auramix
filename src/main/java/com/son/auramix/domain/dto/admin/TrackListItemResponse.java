@@ -15,6 +15,7 @@ public class TrackListItemResponse {
     private Integer status;
     private Integer trackNumber;
     private Integer discNumber;
+    private Integer member;
     private Integer duration; // in milliseconds
     private Integer likedCount;
     private Long playCount;
