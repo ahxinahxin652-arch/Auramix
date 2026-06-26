@@ -10,6 +10,9 @@
 /* RightSideBar.vue — 右侧面板 */
 @import './styles/rightSideBar.css';
 
+/* LeftSideBar.vue — 左侧歌单面板 */
+@import './styles/leftSideBar.css';
+
 /* HomeView.vue — 主页视图 */
 @import './styles/homeView.css';
 

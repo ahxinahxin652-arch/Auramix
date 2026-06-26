@@ -227,7 +227,7 @@
 .actions-left {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px;
 }
 
 .actions-right {
@@ -304,13 +304,11 @@
     position: relative;
     display: flex;
     align-items: center;
-    margin-left: 8px;
-    margin-right: 8px;
     cursor: pointer;
 }
 
 .sort-select-display {
-    padding: 8px 32px 8px 16px;
+    padding: 6px 24px 6px 10px;
     color: var(--text-h);
     font-family: var(--font);
     font-size: 13px;
