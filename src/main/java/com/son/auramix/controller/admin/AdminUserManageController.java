@@ -2,9 +2,9 @@ package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.UserCreateRequest;
-import com.son.auramix.domain.dto.admin.UserListItemResponse;
-import com.son.auramix.domain.dto.admin.UserStatusUpdateRequest;
+import com.son.auramix.domain.dto.admin.UserCreateDTO;
+import com.son.auramix.domain.vo.admin.UserListItemVO;
+import com.son.auramix.domain.dto.admin.UserStatusUpdateDTO;
 import com.son.auramix.service.admin.UserManageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class AdminUserManageController {
      * GET /api/admin/manage/users - 用户列表分页查询
      */
     @GetMapping("/users")
-    public Result<PageResult<UserListItemResponse>> listUsers(
+    public Result<PageResult<UserListItemVO>> listUsers(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
@@ -35,7 +35,7 @@ public class AdminUserManageController {
      * POST /api/admin/manage/users - 新增用户
      */
     @PostMapping("/users")
-    public Result<UserListItemResponse> createUser(@Valid @RequestBody UserCreateRequest req) {
+    public Result<UserListItemVO> createUser(@Valid @RequestBody UserCreateDTO req) {
         return Result.success(userManageService.createUser(req));
     }
 
@@ -45,7 +45,7 @@ public class AdminUserManageController {
     @PutMapping("/users/{id}/status")
     public Result<Void> updateUserStatus(
             @PathVariable Long id,
-            @Valid @RequestBody UserStatusUpdateRequest req) {
+            @Valid @RequestBody UserStatusUpdateDTO req) {
         userManageService.updateUserStatus(id, req.getStatus());
         return Result.success();
     }

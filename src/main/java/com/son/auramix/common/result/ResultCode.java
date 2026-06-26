@@ -67,7 +67,16 @@ public enum ResultCode {
     /** 无用户操作权限 */
     USER_FORBIDDEN(4107, "无用户操作权限"),
     /** 该账号已被封禁 */
-    USER_BANNED(4108, "该账号已被封禁，无法登录");
+    USER_BANNED(4108, "该账号已被封禁，无法登录"),
+
+    // ============================ 审核域 ============================
+
+    /** 审核记录不存在 */
+    REVIEW_NOT_FOUND(421, "审核记录不存在"),
+    /** 该审核记录不在待确认状态 */
+    REVIEW_NOT_PENDING(422, "该审核记录不在待确认状态"),
+    /** 该审核记录已被处理 */
+    REVIEW_ALREADY_PROCESSED(423, "该审核记录已被处理");
 
     private final int code;
     private final String message;

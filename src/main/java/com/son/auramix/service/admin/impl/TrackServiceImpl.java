@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.domain.dto.admin.*;
+import com.son.auramix.domain.vo.admin.TrackDetailVO;
+import com.son.auramix.domain.vo.admin.TrackListItemVO;
 import com.son.auramix.domain.entity.*;
 import com.son.auramix.mapper.*;
 import com.son.auramix.service.admin.TrackService;
+import com.son.auramix.service.admin.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +31,10 @@ public class TrackServiceImpl implements TrackService {
     private final TrackAudioResourceMapper audioMapper;
     private final TrackVideoResourceMapper videoMapper;
     private final TrackGenreMapper trackGenreMapper;
+    private final ReviewService reviewService;
 
     @Override
-    public PageResult<TrackListItemResponse> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
+    public PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
         int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<Track> page = new Page<>(current, size);
@@ -127,13 +131,14 @@ public class TrackServiceImpl implements TrackService {
         final Set<Long> finalAudioTrackIds = audioTrackIds;
         final Set<Long> finalVideoTrackIds = videoTrackIds;
 
-        List<TrackListItemResponse> list = records.stream().map(t -> {
-            TrackListItemResponse item = new TrackListItemResponse();
+        List<TrackListItemVO> list = records.stream().map(t -> {
+            TrackListItemVO item = new TrackListItemVO();
             item.setId(t.getId());
             item.setTitle(t.getTitle());
             item.setStatus(t.getStatus());
             item.setTrackNumber(t.getTrackNumber());
             item.setDiscNumber(t.getDiscNumber());
+            item.setMember(t.getMember());
             item.setDuration(t.getDuration());
             item.setLikedCount(t.getLikedCount());
             item.setPlayCount(t.getPlayCount());
@@ -161,16 +166,17 @@ public class TrackServiceImpl implements TrackService {
     }
 
     @Override
-    public TrackDetailResponse getTrackDetail(Long id) {
+    public TrackDetailVO getTrackDetail(Long id) {
         Track t = trackMapper.selectById(id);
         if (t == null) return null;
 
-        TrackDetailResponse detail = new TrackDetailResponse();
+        TrackDetailVO detail = new TrackDetailVO();
         detail.setId(t.getId());
         detail.setTitle(t.getTitle());
         detail.setAlbumId(t.getAlbumId());
         detail.setTrackNumber(t.getTrackNumber());
         detail.setDiscNumber(t.getDiscNumber());
+        detail.setMember(t.getMember());
         detail.setStatus(t.getStatus());
         detail.setLyricsUrl(t.getLyricsUrl());
         detail.setDuration(t.getDuration());
@@ -227,7 +233,7 @@ public class TrackServiceImpl implements TrackService {
 
     @Override
     @Transactional
-    public void createTrack(TrackCreateRequest req) {
+    public void createTrack(TrackCreateDTO req) {
         // Validation: albumId exists
         Album album = albumMapper.selectById(req.getAlbumId());
         if (album == null) {
@@ -258,6 +264,7 @@ public class TrackServiceImpl implements TrackService {
         t.setAlbumId(req.getAlbumId());
         t.setTrackNumber(req.getTrackNumber());
         t.setDiscNumber(req.getDiscNumber() != null ? req.getDiscNumber() : 1);
+        t.setMember(req.getMember() != null ? req.getMember() : 0);
         t.setStatus(req.getStatus() != null ? req.getStatus() : 0);
         t.setLyricsUrl(req.getLyricsUrl());
         t.setDuration(req.getDuration() != null ? req.getDuration() : 0);
@@ -266,11 +273,14 @@ public class TrackServiceImpl implements TrackService {
         trackMapper.insert(t);
 
         saveRelations(t.getId(), req.getArtists(), req.getAudioResources(), req.getVideoResources());
+
+        // 触发 AI 内容审核（异步）
+        reviewService.triggerReview(t.getId());
     }
 
     @Override
     @Transactional
-    public void updateTrack(Long id, TrackUpdateRequest req) {
+    public void updateTrack(Long id, TrackUpdateDTO req) {
         Track t = trackMapper.selectById(id);
         if (t == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
@@ -303,10 +313,12 @@ public class TrackServiceImpl implements TrackService {
             throw new BusinessException(ResultCode.BAD_REQUEST, "Track number already exists in this album/disc");
         }
 
+
         t.setTitle(req.getTitle());
         t.setAlbumId(req.getAlbumId());
         t.setTrackNumber(req.getTrackNumber());
         t.setDiscNumber(req.getDiscNumber() != null ? req.getDiscNumber() : t.getDiscNumber());
+        t.setMember(req.getMember() != null ? req.getMember() : t.getMember());
         t.setStatus(req.getStatus() != null ? req.getStatus() : t.getStatus());
         t.setLyricsUrl(req.getLyricsUrl());
         t.setDuration(req.getDuration() != null ? req.getDuration() : t.getDuration());
@@ -325,6 +337,9 @@ public class TrackServiceImpl implements TrackService {
             videoMapper.delete(new LambdaQueryWrapper<TrackVideoResource>().eq(TrackVideoResource::getTrackId, id));
             saveRelations(id, null, null, req.getVideoResources());
         }
+
+        // 触发 AI 内容审核（异步）
+        reviewService.triggerReview(id);
     }
 
     @Override

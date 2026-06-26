@@ -1,6 +1,6 @@
 package com.son.auramix.integration.admin;
 
-import com.son.auramix.domain.dto.admin.AdminLoginResponse;
+import com.son.auramix.domain.vo.admin.AdminLoginVO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import com.son.auramix.service.admin.AdminAuthService;
@@ -50,7 +50,7 @@ class AdminAuthIntegrationTest {
         adminMapper.insert(root);
 
         // 登录
-        AdminLoginResponse login = authService.login("admin", "password123", "127.0.0.1");
+        AdminLoginVO login = authService.login("admin", "password123", "127.0.0.1");
         assertThat(login.getToken()).isNotBlank();
         assertThat(login.getProfile().getIsRoot()).isEqualTo(1);
 

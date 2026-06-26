@@ -1,7 +1,7 @@
 package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.TrackDetailResponse;
+import com.son.auramix.domain.vo.admin.TrackDetailVO;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminTokenStore;
 import com.son.auramix.service.user.UserTokenStore;
@@ -58,7 +58,7 @@ class AdminTrackManageControllerWebTest {
 
     @Test
     void get_returns200OnExistingTrack() throws Exception {
-        TrackDetailResponse detail = new TrackDetailResponse();
+        TrackDetailVO detail = new TrackDetailVO();
         when(trackService.getTrackDetail(anyLong())).thenReturn(detail);
 
         mockMvc.perform(get("/api/admin/manage/tracks/1"))

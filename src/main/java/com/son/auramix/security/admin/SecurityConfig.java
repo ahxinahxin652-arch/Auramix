@@ -68,6 +68,10 @@ public class SecurityConfig {
                     .requestMatchers("/api/admin/**").authenticated()
                     // 用户
                     .requestMatchers("/api/user/auth/**").permitAll()
+                    // 歌单公开接口（搜索 + 查看详情）
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/playlists/search").permitAll()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/playlists/followed").authenticated()
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/playlists/{id}").permitAll()
                     .requestMatchers("/api/user/**").authenticated()
                     // 其他
                     .anyRequest().permitAll())

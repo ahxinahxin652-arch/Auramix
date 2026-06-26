@@ -1,9 +1,9 @@
 package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.AdminLoginRequest;
-import com.son.auramix.domain.dto.admin.AdminLoginResponse;
-import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.dto.admin.AdminLoginDTO;
+import com.son.auramix.domain.vo.admin.AdminLoginVO;
+import com.son.auramix.domain.vo.admin.AdminProfileVO;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminAuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +34,7 @@ public class AdminAuthController {
      * 失败由全局异常处理返回 ADMIN_BAD_CREDENTIALS / ADMIN_DISABLED。
      */
     @PostMapping("/login")
-    public Result<AdminLoginResponse> login(@Valid @RequestBody AdminLoginRequest req,
+    public Result<AdminLoginVO> login(@Valid @RequestBody AdminLoginDTO req,
                                             HttpServletRequest request) {
         String ip = resolveClientIp(request);
         return Result.success(authService.login(req.getUsername(), req.getPassword(), ip));
@@ -58,7 +58,7 @@ public class AdminAuthController {
      * GET /api/admin/auth/me — 取当前管理员 profile。
      */
     @GetMapping("/me")
-    public Result<AdminProfileResponse> me(@AuthenticationPrincipal AdminUserDetails p) {
+    public Result<AdminProfileVO> me(@AuthenticationPrincipal AdminUserDetails p) {
         if (p == null) {
             return Result.success();
         }

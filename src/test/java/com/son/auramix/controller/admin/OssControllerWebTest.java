@@ -1,7 +1,7 @@
 package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.OssPolicyResponse;
+import com.son.auramix.domain.vo.admin.OssPolicyVO;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminTokenStore;
 import com.son.auramix.service.user.UserTokenStore;
@@ -58,7 +58,7 @@ class OssControllerWebTest {
 
     @Test
     void getPostPolicy_returns200OnWhitelistedType() throws Exception {
-        OssPolicyResponse resp = new OssPolicyResponse();
+        OssPolicyVO resp = new OssPolicyVO();
         when(ossService.generatePostPolicy(anyString())).thenReturn(resp);
 
         mockMvc.perform(get("/api/admin/manage/oss/policy")

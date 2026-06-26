@@ -33,7 +33,7 @@ public class Track implements Serializable {
 
     private String lyricsUrl;
 
-    /** 0=正常 -1=已下架 -2=暂无版权 */
+    /** 0=正常 -1=已下架 -2=暂无版权 -3=待审核 */
     private Integer status;
 
     private Integer likedCount;
@@ -43,6 +43,9 @@ public class Track implements Serializable {
     private Integer trackNumber;
 
     private Integer discNumber;
+
+    /** 0=非会员 1=会员 */
+    private Integer member;
 
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;

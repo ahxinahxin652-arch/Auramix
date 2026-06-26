@@ -2,11 +2,11 @@ package com.son.auramix.controller.admin;
 
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
-import com.son.auramix.domain.dto.admin.AlbumDetailResponse;
-import com.son.auramix.domain.dto.admin.AlbumListItemResponse;
-import com.son.auramix.domain.dto.admin.AlbumQuickCreateRequest;
-import com.son.auramix.domain.dto.admin.AlbumSearchResponse;
-import com.son.auramix.domain.dto.admin.AlbumUpdateRequest;
+import com.son.auramix.domain.vo.admin.AlbumDetailVO;
+import com.son.auramix.domain.vo.admin.AlbumListItemVO;
+import com.son.auramix.domain.dto.admin.AlbumQuickCreateDTO;
+import com.son.auramix.domain.vo.admin.AlbumSearchVO;
+import com.son.auramix.domain.dto.admin.AlbumUpdateDTO;
 import com.son.auramix.service.admin.AlbumManageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,17 +23,17 @@ public class AdminAlbumManageController {
     private final AlbumManageService albumService;
 
     @GetMapping("/search")
-    public Result<List<AlbumSearchResponse>> search(@RequestParam(required = false) String query) {
+    public Result<List<AlbumSearchVO>> search(@RequestParam(required = false) String query) {
         return Result.success(albumService.searchAlbums(query));
     }
 
     @PostMapping("/quick")
-    public Result<AlbumSearchResponse> quickCreate(@Valid @RequestBody AlbumQuickCreateRequest req) {
+    public Result<AlbumSearchVO> quickCreate(@Valid @RequestBody AlbumQuickCreateDTO req) {
         return Result.success(albumService.quickCreate(req));
     }
 
     @GetMapping
-    public Result<PageResult<AlbumListItemResponse>> list(
+    public Result<PageResult<AlbumListItemVO>> list(
             @RequestParam(required = false) String query,
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
@@ -41,12 +41,12 @@ public class AdminAlbumManageController {
     }
 
     @GetMapping("/{id}")
-    public Result<AlbumDetailResponse> get(@PathVariable Long id) {
+    public Result<AlbumDetailVO> get(@PathVariable Long id) {
         return Result.success(albumService.getAlbumDetail(id));
     }
 
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody AlbumUpdateRequest req) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody AlbumUpdateDTO req) {
         albumService.updateAlbum(id, req);
         return Result.success();
     }

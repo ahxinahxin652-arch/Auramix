@@ -3,9 +3,9 @@ package com.son.auramix.controller.admin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminCreateRequest;
-import com.son.auramix.domain.dto.admin.AdminPasswordResetRequest;
-import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.dto.admin.AdminCreateDTO;
+import com.son.auramix.domain.dto.admin.AdminPasswordResetDTO;
+import com.son.auramix.domain.vo.admin.AdminProfileVO;
 import com.son.auramix.security.admin.AdminUserDetails;
 import com.son.auramix.service.admin.AdminManageService;
 import com.son.auramix.service.admin.AdminTokenStore;
@@ -72,12 +72,12 @@ class AdminManageControllerWebTest {
 
     @Test
     void create_returns200() throws Exception {
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         req.setUsername("alice");
         req.setPassword("password123");
         req.setEmail("a@x.com");
 
-        AdminProfileResponse resp = AdminProfileResponse.builder().id(2).username("alice").isRoot(0).status(1).build();
+        AdminProfileVO resp = AdminProfileVO.builder().id(2).username("alice").isRoot(0).status(1).build();
         when(manageService.createAdmin(any())).thenReturn(resp);
 
         mockMvc.perform(post("/api/admin/manage/admins")
@@ -89,7 +89,7 @@ class AdminManageControllerWebTest {
 
     @Test
     void create_returns400OnBlankFields() throws Exception {
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         // 全空
 
         mockMvc.perform(post("/api/admin/manage/admins")
@@ -101,7 +101,7 @@ class AdminManageControllerWebTest {
 
     @Test
     void resetPassword_throwsCannotModifySelf() throws Exception {
-        AdminPasswordResetRequest req = new AdminPasswordResetRequest();
+        AdminPasswordResetDTO req = new AdminPasswordResetDTO();
         req.setNewPassword("newpassword");
 
         doThrow(new BusinessException(ResultCode.ADMIN_CANNOT_MODIFY_SELF))

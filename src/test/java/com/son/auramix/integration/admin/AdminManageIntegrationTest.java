@@ -1,6 +1,6 @@
 package com.son.auramix.integration.admin;
 
-import com.son.auramix.domain.dto.admin.AdminCreateRequest;
+import com.son.auramix.domain.dto.admin.AdminCreateDTO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import com.son.auramix.service.admin.AdminManageService;
@@ -39,7 +39,7 @@ class AdminManageIntegrationTest {
         root.setStatus(1);
         adminMapper.insert(root);
 
-        AdminCreateRequest req = new AdminCreateRequest();
+        AdminCreateDTO req = new AdminCreateDTO();
         req.setUsername("alice");
         req.setPassword("alice-pw-123");
         req.setEmail("a@x.com");

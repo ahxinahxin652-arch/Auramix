@@ -5,8 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.UserCreateRequest;
-import com.son.auramix.domain.dto.admin.UserListItemResponse;
+import com.son.auramix.domain.dto.admin.UserCreateDTO;
+import com.son.auramix.domain.vo.admin.UserListItemVO;
 import com.son.auramix.domain.entity.User;
 import com.son.auramix.mapper.UserMapper;
 import com.son.auramix.service.user.UserTokenStore;
@@ -28,7 +28,7 @@ public class UserManageService {
     /**
      * 分页查询用户列表
      */
-    public PageResult<UserListItemResponse> listUsers(String query, Integer status, Integer pageNum, Integer pageSize) {
+    public PageResult<UserListItemVO> listUsers(String query, Integer status, Integer pageNum, Integer pageSize) {
         int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<User> page = new Page<>(current, size);
@@ -46,7 +46,7 @@ public class UserManageService {
 
         Page<User> resultPage = userMapper.selectPage(page, wrapper);
         
-        Page<UserListItemResponse> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize(), resultPage.getTotal());
+        Page<UserListItemVO> voPage = new Page<>(resultPage.getCurrent(), resultPage.getSize(), resultPage.getTotal());
         voPage.setRecords(resultPage.getRecords().stream().map(this::toListItem).toList());
         
         return PageResult.of(voPage);
@@ -56,7 +56,7 @@ public class UserManageService {
      * 管理员创建用户
      */
     @Transactional
-    public UserListItemResponse createUser(UserCreateRequest req) {
+    public UserListItemVO createUser(UserCreateDTO req) {
         Long count = userMapper.selectCount(
                 new LambdaQueryWrapper<User>().eq(User::getEmail, req.getEmail()));
         if (count != null && count > 0) {
@@ -101,8 +101,8 @@ public class UserManageService {
         }
     }
 
-    private UserListItemResponse toListItem(User u) {
-        return UserListItemResponse.builder()
+    private UserListItemVO toListItem(User u) {
+        return UserListItemVO.builder()
                 .id(u.getId())
                 .email(u.getEmail())
                 .displayName(u.getDisplayName())
