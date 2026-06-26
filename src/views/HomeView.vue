@@ -69,7 +69,10 @@ async function handleCreateWarehouse() {
   const name = newWarehouseName.value.trim()
   if (!name) return
   isLoading.value = true
-  const result = await library.createWarehouse(name)
+  // 远端 API，以内部用户身份创建歌单
+  const result = await library.createWarehouse({
+    name,
+  })
   isLoading.value = false
   if (result.success) {
     showCreateDialog.value = false
@@ -84,7 +87,7 @@ function openEditDialog(wh) {
   editingWarehouse.value = wh
   editName.value = wh.name
   editDescription.value = wh.description || ''
-  editCoverBase64.value = wh.coverPath || ''
+  editCoverBase64.value = wh.coverUrl || wh.coverPath || ''
   editCoverHover.value = false
   showEditDialog.value = true
 }
@@ -176,22 +179,33 @@ async function handleSaveEdit() {
   }
   editLoading.value = true
 
-  const updates = {}
-  if (newName !== editingWarehouse.value.name) updates.name = newName
-  if ((editDescription.value.trim() || '') !== (editingWarehouse.value.description || '')) {
-    updates.description = editDescription.value.trim()
-  }
-  if (editCoverBase64.value !== (editingWarehouse.value.coverPath || '')) {
-    updates.coverPath = editCoverBase64.value
+  const currentWh = editingWarehouse.value
+  const currentCover = currentWh.coverUrl || currentWh.coverPath || ''
+  const coverChanged = editCoverBase64.value !== currentCover
+
+  // 构建保存选项
+  const saveOptions = {}
+  if (newName !== (currentWh.name || '')) saveOptions.name = newName
+  if ((editDescription.value.trim() || '') !== (currentWh.description || '')) {
+    saveOptions.description = editDescription.value.trim()
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (coverChanged) {
+    if (editCoverBase64.value) {
+      saveOptions.coverBase64 = editCoverBase64.value
+      saveOptions.coverFilename = 'cover.jpg'
+    } else {
+      saveOptions.clearCover = true
+    }
+  }
+
+  if (Object.keys(saveOptions).length === 0) {
     showEditDialog.value = false
     editLoading.value = false
     return
   }
 
-  const result = await library.updateWarehouse(editingWarehouse.value.id, updates)
+  const result = await library.saveWarehouse(currentWh.id, saveOptions)
   editLoading.value = false
 
   if (result.success) {
@@ -205,7 +219,7 @@ async function handleSaveEdit() {
 
 // ---- 删除 ----
 async function handleDeleteWarehouse(warehouse) {
-  if (confirm(`确定要删除音乐库 "${warehouse.name}" 吗？对应文件会被删除。`)) {
+  if (confirm(`确定要删除歌单 "${warehouse.name}" 吗？此操作不可撤销。`)) {
     await library.deleteWarehouse(warehouse.id)
   }
 }
@@ -274,7 +288,7 @@ async function handleImportFiles(warehouseId, files) {
         <div class="warehouse-grid">
           <div
             v-for="wh in library.warehouses"
-            :key="wh.name"
+            :key="wh.id"
             class="warehouse-card"
             @click="enterWarehouse(wh)"
             @drop="handleDrop"
@@ -282,10 +296,10 @@ async function handleImportFiles(warehouseId, files) {
             @dragenter.prevent
             :data-warehouse-id="wh.id"
           >
-            <div class="warehouse-cover" :style="wh.coverPath ? { background: 'none' } : {}">
+            <div class="warehouse-cover" :style="(wh.coverUrl || wh.coverPath) ? { background: 'none' } : {}">
               <img
-                v-if="wh.coverPath"
-                :src="wh.coverPath"
+                v-if="wh.coverUrl || wh.coverPath"
+                :src="wh.coverUrl || wh.coverPath"
                 class="cover-img"
                 alt=""
               />

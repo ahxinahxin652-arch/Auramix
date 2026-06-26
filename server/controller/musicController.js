@@ -1,8 +1,18 @@
 const express = require('express')
+const multer = require('multer')
 const musicService = require('../service/musicService')
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
 
 module.exports = function(mainWindow) {
   const router = express.Router()
+
+  /**
+   * 从请求头中提取用户 JWT token
+   */
+  function getToken(req) {
+    return req.headers['x-user-token'] || null
+  }
 
   // 获取所有音乐库
   router.get('/warehouses', async (req, res) => {
@@ -112,5 +122,64 @@ module.exports = function(mainWindow) {
     res.json(await musicService.updateAlbum(decodeURIComponent(id), req.body))
   })
 
+  // ========== 远端 API 歌单管理路由（代理到 8080 端口） ==========
+
+  // 获取远端歌单列表
+  router.get('/remote/playlists', async (req, res) => {
+    try {
+      const { keyword, pageNum, pageSize } = req.query
+      res.json(await musicService.getMusicWarehousesRemote(getToken(req), { keyword, pageNum, pageSize }))
+    } catch (err) {
+      console.error('[Express] GET /remote/playlists error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 获取远端歌单详情
+  router.get('/remote/playlists/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.getPlaylistDetailRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] GET /remote/playlists/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 创建远端歌单
+  router.post('/remote/playlists', async (req, res) => {
+    try {
+      res.json(await musicService.createMusicWarehouseRemote(getToken(req), req.body))
+    } catch (err) {
+      console.error('[Express] POST /remote/playlists error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 保存远端歌单（合并信息更新 + 可选封面上传）— multipart
+  router.put('/remote/playlists/:id', upload.single('cover'), async (req, res) => {
+    try {
+      const { id } = req.params
+      const info = req.body.info ? JSON.parse(req.body.info) : {}
+      const coverFile = req.file
+      res.json(await musicService.saveMusicWarehouseRemote(getToken(req), decodeURIComponent(id), info, coverFile))
+    } catch (err) {
+      console.error('[Express] PUT /remote/playlists/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 删除远端歌单
+  router.delete('/remote/playlists/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.deleteMusicWarehouseRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] DELETE /remote/playlists/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+ 
   return router
 }

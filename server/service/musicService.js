@@ -545,6 +545,122 @@ async function updateAlbum(albumId, updates) {
   }
 }
 
+// ========== 远端 API 歌单管理服务 ==========
+// 代理到 Java 后端 (8080端口) 进行歌单 CRUD，使用用户 JWT token 认证。
+// 操作成功后同步本地 SQLite 镜像，保证本地 track 操作兼容。
+
+/**
+ * 从远端 API 获取当前用户所有歌单列表
+ * @param {string} token - 用户 JWT token
+ * @param {object} [params] - { keyword?, pageNum?, pageSize? }
+ * @returns {Promise<import('../pojo/vo/ApiResult')<{ warehouses: Array, total: number }>>}
+ */
+async function getMusicWarehousesRemote(token, params) {
+  const result = await musicDao.fetchAllPlaylistsRemote({ ...params, token })
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取歌单列表失败')
+  }
+  // user 端返回 PageResult 格式: { records: [...], total, current, size, pages }
+  const data = result.data || {}
+  return ApiResult.ok({
+    warehouses: data.records || [],
+    total: data.total || 0,
+  })
+}
+
+/**
+ * 从远端 API 获取歌单详情（含歌曲列表）
+ * @param {string} token - 用户 JWT token
+ * @param {string|number} playlistId
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function getPlaylistDetailRemote(token, playlistId) {
+  const result = await musicDao.fetchPlaylistDetailRemote(playlistId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取歌单详情失败')
+  }
+  return ApiResult.ok(result.data)
+}
+
+/**
+ * 通过远端 API 创建歌单（使用登录用户的 JWT token）
+ * @param {string} token - 用户 JWT token
+ * @param {object} body - { name, description?, isPublic? }
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function createMusicWarehouseRemote(token, body) {
+  if (!body.name || body.name.trim() === '') {
+    return ApiResult.fail('歌单名称不能为空')
+  }
+
+  const result = await musicDao.createPlaylistRemote({
+    name: body.name.trim(),
+    description: body.description || '',
+    isPublic: body.isPublic !== undefined ? body.isPublic : true,
+  }, token)
+
+  if (!result.success) {
+    return ApiResult.fail(result.error || '创建歌单失败')
+  }
+
+  // 同步本地 SQLite 镜像，保证本地 Track 操作兼容
+  const pl = result.data
+  if (pl && pl.id) {
+    await musicDao.createPlaylistMirror(pl.id, pl.name, pl.description, pl.coverUrl)
+  }
+
+  return ApiResult.ok({ playlist: pl }, result.message || '歌单创建成功')
+}
+
+/**
+ * 通过远端 API 保存歌单（合并信息更新 + 可选封面上传）
+ * @param {string} token - 用户 JWT token
+ * @param {string|number} playlistId
+ * @param {object} info - { name?, description?, isPublic?, clearCover? }
+ * @param {object} [coverFile] - multer file object { buffer, originalname, mimetype }
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function saveMusicWarehouseRemote(token, playlistId, info, coverFile) {
+  if (!info || Object.keys(info).length === 0) {
+    return ApiResult.fail('没有要保存的内容')
+  }
+
+  const result = await musicDao.savePlaylistRemote(playlistId, info, coverFile, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '保存歌单失败')
+  }
+
+  // 同步本地镜像
+  const mirrorFields = {}
+  if (info.name !== undefined) mirrorFields.name = info.name
+  if (info.description !== undefined) mirrorFields.description = info.description
+  if (result.data && result.data.coverUrl) mirrorFields.coverUrl = result.data.coverUrl
+  if (info.clearCover) mirrorFields.coverUrl = ''
+  if (Object.keys(mirrorFields).length > 0) {
+    await musicDao.updatePlaylistMirror(playlistId, mirrorFields)
+  }
+
+  return ApiResult.ok(result.data, result.message || '歌单已保存')
+}
+
+/**
+ * 通过远端 API 删除歌单
+ * @param {string} token - 用户 JWT token
+ * @param {string|number} playlistId
+ * @returns {Promise<import('../pojo/vo/ApiResult')>}
+ */
+async function deleteMusicWarehouseRemote(token, playlistId) {
+  const result = await musicDao.deletePlaylistRemote(playlistId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '删除歌单失败')
+  }
+
+  // 同步删除本地镜像
+  await musicDao.deletePlaylistMirror(playlistId)
+
+  return ApiResult.ok(null, result.message || '歌单已删除')
+}
+
 module.exports = {
   getMusicWarehouses,
   createMusicWarehouse,
@@ -563,5 +679,10 @@ module.exports = {
   getArtistById,
   updateArtist,
   getAlbumById,
-  updateAlbum
+  updateAlbum,
+  getMusicWarehousesRemote,
+  getPlaylistDetailRemote,
+  createMusicWarehouseRemote,
+  saveMusicWarehouseRemote,
+  deleteMusicWarehouseRemote,
 }

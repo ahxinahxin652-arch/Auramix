@@ -7,8 +7,16 @@ const API_PORT = 3000
  * 返回值统一为 ApiResult 格式: { success: boolean, data?: T, message?: string, error?: string }
  */
 function apiFetch(url, options = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+  // 携带用户 JWT token，供 Express 透传到 Java 后端
+  try {
+    const token = localStorage.getItem('auramix_token')
+    if (token) {
+      headers['X-User-Token'] = token
+    }
+  } catch (e) { /* localStorage 不可用 */ }
   return fetch(`http://localhost:${API_PORT}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,
   }).then(res => res.json())
@@ -101,6 +109,63 @@ function getAlbumById(albumId) {
 
 function updateAlbum(albumId, updates) {
   return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`, { method: 'PUT', body: updates })
+}
+
+// ========== 远端歌单（音乐库）管理 API（代理到 Java 后端 8080 端口） ==========
+// 这些操作直接读写远端 MySQL 数据库，替代本地 SQLite 的歌单 CRUD
+
+/** 获取远端歌单列表 */
+function getRemotePlaylists(params = {}) {
+  const { keyword = '', pageNum = 1, pageSize = 100 } = params
+  const qs = new URLSearchParams({ keyword, pageNum, pageSize }).toString()
+  return apiFetch(`/api/music/remote/playlists?${qs}`)
+}
+
+/** 获取远端歌单详情 */
+function getRemotePlaylistDetail(playlistId) {
+  return apiFetch(`/api/music/remote/playlists/${encodeURIComponent(playlistId)}`)
+}
+
+/** 创建远端歌单（需传 ownerId） */
+function createRemotePlaylist(body) {
+  return apiFetch('/api/music/remote/playlists', { method: 'POST', body })
+}
+
+/** 保存远端歌单（合并信息更新 + 封面上传，FormData multipart） */
+async function saveRemotePlaylist(playlistId, { name, description, isPublic, clearCover, coverBase64, coverFilename }) {
+  const formData = new FormData()
+  // info 部分：JSON 字段
+  const info = {}
+  if (name !== undefined) info.name = name
+  if (description !== undefined) info.description = description
+  if (isPublic !== undefined) info.isPublic = isPublic
+  if (clearCover) info.clearCover = true
+  formData.append('info', JSON.stringify(info))
+  // cover 部分：可选图片文件
+  if (coverBase64 && !clearCover) {
+    const byteString = atob(coverBase64.split(',')[1] || coverBase64)
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+    formData.append('cover', new Blob([ab], { type: 'image/jpeg' }), coverFilename || 'cover.jpg')
+  }
+
+  const headers = {}
+  try {
+    const token = localStorage.getItem('auramix_token')
+    if (token) headers['X-User-Token'] = token
+  } catch (e) { /* localStorage 不可用 */ }
+
+  return fetch(`http://localhost:${API_PORT}/api/music/remote/playlists/${encodeURIComponent(playlistId)}`, {
+    method: 'PUT',
+    headers,
+    body: formData,
+  }).then(res => res.json())
+}
+
+/** 删除远端歌单 */
+function deleteRemotePlaylist(playlistId) {
+  return apiFetch(`/api/music/remote/playlists/${encodeURIComponent(playlistId)}`, { method: 'DELETE' })
 }
 
 // ========== 格式转换 API ==========
@@ -264,6 +329,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteTrack,
   getFileMetadata,
   updateFileMetadata,
+  // 远端歌单管理（代理到 8080 后端 MySQL）
+  getRemotePlaylists,
+  getRemotePlaylistDetail,
+  createRemotePlaylist,
+  saveRemotePlaylist,
+  deleteRemotePlaylist,
   // 歌手 API
   getArtistById,
   updateArtist,

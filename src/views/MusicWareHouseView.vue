@@ -205,9 +205,9 @@ async function handleAddFiles() {
 
 // ========== 编辑弹窗 ==========
 function openEditDialog() {
-  editName.value = warehouseInfo.value.name || warehouseName.value
+  editName.value = warehouseInfo.value.name || ''
   editDescription.value = warehouseInfo.value.description || ''
-  editCoverBase64.value = warehouseInfo.value.coverPath || ''
+  editCoverBase64.value = warehouseInfo.value.coverUrl || warehouseInfo.value.coverPath || ''
   editCoverHover.value = false
   showEditDialog.value = true
 }
@@ -300,41 +300,48 @@ async function handleSaveEdit() {
   editLoading.value = true
 
   const currentName = warehouseInfo.value.name
-  const updates = {}
-  if (newName !== currentName) updates.name = newName
+  const currentCover = warehouseInfo.value.coverUrl || warehouseInfo.value.coverPath || ''
+  const coverChanged = editCoverBase64.value !== currentCover
+
+  // 构建保存选项
+  const saveOptions = {}
+  if (newName !== currentName) saveOptions.name = newName
   if ((editDescription.value.trim() || '') !== (warehouseInfo.value.description || '')) {
-    updates.description = editDescription.value.trim()
-  }
-  if (editCoverBase64.value !== (warehouseInfo.value.coverPath || '')) {
-    updates.coverPath = editCoverBase64.value
+    saveOptions.description = editDescription.value.trim()
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (coverChanged) {
+    if (editCoverBase64.value) {
+      saveOptions.coverBase64 = editCoverBase64.value
+      saveOptions.coverFilename = 'cover.jpg'
+    } else {
+      saveOptions.clearCover = true
+    }
+  }
+
+  if (Object.keys(saveOptions).length === 0) {
     showEditDialog.value = false
     editLoading.value = false
     return
   }
 
-  const result = await library.updateWarehouse(libraryId.value, updates)
+  const result = await library.saveWarehouse(libraryId.value, saveOptions)
   editLoading.value = false
 
   if (result.success) {
+    // 更新本地 warehouseInfo
+    if (saveOptions.name) warehouseInfo.value.name = saveOptions.name
+    if (saveOptions.description !== undefined) warehouseInfo.value.description = saveOptions.description
+    if (result.data && result.data.coverUrl) {
+      warehouseInfo.value.coverPath = result.data.coverUrl
+      warehouseInfo.value.coverUrl = result.data.coverUrl
+    } else if (saveOptions.clearCover) {
+      warehouseInfo.value.coverPath = ''
+      warehouseInfo.value.coverUrl = ''
+    }
+
     showEditDialog.value = false
     ElMessage.success('保存成功')
-    // 直接更新本地 warehouseInfo，不重载 tracks
-    if (result.warehouse) {
-      warehouseInfo.value = {
-        name: result.warehouse.name || warehouseInfo.value.name,
-        description: result.warehouse.description ?? warehouseInfo.value.description,
-        coverPath: result.warehouse.coverPath ?? warehouseInfo.value.coverPath,
-      }
-    } else {
-      // 兜底：用本地编辑值更新
-      if (updates.name) warehouseInfo.value.name = updates.name
-      if (updates.description !== undefined) warehouseInfo.value.description = updates.description
-      if (updates.coverPath !== undefined) warehouseInfo.value.coverPath = updates.coverPath
-    }
-    // 刷新首页列表
     library.loadWarehouses()
   } else {
     ElMessage.error(result.error || '保存失败')
@@ -424,8 +431,8 @@ function parseArtists(artistsStr) {
       <div class="hero-content">
         <div class="hero-cover" @click="openEditDialog" title="点击编辑封面">
           <img
-            v-if="warehouseInfo.coverPath"
-            :src="warehouseInfo.coverPath"
+            v-if="warehouseInfo.coverUrl || warehouseInfo.coverPath"
+            :src="warehouseInfo.coverUrl || warehouseInfo.coverPath"
             class="hero-cover-img"
             alt=""
           />
