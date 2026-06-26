@@ -87,6 +87,7 @@ CREATE TABLE `tracks` (
   `play_count` BIGINT NOT NULL DEFAULT 0 COMMENT '流媒体总播放/播放次数',
   `track_number` INT NOT NULL COMMENT '该曲目在专辑/碟片中的音轨顺序(从1开始)',
   `disc_number` INT NOT NULL DEFAULT 1 COMMENT '多碟CD专辑中的碟片序号(从1开始，单CD专辑默认为1)',
+  `member` INT NOT NULL DEFAULT 0 COMMENT '是否会员歌曲: 0非会员, 1会员',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `tracks_album_id_idx` (`album_id`)

@@ -44,6 +44,9 @@ public class Track implements Serializable {
 
     private Integer discNumber;
 
+    /** 0=非会员 1=会员 */
+    private Integer member;
+
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 
