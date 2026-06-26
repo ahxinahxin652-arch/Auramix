@@ -278,3 +278,29 @@ CREATE TABLE `admin` (
                          UNIQUE KEY `uk_email` (`email`),
                          KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
+
+-- ------------------------------------------------------------------------------
+-- 19. 歌曲AI审核记录表 (track_review_records)
+-- ------------------------------------------------------------------------------
+CREATE TABLE `track_review_records` (
+  `id`              BIGINT       NOT NULL PRIMARY KEY COMMENT '雪花算法唯一ID',
+  `track_id`        BIGINT       NOT NULL COMMENT '关联单曲ID',
+  `track_title`     VARCHAR(255) NOT NULL COMMENT '审核时的歌曲标题快照',
+  `artist_names`    VARCHAR(1000) NULL   COMMENT '审核时的歌手名快照(逗号分隔)',
+  `album_title`     VARCHAR(255) NULL   COMMENT '审核时的专辑标题快照',
+  `lyrics_content`  TEXT         NULL   COMMENT '拉取的LRC歌词文本快照',
+  `verdict`         INT          NOT NULL DEFAULT 0 COMMENT '裁决: 0=待审核, 1=通过, -1=不通过, -2=待人工确认',
+  `confidence`      INT          NOT NULL DEFAULT 0 COMMENT '最终置信度 0-100',
+  `fail_reasons`    TEXT         NULL   COMMENT '不通过原因(各fail agent拼接)',
+  `agent_results`   TEXT         NULL   COMMENT '4+1个agent的完整JSON输出',
+  `status`          INT          NOT NULL DEFAULT 0 COMMENT '处理状态: 0=AI审核中, 1=AI审核完成待自动处理, 2=已自动处理, 3=待人工确认, 4=人工已确认',
+  `admin_id`        BIGINT       NULL   COMMENT '人工确认的管理员ID',
+  `admin_verdict`   INT          NULL   COMMENT '管理员裁决: 1=通过, -1=不通过',
+  `admin_note`      VARCHAR(500) NULL   COMMENT '管理员备注',
+  `reviewed_at`     DATETIME     NULL   COMMENT '管理员确认时间',
+  `created_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY `track_review_records_track_id_idx` (`track_id`),
+  KEY `track_review_records_status_idx` (`status`),
+  KEY `track_review_records_verdict_idx` (`verdict`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='歌曲AI审核记录表';

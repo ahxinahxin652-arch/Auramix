@@ -9,6 +9,7 @@ import com.son.auramix.domain.vo.admin.TrackListItemVO;
 import com.son.auramix.domain.entity.*;
 import com.son.auramix.mapper.*;
 import com.son.auramix.service.admin.TrackService;
+import com.son.auramix.service.admin.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ public class TrackServiceImpl implements TrackService {
     private final TrackAudioResourceMapper audioMapper;
     private final TrackVideoResourceMapper videoMapper;
     private final TrackGenreMapper trackGenreMapper;
+    private final ReviewService reviewService;
 
     @Override
     public PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
@@ -268,6 +270,9 @@ public class TrackServiceImpl implements TrackService {
         trackMapper.insert(t);
 
         saveRelations(t.getId(), req.getArtists(), req.getAudioResources(), req.getVideoResources());
+
+        // 触发 AI 内容审核（异步）
+        reviewService.triggerReview(t.getId());
     }
 
     @Override
@@ -327,6 +332,9 @@ public class TrackServiceImpl implements TrackService {
             videoMapper.delete(new LambdaQueryWrapper<TrackVideoResource>().eq(TrackVideoResource::getTrackId, id));
             saveRelations(id, null, null, req.getVideoResources());
         }
+
+        // 触发 AI 内容审核（异步）
+        reviewService.triggerReview(id);
     }
 
     @Override

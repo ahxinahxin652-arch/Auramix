@@ -57,6 +57,15 @@ spring:
           min-idle: 0
           max-wait: 5s
 
+  # ============================ Spring AI (通义千问) ============================
+  ai:
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      model: qwen-plus
+      chat:
+        options:
+          temperature: 0.3
+
   # ============================ Jackson ============================
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
@@ -98,7 +107,6 @@ aliyun:
     access-key-secret: ***REMOVED***
     # Bucket 名称
     bucket-name: auramix
-
 
 # ============================ Admin / User Token ============================
 auramix:
