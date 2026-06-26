@@ -6,7 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.*;
 import com.son.auramix.config.OssProperties;
-import com.son.auramix.domain.dto.admin.OssPolicyResponse;
+import com.son.auramix.domain.vo.admin.OssPolicyVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -238,7 +238,7 @@ public class OssService {
     /**
      * 生成 Post Policy 上传凭证
      */
-    public OssPolicyResponse generatePostPolicy(String dir) {
+    public OssPolicyVO generatePostPolicy(String dir) {
         long expireTime = 300; // 5分钟有效期
         long expireEndTime = System.currentTimeMillis() + expireTime * 1000;
         Date expiration = new Date(expireEndTime);
@@ -252,7 +252,7 @@ public class OssService {
         String encodedPolicy = cn.hutool.core.codec.Base64.encode(binaryData);
         String postSignature = ossClient.calculatePostSignature(postPolicy);
 
-        OssPolicyResponse response = new OssPolicyResponse();
+        OssPolicyVO response = new OssPolicyVO();
         response.setAccessKeyId(ossProperties.getAccessKeyId());
         response.setPolicy(encodedPolicy);
         response.setSignature(postSignature);

@@ -5,8 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.user.UserLoginResponse;
-import com.son.auramix.domain.dto.user.UserProfileResponse;
+import com.son.auramix.domain.vo.user.UserLoginVO;
+import com.son.auramix.domain.vo.user.UserProfileVO;
 import com.son.auramix.domain.entity.User;
 import com.son.auramix.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
@@ -68,7 +68,7 @@ public class UserAuthService {
 
     // ============================ 注册 ============================
 
-    public UserLoginResponse register(String email, String rawPassword, String displayName, String code, String clientIp) {
+    public UserLoginVO register(String email, String rawPassword, String displayName, String code, String clientIp) {
         // 校验验证码
         verifyCode(email, code);
 
@@ -97,7 +97,7 @@ public class UserAuthService {
 
     // ============================ 登录 ============================
 
-    public UserLoginResponse login(String email, String rawPassword, String clientIp) {
+    public UserLoginVO login(String email, String rawPassword, String clientIp) {
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>().eq(User::getEmail, email));
         if (user == null) {
@@ -125,7 +125,7 @@ public class UserAuthService {
 
     // ============================ 获取信息 ============================
 
-    public UserProfileResponse getProfile(Long userId) {
+    public UserProfileVO getProfile(Long userId) {
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException(ResultCode.USER_NOT_FOUND);
@@ -149,7 +149,7 @@ public class UserAuthService {
         }
     }
 
-    private UserLoginResponse buildLoginResponse(User user, String clientIp) {
+    private UserLoginVO buildLoginResponse(User user, String clientIp) {
         String token = UUID.randomUUID().toString().replace("-", "");
         UserSessionInfo info = UserSessionInfo.builder()
                 .id(user.getId())
@@ -159,15 +159,15 @@ public class UserAuthService {
                 .build();
         tokenStore.saveToken(token, info);
 
-        return UserLoginResponse.builder()
+        return UserLoginVO.builder()
                 .token(token)
                 .expiresAt(LocalDateTime.now().plusSeconds(ttlSeconds))
                 .profile(toProfile(user))
                 .build();
     }
 
-    private UserProfileResponse toProfile(User user) {
-        return UserProfileResponse.builder()
+    private UserProfileVO toProfile(User user) {
+        return UserProfileVO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())

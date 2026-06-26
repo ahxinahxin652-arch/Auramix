@@ -1,19 +1,19 @@
 package com.son.auramix.service.admin;
 
 import com.son.auramix.common.result.PageResult;
-import com.son.auramix.domain.dto.admin.AlbumDetailResponse;
-import com.son.auramix.domain.dto.admin.AlbumListItemResponse;
-import com.son.auramix.domain.dto.admin.AlbumQuickCreateRequest;
-import com.son.auramix.domain.dto.admin.AlbumSearchResponse;
-import com.son.auramix.domain.dto.admin.AlbumUpdateRequest;
+import com.son.auramix.domain.vo.admin.AlbumDetailVO;
+import com.son.auramix.domain.vo.admin.AlbumListItemVO;
+import com.son.auramix.domain.dto.admin.AlbumQuickCreateDTO;
+import com.son.auramix.domain.vo.admin.AlbumSearchVO;
+import com.son.auramix.domain.dto.admin.AlbumUpdateDTO;
 import java.util.List;
 
 public interface AlbumManageService {
-    List<AlbumSearchResponse> searchAlbums(String query);
-    AlbumSearchResponse quickCreate(AlbumQuickCreateRequest req);
+    List<AlbumSearchVO> searchAlbums(String query);
+    AlbumSearchVO quickCreate(AlbumQuickCreateDTO req);
 
-    PageResult<AlbumListItemResponse> listAlbums(String query, Integer pageNum, Integer pageSize);
-    AlbumDetailResponse getAlbumDetail(Long id);
-    void updateAlbum(Long id, AlbumUpdateRequest req);
+    PageResult<AlbumListItemVO> listAlbums(String query, Integer pageNum, Integer pageSize);
+    AlbumDetailVO getAlbumDetail(Long id);
+    void updateAlbum(Long id, AlbumUpdateDTO req);
     void deleteAlbum(Long id);
 }

@@ -5,11 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.ArtistCreateRequest;
-import com.son.auramix.domain.dto.admin.ArtistDetailResponse;
-import com.son.auramix.domain.dto.admin.ArtistListItemResponse;
-import com.son.auramix.domain.dto.admin.ArtistSearchResponse;
-import com.son.auramix.domain.dto.admin.ArtistUpdateRequest;
+import com.son.auramix.domain.dto.admin.ArtistCreateDTO;
+import com.son.auramix.domain.vo.admin.ArtistDetailVO;
+import com.son.auramix.domain.vo.admin.ArtistListItemVO;
+import com.son.auramix.domain.vo.admin.ArtistSearchVO;
+import com.son.auramix.domain.dto.admin.ArtistUpdateDTO;
 import com.son.auramix.domain.entity.AlbumArtist;
 import com.son.auramix.domain.entity.Artist;
 import com.son.auramix.domain.entity.ArtistFollower;
@@ -36,14 +36,14 @@ public class ArtistManageServiceImpl implements ArtistManageService {
     private final ArtistFollowerMapper artistFollowerMapper;
 
     @Override
-    public List<ArtistSearchResponse> searchArtists(String query) {
+    public List<ArtistSearchVO> searchArtists(String query) {
         LambdaQueryWrapper<Artist> wrapper = new LambdaQueryWrapper<>();
         if (query != null && !query.trim().isEmpty()) {
             wrapper.like(Artist::getName, query);
         }
         wrapper.orderByDesc(Artist::getId).last("LIMIT 20");
         return artistMapper.selectList(wrapper).stream().map(a -> {
-            ArtistSearchResponse res = new ArtistSearchResponse();
+            ArtistSearchVO res = new ArtistSearchVO();
             res.setId(a.getId());
             res.setName(a.getName());
             res.setCoverImg(a.getCoverImg());
@@ -52,7 +52,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
     }
 
     @Override
-    public PageResult<ArtistListItemResponse> listArtists(String query, Integer pageNum, Integer pageSize) {
+    public PageResult<ArtistListItemVO> listArtists(String query, Integer pageNum, Integer pageSize) {
         int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<Artist> page = new Page<>(current, size);
@@ -64,8 +64,8 @@ public class ArtistManageServiceImpl implements ArtistManageService {
         wrapper.orderByDesc(Artist::getId);
         artistMapper.selectPage(page, wrapper);
 
-        List<ArtistListItemResponse> list = page.getRecords().stream().map(a -> {
-            ArtistListItemResponse item = new ArtistListItemResponse();
+        List<ArtistListItemVO> list = page.getRecords().stream().map(a -> {
+            ArtistListItemVO item = new ArtistListItemVO();
             item.setId(a.getId());
             item.setName(a.getName());
             item.setCoverImg(a.getCoverImg());
@@ -79,13 +79,13 @@ public class ArtistManageServiceImpl implements ArtistManageService {
     }
 
     @Override
-    public ArtistDetailResponse getArtistDetail(Long id) {
+    public ArtistDetailVO getArtistDetail(Long id) {
         Artist artist = artistMapper.selectById(id);
         if (artist == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
 
-        ArtistDetailResponse detail = new ArtistDetailResponse();
+        ArtistDetailVO detail = new ArtistDetailVO();
         detail.setId(artist.getId());
         detail.setName(artist.getName());
         detail.setCoverImg(artist.getCoverImg());
@@ -97,7 +97,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
 
     @Override
     @Transactional
-    public void createArtist(ArtistCreateRequest req) {
+    public void createArtist(ArtistCreateDTO req) {
         Artist artist = new Artist();
         artist.setName(req.getName());
         artist.setCoverImg(req.getCoverImg());
@@ -107,7 +107,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
 
     @Override
     @Transactional
-    public void updateArtist(Long id, ArtistUpdateRequest req) {
+    public void updateArtist(Long id, ArtistUpdateDTO req) {
         Artist artist = artistMapper.selectById(id);
         if (artist == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);

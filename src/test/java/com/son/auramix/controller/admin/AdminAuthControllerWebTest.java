@@ -3,9 +3,9 @@ package com.son.auramix.controller.admin;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminLoginRequest;
-import com.son.auramix.domain.dto.admin.AdminLoginResponse;
-import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.dto.admin.AdminLoginDTO;
+import com.son.auramix.domain.vo.admin.AdminLoginVO;
+import com.son.auramix.domain.vo.admin.AdminProfileVO;
 import com.son.auramix.service.admin.AdminAuthService;
 import com.son.auramix.service.admin.AdminTokenStore;
 import com.son.auramix.service.user.UserTokenStore;
@@ -51,14 +51,14 @@ class AdminAuthControllerWebTest {
 
     @Test
     void login_returns200OnSuccess() throws Exception {
-        AdminLoginRequest req = new AdminLoginRequest();
+        AdminLoginDTO req = new AdminLoginDTO();
         req.setUsername("admin");
         req.setPassword("password123");
 
-        AdminLoginResponse resp = AdminLoginResponse.builder()
+        AdminLoginVO resp = AdminLoginVO.builder()
                 .token("tok-xyz")
                 .expiresAt(LocalDateTime.now().plusHours(2))
-                .profile(AdminProfileResponse.builder().id(1).username("admin").isRoot(1).status(1).build())
+                .profile(AdminProfileVO.builder().id(1).username("admin").isRoot(1).status(1).build())
                 .build();
         when(authService.login(eq("admin"), eq("password123"), anyString())).thenReturn(resp);
 
@@ -72,7 +72,7 @@ class AdminAuthControllerWebTest {
 
     @Test
     void login_returns400OnBlankUsername() throws Exception {
-        AdminLoginRequest req = new AdminLoginRequest();
+        AdminLoginDTO req = new AdminLoginDTO();
         req.setUsername("");
         req.setPassword("password123");
 
@@ -85,7 +85,7 @@ class AdminAuthControllerWebTest {
 
     @Test
     void login_returnsBusinessErrorWhenBadCredentials() throws Exception {
-        AdminLoginRequest req = new AdminLoginRequest();
+        AdminLoginDTO req = new AdminLoginDTO();
         req.setUsername("admin");
         req.setPassword("wrong");
 

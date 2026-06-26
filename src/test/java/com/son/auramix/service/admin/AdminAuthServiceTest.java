@@ -3,7 +3,7 @@ package com.son.auramix.service.admin;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminLoginResponse;
+import com.son.auramix.domain.vo.admin.AdminLoginVO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -91,7 +91,7 @@ class AdminAuthServiceTest {
         when(adminMapper.selectOne(any(Wrapper.class))).thenReturn(a);
         when(passwordEncoder.matches("pw", "hash")).thenReturn(true);
 
-        AdminLoginResponse resp = authService.login("bob", "pw", "1.1.1.1");
+        AdminLoginVO resp = authService.login("bob", "pw", "1.1.1.1");
 
         assertThat(resp.getToken()).isNotBlank();
         assertThat(resp.getProfile().getId()).isEqualTo(1);

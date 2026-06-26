@@ -3,9 +3,9 @@ package com.son.auramix.service.admin;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AdminCreateRequest;
-import com.son.auramix.domain.dto.admin.AdminListItemResponse;
-import com.son.auramix.domain.dto.admin.AdminProfileResponse;
+import com.son.auramix.domain.dto.admin.AdminCreateDTO;
+import com.son.auramix.domain.vo.admin.AdminListItemVO;
+import com.son.auramix.domain.vo.admin.AdminProfileVO;
 import com.son.auramix.domain.entity.Admin;
 import com.son.auramix.mapper.AdminMapper;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class AdminManageService {
     private final AdminTokenStore tokenStore;
     private final PasswordEncoder passwordEncoder;
 
-    public AdminProfileResponse createAdmin(AdminCreateRequest req) {
+    public AdminProfileVO createAdmin(AdminCreateDTO req) {
         Long usernameCount = adminMapper.selectCount(
                 new LambdaQueryWrapper<Admin>().eq(Admin::getUsername, req.getUsername()));
         if (usernameCount != null && usernameCount > 0) {
@@ -48,13 +48,13 @@ public class AdminManageService {
         return toProfile(admin);
     }
 
-    public List<AdminListItemResponse> listAdmins() {
+    public List<AdminListItemVO> listAdmins() {
         List<Admin> rows = adminMapper.selectList(
                 new LambdaQueryWrapper<Admin>().orderByDesc(Admin::getId));
         return rows.stream().map(this::toListItem).toList();
     }
 
-    public AdminProfileResponse getAdmin(Integer id) {
+    public AdminProfileVO getAdmin(Integer id) {
         Admin admin = mustExist(id);
         return toProfile(admin);
     }
@@ -113,16 +113,16 @@ public class AdminManageService {
         return admin;
     }
 
-    private AdminProfileResponse toProfile(Admin a) {
-        return AdminProfileResponse.builder()
+    private AdminProfileVO toProfile(Admin a) {
+        return AdminProfileVO.builder()
                 .id(a.getId()).username(a.getUsername()).email(a.getEmail())
                 .isRoot(a.getIsRoot()).status(a.getStatus())
                 .lastLoginTime(a.getLastLoginTime()).lastLoginIp(a.getLastLoginIp())
                 .createdAt(a.getCreatedAt()).build();
     }
 
-    private AdminListItemResponse toListItem(Admin a) {
-        return AdminListItemResponse.builder()
+    private AdminListItemVO toListItem(Admin a) {
+        return AdminListItemVO.builder()
                 .id(a.getId()).username(a.getUsername()).email(a.getEmail())
                 .isRoot(a.getIsRoot()).status(a.getStatus())
                 .lastLoginTime(a.getLastLoginTime()).createdAt(a.getCreatedAt()).build();

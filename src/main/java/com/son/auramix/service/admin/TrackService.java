@@ -1,15 +1,15 @@
 package com.son.auramix.service.admin;
 
 import com.son.auramix.common.result.PageResult;
-import com.son.auramix.domain.dto.admin.TrackCreateRequest;
-import com.son.auramix.domain.dto.admin.TrackDetailResponse;
-import com.son.auramix.domain.dto.admin.TrackListItemResponse;
-import com.son.auramix.domain.dto.admin.TrackUpdateRequest;
+import com.son.auramix.domain.dto.admin.TrackCreateDTO;
+import com.son.auramix.domain.vo.admin.TrackDetailVO;
+import com.son.auramix.domain.vo.admin.TrackListItemVO;
+import com.son.auramix.domain.dto.admin.TrackUpdateDTO;
 
 public interface TrackService {
-    PageResult<TrackListItemResponse> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize);
-    TrackDetailResponse getTrackDetail(Long id);
-    void createTrack(TrackCreateRequest req);
-    void updateTrack(Long id, TrackUpdateRequest req);
+    PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize);
+    TrackDetailVO getTrackDetail(Long id);
+    void createTrack(TrackCreateDTO req);
+    void updateTrack(Long id, TrackUpdateDTO req);
     void deleteTrack(Long id);
 }

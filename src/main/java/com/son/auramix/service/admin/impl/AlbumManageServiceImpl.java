@@ -5,11 +5,11 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
-import com.son.auramix.domain.dto.admin.AlbumDetailResponse;
-import com.son.auramix.domain.dto.admin.AlbumListItemResponse;
-import com.son.auramix.domain.dto.admin.AlbumQuickCreateRequest;
-import com.son.auramix.domain.dto.admin.AlbumSearchResponse;
-import com.son.auramix.domain.dto.admin.AlbumUpdateRequest;
+import com.son.auramix.domain.vo.admin.AlbumDetailVO;
+import com.son.auramix.domain.vo.admin.AlbumListItemVO;
+import com.son.auramix.domain.dto.admin.AlbumQuickCreateDTO;
+import com.son.auramix.domain.vo.admin.AlbumSearchVO;
+import com.son.auramix.domain.dto.admin.AlbumUpdateDTO;
 import com.son.auramix.domain.entity.Album;
 import com.son.auramix.domain.entity.AlbumArtist;
 import com.son.auramix.domain.entity.Artist;
@@ -51,14 +51,14 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     private final TrackGenreMapper trackGenreMapper;
 
     @Override
-    public List<AlbumSearchResponse> searchAlbums(String query) {
+    public List<AlbumSearchVO> searchAlbums(String query) {
         LambdaQueryWrapper<Album> wrapper = new LambdaQueryWrapper<>();
         if (query != null && !query.trim().isEmpty()) {
             wrapper.like(Album::getTitle, query);
         }
         wrapper.orderByDesc(Album::getId).last("LIMIT 20");
         return albumMapper.selectList(wrapper).stream().map(a -> {
-            AlbumSearchResponse res = new AlbumSearchResponse();
+            AlbumSearchVO res = new AlbumSearchVO();
             res.setId(a.getId());
             res.setTitle(a.getTitle());
             res.setAlbumType(a.getAlbumType());
@@ -68,7 +68,7 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     }
 
     @Override
-    public AlbumSearchResponse quickCreate(AlbumQuickCreateRequest req) {
+    public AlbumSearchVO quickCreate(AlbumQuickCreateDTO req) {
         Album album = new Album();
         album.setTitle(req.getTitle());
         album.setAlbumType(req.getAlbumType());
@@ -80,7 +80,7 @@ public class AlbumManageServiceImpl implements AlbumManageService {
         }
         albumMapper.insert(album);
 
-        AlbumSearchResponse res = new AlbumSearchResponse();
+        AlbumSearchVO res = new AlbumSearchVO();
         res.setId(album.getId());
         res.setTitle(album.getTitle());
         res.setAlbumType(album.getAlbumType());
@@ -89,7 +89,7 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     }
 
     @Override
-    public PageResult<AlbumListItemResponse> listAlbums(String query, Integer pageNum, Integer pageSize) {
+    public PageResult<AlbumListItemVO> listAlbums(String query, Integer pageNum, Integer pageSize) {
         int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<Album> page = new Page<>(current, size);
@@ -101,8 +101,8 @@ public class AlbumManageServiceImpl implements AlbumManageService {
         wrapper.orderByDesc(Album::getId);
         albumMapper.selectPage(page, wrapper);
 
-        List<AlbumListItemResponse> list = page.getRecords().stream().map(a -> {
-            AlbumListItemResponse item = new AlbumListItemResponse();
+        List<AlbumListItemVO> list = page.getRecords().stream().map(a -> {
+            AlbumListItemVO item = new AlbumListItemVO();
             item.setId(a.getId());
             item.setTitle(a.getTitle());
             item.setAlbumType(a.getAlbumType());
@@ -117,13 +117,13 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     }
 
     @Override
-    public AlbumDetailResponse getAlbumDetail(Long id) {
+    public AlbumDetailVO getAlbumDetail(Long id) {
         Album album = albumMapper.selectById(id);
         if (album == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
 
-        AlbumDetailResponse detail = new AlbumDetailResponse();
+        AlbumDetailVO detail = new AlbumDetailVO();
         detail.setId(album.getId());
         detail.setTitle(album.getTitle());
         detail.setAlbumType(album.getAlbumType());
@@ -151,8 +151,8 @@ public class AlbumManageServiceImpl implements AlbumManageService {
             } else {
                 artistMap = new HashMap<>();
             }
-            List<AlbumDetailResponse.AlbumArtistDto> artistDtos = albumArtists.stream().map(aa -> {
-                AlbumDetailResponse.AlbumArtistDto dto = new AlbumDetailResponse.AlbumArtistDto();
+            List<AlbumDetailVO.AlbumArtistDto> artistDtos = albumArtists.stream().map(aa -> {
+                AlbumDetailVO.AlbumArtistDto dto = new AlbumDetailVO.AlbumArtistDto();
                 dto.setArtistId(aa.getArtistId());
                 Artist artist = artistMap.get(aa.getArtistId());
                 if (artist != null) {
@@ -168,7 +168,7 @@ public class AlbumManageServiceImpl implements AlbumManageService {
 
     @Override
     @Transactional
-    public void updateAlbum(Long id, AlbumUpdateRequest req) {
+    public void updateAlbum(Long id, AlbumUpdateDTO req) {
         Album album = albumMapper.selectById(id);
         if (album == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
