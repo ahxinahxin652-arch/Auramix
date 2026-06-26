@@ -30,6 +30,7 @@ const pageSize = ref(10)
 const filter = reactive({
   query: '',
   albumId: undefined as string | undefined,
+  member: undefined as number | undefined,
   status: undefined as number | undefined
 })
 
@@ -48,6 +49,7 @@ const formRef = ref<FormInstance>()
 const form = reactive<{
   title: string
   albumId: string
+  member: number
   trackNumber: number | undefined
   discNumber: number
   status: number
@@ -59,6 +61,7 @@ const form = reactive<{
 }>({
   title: '',
   albumId: '',
+  member: 0,
   trackNumber: undefined,
   discNumber: 1,
   status: 0,
@@ -138,6 +141,7 @@ async function loadData() {
     const res = await listTracks({
       query: filter.query,
       albumId: filter.albumId,
+      member: filter.member,
       status: filter.status,
       pageNum: pageNum.value,
       pageSize: pageSize.value
@@ -159,6 +163,7 @@ function handleSearch() {
 function handleReset() {
   filter.query = ''
   filter.albumId = undefined
+  filter.member = undefined
   filter.status = undefined
   pageNum.value = 1
   loadData()
@@ -425,6 +430,7 @@ function openCreateDrawer() {
   // Reset form
   form.title = ''
   form.albumId = ''
+  form.member = 0
   form.trackNumber = undefined
   form.discNumber = 1
   form.status = 0
@@ -448,6 +454,7 @@ async function openEditDrawer(row: TrackListItem) {
     const detail = await getTrack(row.id)
     form.title = detail.title
     form.albumId = detail.albumId
+    form.member = detail.member ?? 0
     form.trackNumber = detail.trackNumber
     form.discNumber = detail.discNumber
     form.status = detail.status
@@ -541,6 +548,7 @@ async function handleSave() {
     const payload: TrackDetail = {
       title: form.title,
       albumId: form.albumId,
+      member: form.member,
       trackNumber: form.trackNumber || 1,
       discNumber: form.discNumber,
       status: form.status,
@@ -675,6 +683,17 @@ onMounted(() => {
         </el-select>
 
         <el-select
+          v-model="filter.member"
+          placeholder="会员类型"
+          clearable
+          class="filter-select"
+          @change="handleSearch"
+        >
+          <el-option label="非会员" :value="0" />
+          <el-option label="会员" :value="1" />
+        </el-select>
+
+        <el-select
           v-model="filter.status"
           placeholder="歌曲状态"
           clearable
@@ -770,6 +789,13 @@ onMounted(() => {
             </template>
           </el-table-column>
 
+          <el-table-column prop="member" label="会员" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag v-if="row.member === 1" type="warning" size="small">VIP</el-tag>
+              <el-tag v-else type="info" size="small">免费</el-tag>
+            </template>
+          </el-table-column>
+
           <el-table-column prop="status" label="状态" width="100" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.status === 0" type="success" size="small">正常</el-tag>
@@ -858,6 +884,13 @@ onMounted(() => {
             <el-form-item label="歌曲时长(秒)" prop="duration">
               <el-input-number v-model="form.duration" :min="0" style="width: 150px;" />
               <span class="form-item-tip">歌曲时长，将随音源上传自动更新</span>
+            </el-form-item>
+
+            <el-form-item label="会员类型" prop="member">
+              <el-select v-model="form.member" style="width: 100%;">
+                <el-option label="非会员（免费）" :value="0" />
+                <el-option label="会员专属" :value="1" />
+              </el-select>
             </el-form-item>
 
             <el-form-item label="播放状态" prop="status">
