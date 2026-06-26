@@ -1,15 +1,19 @@
 package com.son.auramix.service.user.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
+import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
 import com.son.auramix.domain.dto.user.PlaylistCreateDTO;
-import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.domain.dto.user.PlaylistTracksDTO;
-import com.son.auramix.domain.entity.Playlist;
-import com.son.auramix.domain.entity.PlaylistTrack;
-import com.son.auramix.mapper.PlaylistMapper;
-import com.son.auramix.mapper.PlaylistTrackMapper;
+import com.son.auramix.domain.dto.user.PlaylistUpdateDTO;
+import com.son.auramix.domain.entity.*;
+import com.son.auramix.domain.vo.user.PlaylistDetailVO;
+import com.son.auramix.domain.vo.user.PlaylistSearchItemVO;
+import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
+import com.son.auramix.domain.vo.user.PlaylistVO;
+import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
 import com.son.auramix.service.user.PlaylistService;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +36,14 @@ public class PlaylistServiceImpl implements PlaylistService {
 
     private final PlaylistMapper playlistMapper;
     private final PlaylistTrackMapper playlistTrackMapper;
+    private final PlaylistFollowerMapper playlistFollowerMapper;
+    private final TrackMapper trackMapper;
+    private final AlbumMapper albumMapper;
+    private final TrackArtistMapper trackArtistMapper;
+    private final ArtistMapper artistMapper;
+    private final UserMapper userMapper;
+
+    // ============================ 已有方法 ============================
 
     /**
      * 从 SecurityContextHolder 获取当前登录用户 ID
@@ -42,6 +54,17 @@ public class PlaylistServiceImpl implements PlaylistService {
             return principal.getUserId();
         }
         throw new BusinessException(ResultCode.UNAUTHORIZED);
+    }
+
+    /**
+     * 从 SecurityContextHolder 获取当前登录用户 ID，未登录返回 null
+     */
+    private Long getCurrentUserIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUserId();
+        }
+        return null;
     }
 
     @Override
@@ -64,11 +87,12 @@ public class PlaylistServiceImpl implements PlaylistService {
         Long ownerId = getCurrentUserId();
         Playlist playlist = getOwnedPlaylist(ownerId, playlistId);
 
-        // 级联删除歌单-歌曲关联（仅删除关联，不删除歌曲本身）
+        // 级联删除歌单-歌曲关联和关注记录
         playlistTrackMapper.delete(
                 new LambdaQueryWrapper<PlaylistTrack>().eq(PlaylistTrack::getPlaylistId, playlistId));
+        playlistFollowerMapper.delete(
+                new LambdaQueryWrapper<PlaylistFollower>().eq(PlaylistFollower::getPlaylistId, playlistId));
 
-        // 删除歌单本身
         playlistMapper.deleteById(playlist.getId());
 
         log.info("[PlaylistService] 删除歌单 playlistId={}, ownerId={}", playlistId, ownerId);
@@ -82,7 +106,6 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         List<Long> trackIds = req.getTrackIds();
 
-        // 查询当前歌单中已存在的歌曲关联，过滤重复
         List<PlaylistTrack> existing = playlistTrackMapper.selectList(
                 new LambdaQueryWrapper<PlaylistTrack>()
                         .eq(PlaylistTrack::getPlaylistId, playlistId)
@@ -91,8 +114,10 @@ public class PlaylistServiceImpl implements PlaylistService {
                 .map(PlaylistTrack::getTrackId)
                 .collect(Collectors.toList());
 
-        // 计算当前最大排序号
-        Integer maxSort = existing.stream()
+        Integer maxSort = playlistTrackMapper.selectList(
+                new LambdaQueryWrapper<PlaylistTrack>()
+                        .eq(PlaylistTrack::getPlaylistId, playlistId))
+                .stream()
                 .map(PlaylistTrack::getSortOrder)
                 .max(Integer::compareTo)
                 .orElse(0);
@@ -129,6 +154,310 @@ public class PlaylistServiceImpl implements PlaylistService {
         log.info("[PlaylistService] 歌单移除歌曲 playlistId={}, deleted={}", playlistId, deleted);
     }
 
+    // ============================ 新增方法 ============================
+
+    @Override
+    public void updatePlaylist(Long playlistId, PlaylistUpdateDTO req) {
+        Long ownerId = getCurrentUserId();
+        Playlist playlist = getOwnedPlaylist(ownerId, playlistId);
+
+        if (req.getName() != null) {
+            playlist.setName(req.getName());
+        }
+        if (req.getDescription() != null) {
+            playlist.setDescription(req.getDescription());
+        }
+        if (req.getCoverUrl() != null) {
+            playlist.setCoverUrl(req.getCoverUrl());
+        }
+        if (req.getIsPublic() != null) {
+            playlist.setIsPublic(req.getIsPublic());
+        }
+
+        playlistMapper.updateById(playlist);
+        log.info("[PlaylistService] 更新歌单 playlistId={}, ownerId={}", playlistId, ownerId);
+    }
+
+    @Override
+    public PageResult<PlaylistVO> listMyPlaylists(Integer pageNum, Integer pageSize) {
+        Long ownerId = getCurrentUserId();
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+
+        Page<Playlist> page = new Page<>(current, size);
+        LambdaQueryWrapper<Playlist> wrapper = new LambdaQueryWrapper<Playlist>()
+                .eq(Playlist::getOwnerId, ownerId)
+                .orderByDesc(Playlist::getCreatedAt);
+        playlistMapper.selectPage(page, wrapper);
+
+        List<PlaylistVO> list = page.getRecords().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+
+        return new PageResult<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), list);
+    }
+
+    @Override
+    public PageResult<PlaylistSearchItemVO> searchPublicPlaylists(String keyword, Integer pageNum, Integer pageSize) {
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+
+        Page<Playlist> page = new Page<>(current, size);
+        LambdaQueryWrapper<Playlist> wrapper = new LambdaQueryWrapper<Playlist>()
+                .eq(Playlist::getIsPublic, true)
+                .orderByDesc(Playlist::getCreatedAt);
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(Playlist::getName, kw)
+                    .or().like(Playlist::getDescription, kw));
+        }
+
+        playlistMapper.selectPage(page, wrapper);
+
+        if (page.getRecords() == null || page.getRecords().isEmpty()) {
+            return new PageResult<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), new ArrayList<>());
+        }
+
+        // 批量查询 ownerName、trackCount、followerCount
+        List<Playlist> playlists = page.getRecords();
+        List<Long> playlistIds = playlists.stream().map(Playlist::getId).collect(Collectors.toList());
+        List<Long> ownerIds = playlists.stream().map(Playlist::getOwnerId).distinct().collect(Collectors.toList());
+
+        Map<Long, String> ownerNameMap = batchQueryOwnerNames(ownerIds);
+        Map<Long, Integer> trackCountMap = batchQueryTrackCounts(playlistIds);
+        Map<Long, Integer> followerCountMap = batchQueryFollowerCounts(playlistIds);
+
+        List<PlaylistSearchItemVO> list = playlists.stream().map(p -> {
+            PlaylistSearchItemVO vo = new PlaylistSearchItemVO();
+            vo.setId(p.getId());
+            vo.setName(p.getName());
+            vo.setDescription(p.getDescription());
+            vo.setCoverUrl(p.getCoverUrl());
+            vo.setOwnerName(ownerNameMap.get(p.getOwnerId()));
+            vo.setTrackCount(trackCountMap.getOrDefault(p.getId(), 0));
+            vo.setFollowerCount(followerCountMap.getOrDefault(p.getId(), 0));
+            vo.setCreatedAt(p.getCreatedAt());
+            return vo;
+        }).collect(Collectors.toList());
+
+        return new PageResult<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), list);
+    }
+
+    @Override
+    public PlaylistDetailVO getPlaylistDetail(Long playlistId) {
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
+        }
+
+        Long currentUserId = getCurrentUserIdOrNull();
+
+        // 私密歌单仅创建者可查
+        if (Boolean.FALSE.equals(playlist.getIsPublic())) {
+            if (currentUserId == null || !currentUserId.equals(playlist.getOwnerId())) {
+                throw new BusinessException(ResultCode.FORBIDDEN, "无权查看该歌单");
+            }
+        }
+
+        PlaylistDetailVO detail = new PlaylistDetailVO();
+        detail.setId(playlist.getId());
+        detail.setOwnerId(playlist.getOwnerId());
+        detail.setName(playlist.getName());
+        detail.setDescription(playlist.getDescription());
+        detail.setCoverUrl(playlist.getCoverUrl());
+        detail.setIsPublic(playlist.getIsPublic());
+        detail.setCreatedAt(playlist.getCreatedAt());
+        detail.setUpdatedAt(playlist.getUpdatedAt());
+
+        // 创建者用户名
+        User owner = userMapper.selectById(playlist.getOwnerId());
+        if (owner != null) {
+            detail.setOwnerName(owner.getDisplayName());
+        }
+
+        // isOwner / isFollowing
+        detail.setIsOwner(currentUserId != null && currentUserId.equals(playlist.getOwnerId()));
+        if (currentUserId != null) {
+            Long count = playlistFollowerMapper.selectCount(
+                    new LambdaQueryWrapper<PlaylistFollower>()
+                            .eq(PlaylistFollower::getPlaylistId, playlistId)
+                            .eq(PlaylistFollower::getUserId, currentUserId));
+            detail.setIsFollowing(count > 0);
+        } else {
+            detail.setIsFollowing(false);
+        }
+
+        // 歌曲列表
+        List<PlaylistTrack> playlistTracks = playlistTrackMapper.selectList(
+                new LambdaQueryWrapper<PlaylistTrack>()
+                        .eq(PlaylistTrack::getPlaylistId, playlistId)
+                        .orderByAsc(PlaylistTrack::getSortOrder));
+
+        detail.setTrackCount(playlistTracks.size());
+
+        if (playlistTracks.isEmpty()) {
+            detail.setTracks(new ArrayList<>());
+        } else {
+            List<Long> trackIds = playlistTracks.stream().map(PlaylistTrack::getTrackId).collect(Collectors.toList());
+            List<Track> tracks = trackMapper.selectBatchIds(trackIds);
+            Map<Long, Track> trackMap = tracks.stream().collect(Collectors.toMap(Track::getId, t -> t));
+
+            // 批量查专辑
+            List<Long> albumIds = tracks.stream().map(Track::getAlbumId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+            Map<Long, Album> albumMap = (albumIds.isEmpty() ? new ArrayList<Album>() : albumMapper.selectBatchIds(albumIds))
+                    .stream().collect(Collectors.toMap(Album::getId, a -> a));
+
+            // 批量查歌手
+            List<TrackArtist> trackArtists = trackArtistMapper.selectList(
+                    new LambdaQueryWrapper<TrackArtist>().in(TrackArtist::getTrackId, trackIds));
+            List<Long> artistIds = trackArtists.stream().map(TrackArtist::getArtistId).distinct().collect(Collectors.toList());
+            Map<Long, Artist> artistMap = (artistIds.isEmpty() ? new ArrayList<Artist>() : artistMapper.selectBatchIds(artistIds))
+                    .stream().collect(Collectors.toMap(Artist::getId, a -> a));
+            Map<Long, List<TrackArtist>> trackArtistsByTrack = trackArtists.stream()
+                    .collect(Collectors.groupingBy(TrackArtist::getTrackId));
+
+            List<PlaylistTrackItemVO> trackItems = playlistTracks.stream().map(pt -> {
+                PlaylistTrackItemVO item = new PlaylistTrackItemVO();
+                item.setTrackId(pt.getTrackId());
+                item.setSortOrder(pt.getSortOrder());
+
+                Track track = trackMap.get(pt.getTrackId());
+                if (track != null) {
+                    item.setTitle(track.getTitle());
+                    item.setDuration(track.getDuration());
+
+                    Album album = albumMap.get(track.getAlbumId());
+                    if (album != null) {
+                        item.setCoverUrl(album.getCoverUrl());
+                        item.setAlbumTitle(album.getTitle());
+                    }
+
+                    List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(pt.getTrackId(), new ArrayList<>());
+                    List<String> artistNames = tas.stream()
+                            .map(ta -> {
+                                Artist a = artistMap.get(ta.getArtistId());
+                                return a != null ? a.getName() : null;
+                            })
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                    item.setArtistNames(artistNames);
+                }
+                return item;
+            }).collect(Collectors.toList());
+
+            detail.setTracks(trackItems);
+        }
+
+        // followerCount
+        Long followerCount = playlistFollowerMapper.selectCount(
+                new LambdaQueryWrapper<PlaylistFollower>().eq(PlaylistFollower::getPlaylistId, playlistId));
+        detail.setFollowerCount(followerCount.intValue());
+
+        return detail;
+    }
+
+    @Override
+    @Transactional
+    public void followPlaylist(Long playlistId) {
+        Long userId = getCurrentUserId();
+        Playlist playlist = playlistMapper.selectById(playlistId);
+        if (playlist == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
+        }
+        if (Boolean.FALSE.equals(playlist.getIsPublic())) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "不能关注私密歌单");
+        }
+        if (userId.equals(playlist.getOwnerId())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "不能关注自己的歌单");
+        }
+
+        // 幂等：已关注则跳过
+        Long exists = playlistFollowerMapper.selectCount(
+                new LambdaQueryWrapper<PlaylistFollower>()
+                        .eq(PlaylistFollower::getPlaylistId, playlistId)
+                        .eq(PlaylistFollower::getUserId, userId));
+        if (exists > 0) {
+            return;
+        }
+
+        PlaylistFollower follower = new PlaylistFollower();
+        follower.setPlaylistId(playlistId);
+        follower.setUserId(userId);
+        playlistFollowerMapper.insert(follower);
+
+        log.info("[PlaylistService] 关注歌单 playlistId={}, userId={}", playlistId, userId);
+    }
+
+    @Override
+    @Transactional
+    public void unfollowPlaylist(Long playlistId) {
+        Long userId = getCurrentUserId();
+        // 幂等：未关注也直接返回成功
+        playlistFollowerMapper.delete(
+                new LambdaQueryWrapper<PlaylistFollower>()
+                        .eq(PlaylistFollower::getPlaylistId, playlistId)
+                        .eq(PlaylistFollower::getUserId, userId));
+        log.info("[PlaylistService] 取消关注歌单 playlistId={}, userId={}", playlistId, userId);
+    }
+
+    @Override
+    public PageResult<PlaylistSearchItemVO> listFollowedPlaylists(Integer pageNum, Integer pageSize) {
+        Long userId = getCurrentUserId();
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+
+        // 先分页查询 playlist_followers
+        Page<PlaylistFollower> followerPage = new Page<>(current, size);
+        LambdaQueryWrapper<PlaylistFollower> followerWrapper = new LambdaQueryWrapper<PlaylistFollower>()
+                .eq(PlaylistFollower::getUserId, userId)
+                .orderByDesc(PlaylistFollower::getFollowedAt);
+        playlistFollowerMapper.selectPage(followerPage, followerWrapper);
+
+        if (followerPage.getRecords() == null || followerPage.getRecords().isEmpty()) {
+            return new PageResult<>(followerPage.getCurrent(), followerPage.getSize(), followerPage.getTotal(), followerPage.getPages(), new ArrayList<>());
+        }
+
+        List<Long> playlistIds = followerPage.getRecords().stream()
+                .map(PlaylistFollower::getPlaylistId)
+                .collect(Collectors.toList());
+
+        // 查询对应的歌单（只返回公开歌单）
+        List<Playlist> playlists = playlistMapper.selectList(
+                new LambdaQueryWrapper<Playlist>()
+                        .in(Playlist::getId, playlistIds)
+                        .eq(Playlist::getIsPublic, true));
+
+        Map<Long, Playlist> playlistMap = playlists.stream().collect(Collectors.toMap(Playlist::getId, p -> p));
+
+        // 批量查询 ownerName、trackCount、followerCount
+        List<Long> ownerIds = playlists.stream().map(Playlist::getOwnerId).distinct().collect(Collectors.toList());
+        Map<Long, String> ownerNameMap = batchQueryOwnerNames(ownerIds);
+        Map<Long, Integer> trackCountMap = batchQueryTrackCounts(playlistIds);
+        Map<Long, Integer> followerCountMap = batchQueryFollowerCounts(playlistIds);
+
+        // 按 followed_at 顺序排列（保持分页顺序）
+        List<PlaylistSearchItemVO> list = followerPage.getRecords().stream()
+                .map(f -> {
+                    Playlist p = playlistMap.get(f.getPlaylistId());
+                    if (p == null) return null; // 私密歌单已被过滤
+                    PlaylistSearchItemVO vo = new PlaylistSearchItemVO();
+                    vo.setId(p.getId());
+                    vo.setName(p.getName());
+                    vo.setDescription(p.getDescription());
+                    vo.setCoverUrl(p.getCoverUrl());
+                    vo.setOwnerName(ownerNameMap.get(p.getOwnerId()));
+                    vo.setTrackCount(trackCountMap.getOrDefault(p.getId(), 0));
+                    vo.setFollowerCount(followerCountMap.getOrDefault(p.getId(), 0));
+                    vo.setCreatedAt(p.getCreatedAt());
+                    return vo;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        return new PageResult<>(followerPage.getCurrent(), followerPage.getSize(), followerPage.getTotal(), followerPage.getPages(), list);
+    }
+
     // ============================ 私有方法 ============================
 
     /**
@@ -156,5 +485,38 @@ public class PlaylistServiceImpl implements PlaylistService {
         resp.setCreatedAt(p.getCreatedAt());
         resp.setUpdatedAt(p.getUpdatedAt());
         return resp;
+    }
+
+    /**
+     * 批量查询用户名
+     */
+    private Map<Long, String> batchQueryOwnerNames(List<Long> ownerIds) {
+        if (ownerIds == null || ownerIds.isEmpty()) return new HashMap<>();
+        List<User> users = userMapper.selectBatchIds(ownerIds);
+        return users.stream().collect(Collectors.toMap(User::getId, User::getDisplayName));
+    }
+
+    /**
+     * 批量查询歌单的歌曲数量
+     */
+    private Map<Long, Integer> batchQueryTrackCounts(List<Long> playlistIds) {
+        if (playlistIds == null || playlistIds.isEmpty()) return new HashMap<>();
+        List<PlaylistTrack> all = playlistTrackMapper.selectList(
+                new LambdaQueryWrapper<PlaylistTrack>().in(PlaylistTrack::getPlaylistId, playlistIds));
+        return all.stream().collect(Collectors.groupingBy(PlaylistTrack::getPlaylistId))
+                .entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().size()));
+    }
+
+    /**
+     * 批量查询歌单的关注者数量
+     */
+    private Map<Long, Integer> batchQueryFollowerCounts(List<Long> playlistIds) {
+        if (playlistIds == null || playlistIds.isEmpty()) return new HashMap<>();
+        List<PlaylistFollower> all = playlistFollowerMapper.selectList(
+                new LambdaQueryWrapper<PlaylistFollower>().in(PlaylistFollower::getPlaylistId, playlistIds));
+        return all.stream().collect(Collectors.groupingBy(PlaylistFollower::getPlaylistId))
+                .entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().size()));
     }
 }
