@@ -27,6 +27,7 @@ export interface TrackListItem {
   albumTitle: string
   albumCover: string
   artists: TrackArtist[]
+  member: number
   status: number
   trackNumber: number
   discNumber: number
@@ -42,6 +43,7 @@ export interface TrackDetail {
   title: string
   albumId: string
   albumTitle?: string
+  member: number
   trackNumber: number
   discNumber: number
   status: number
@@ -59,7 +61,7 @@ export interface PageResult<T> {
   records: T[]
 }
 
-export function listTracks(params: { query?: string; albumId?: string; status?: number; pageNum: number; pageSize: number }): Promise<PageResult<TrackListItem>> {
+export function listTracks(params: { query?: string; albumId?: string; member?: number; status?: number; pageNum: number; pageSize: number }): Promise<PageResult<TrackListItem>> {
   return request.get<unknown, PageResult<TrackListItem>>('/admin/manage/tracks', { params })
 }
 
