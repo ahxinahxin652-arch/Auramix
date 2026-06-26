@@ -124,6 +124,7 @@ async function autoMigrate() {
         "play_count" BIGINT NOT NULL DEFAULT 0,
         "track_number" INTEGER NOT NULL,
         "disc_number" INTEGER NOT NULL DEFAULT 1,
+        "member" INTEGER NOT NULL DEFAULT 0,
         "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "tracks_album_id_fkey" FOREIGN KEY ("album_id") REFERENCES "albums" ("id") ON DELETE CASCADE ON UPDATE CASCADE
