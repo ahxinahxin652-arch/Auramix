@@ -76,7 +76,7 @@ let transformedUserStore = userStoreContent
   .replace(/import \{ defineStore \} from 'pinia'/g, 'const { defineStore } = global.mockPinia;')
   .replace(/import \{ ref, computed \} from 'vue'/g, 'const { ref, computed } = global.mockVue;')
   .replace(/import \{ backendFetch \} from '\.\.\/utils\/backendApi'/g, '')
-  .replace(/import\('\.\.\/routers\/index\.js'\)/g, 'Promise.resolve({ default: { push: (path) => { global.routerRedirect = path; } } })')
+  .replace(/import\('\.\.\/routers\/index\.js'\)/g, 'Promise.resolve({ default: { push: (path) => { global.routerRedirect = path; }, replace: (path) => { global.routerRedirect = path; } } })')
   .replace(/export const useUserStore/g, 'const useUserStore');
 
 // Combine them into a single runnable context
