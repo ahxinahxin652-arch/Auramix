@@ -14,13 +14,14 @@ class Track {
    * @param {BigInt|number} [params.playCount] - 流媒体总播放次数
    * @param {number} params.trackNumber       - 该曲目在专辑中的顺序
    * @param {number} [params.discNumber]      - 碟片序号
+   * @param {number} [params.member]          - 是否会员歌曲: 0非会员, 1会员
    * @param {Date|string} [params.createdAt]
    * @param {Date|string} [params.updatedAt]
    */
   constructor({
     id, albumId, title, duration = 0, lyricsUrl = '',
     status = 0, likedCount = 0, playCount = 0n,
-    trackNumber = 1, discNumber = 1, createdAt, updatedAt
+    trackNumber = 1, discNumber = 1, member = 0, createdAt, updatedAt
   }) {
     this.id = id
     this.albumId = albumId
@@ -32,6 +33,7 @@ class Track {
     this.playCount = playCount
     this.trackNumber = trackNumber
     this.discNumber = discNumber
+    this.member = member
     this.createdAt = createdAt || new Date().toISOString()
     this.updatedAt = updatedAt || new Date().toISOString()
   }
@@ -54,6 +56,7 @@ class Track {
       playCount: obj.playCount !== undefined ? obj.playCount : obj.play_count,
       trackNumber: obj.trackNumber !== undefined ? obj.trackNumber : obj.track_number,
       discNumber: obj.discNumber !== undefined ? obj.discNumber : obj.disc_number,
+      member: obj.member !== undefined ? obj.member : (obj.member ?? 0),
       createdAt: obj.createdAt !== undefined ? obj.createdAt : obj.created_at,
       updatedAt: obj.updatedAt !== undefined ? obj.updatedAt : obj.updated_at
     })

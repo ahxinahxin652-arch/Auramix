@@ -79,6 +79,7 @@ model Track {
   playCount   BigInt   @default(0) @map("play_count")
   trackNumber Int      @map("track_number")
   discNumber  Int      @default(1) @map("disc_number")
+  member      Int      @default(0) @map("member")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 

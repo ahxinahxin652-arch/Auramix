@@ -271,7 +271,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\server\\generated\\prisma-client",
+      "value": "E:\\Auramix\\desktop\\auramix\\server\\generated\\prisma-client",
       "fromEnvVar": null
     },
     "config": {
@@ -285,7 +285,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\prisma\\schema.prisma",
+    "sourceFilePath": "E:\\Auramix\\desktop\\auramix\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
