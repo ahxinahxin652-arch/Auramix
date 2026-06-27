@@ -9,9 +9,17 @@ import com.son.auramix.domain.entity.TrackArtist;
 import com.son.auramix.domain.vo.user.UserArtistDetailVO;
 import com.son.auramix.domain.vo.user.UserTrackSearchVO;
 import com.son.auramix.mapper.AlbumMapper;
+import com.son.auramix.mapper.ArtistFollowerMapper;
 import com.son.auramix.mapper.ArtistMapper;
 import com.son.auramix.mapper.TrackArtistMapper;
 import com.son.auramix.mapper.TrackMapper;
+import com.son.auramix.service.user.UserArtistService;
+import com.son.auramix.common.exception.BusinessException;
+import com.son.auramix.common.result.ResultCode;
+import com.son.auramix.domain.entity.ArtistFollower;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.son.auramix.security.user.UserPrincipal;
 import com.son.auramix.service.user.UserArtistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +35,7 @@ public class UserArtistServiceImpl implements UserArtistService {
     private final TrackArtistMapper trackArtistMapper;
     private final TrackMapper trackMapper;
     private final AlbumMapper albumMapper;
+    private final ArtistFollowerMapper artistFollowerMapper;
 
     @Override
     public UserArtistDetailVO getArtistDetail(Long artistId) {
@@ -115,5 +124,46 @@ public class UserArtistServiceImpl implements UserArtistService {
 
         vo.setTracks(trackVOs);
         return vo;
+    }
+
+    @Override
+    public void followArtist(Long artistId) {
+        Long userId = getCurrentUserId();
+        Artist artist = artistMapper.selectById(artistId);
+        if (artist == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "歌手不存在");
+        }
+        
+        Long count = artistFollowerMapper.selectCount(
+            new LambdaQueryWrapper<ArtistFollower>()
+                .eq(ArtistFollower::getArtistId, artistId)
+                .eq(ArtistFollower::getUserId, userId)
+        );
+        if (count > 0) {
+            return;
+        }
+        
+        ArtistFollower follower = new ArtistFollower();
+        follower.setArtistId(artistId);
+        follower.setUserId(userId);
+        artistFollowerMapper.insert(follower);
+    }
+
+    @Override
+    public void unfollowArtist(Long artistId) {
+        Long userId = getCurrentUserId();
+        artistFollowerMapper.delete(
+            new LambdaQueryWrapper<ArtistFollower>()
+                .eq(ArtistFollower::getArtistId, artistId)
+                .eq(ArtistFollower::getUserId, userId)
+        );
+    }
+    
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
+            return principal.getUserId();
+        }
+        throw new BusinessException(ResultCode.UNAUTHORIZED);
     }
 }
