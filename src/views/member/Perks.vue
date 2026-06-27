@@ -24,26 +24,25 @@ interface PlanBenefit {
   updatedAt?: string
 }
 
-// 预定义权益 key 映射：{ 标签, key, 类型(0=开关,1=数字,2=文本) }
+// 预定义权益标识：{ 标签, 类型(0=开关,1=数字,2=文本) }
 interface BenefitKeyOption {
   label: string
-  key: string
   type: number
 }
 
 const benefitKeyOptions: BenefitKeyOption[] = [
-  { label: '无损音质', key: 'lossless_audio', type: 0 },
-  { label: '下载限额', key: 'download_limit', type: 1 },
-  { label: '专属标识', key: 'exclusive_badge', type: 2 },
-  { label: '高清MV', key: 'hd_mv', type: 0 },
+  { label: '无损音质', type: 0 },
+  { label: '下载限额', type: 1 },
+  { label: '专属标识', type: 2 },
+  { label: '高清MV', type: 0 },
 ]
 
 function getBenefitLabel(key: string): string {
-  return benefitKeyOptions.find((o) => o.key === key)?.label ?? key
+  return key
 }
 
 function getBenefitType(key: string): number {
-  return benefitKeyOptions.find((o) => o.key === key)?.type ?? -1
+  return benefitKeyOptions.find((o) => o.label === key)?.type ?? -1
 }
 
 // 过滤掉已添加的权益标识（编辑模式下保留当前项）
@@ -51,7 +50,7 @@ const availableBenefitKeys = computed(() => {
   const usedKeys = benefitList.value
     .filter((b) => !isEdit.value || b.id !== editingId.value)
     .map((b) => b.benefitKey)
-  return benefitKeyOptions.filter((opt) => !usedKeys.includes(opt.key))
+  return benefitKeyOptions.filter((opt) => !usedKeys.includes(opt.label))
 })
 
 // ==================== 数据 ====================
@@ -420,9 +419,9 @@ onMounted(() => {
           >
             <el-option
               v-for="opt in availableBenefitKeys"
-              :key="opt.key"
+              :key="opt.label"
               :label="opt.label"
-              :value="opt.key"
+              :value="opt.label"
             />
           </el-select>
         </el-form-item>
