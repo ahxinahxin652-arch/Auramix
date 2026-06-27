@@ -20,29 +20,11 @@ const artistInfo = ref({
   }
 })
 
-// 关联真实歌曲
-const realTracks = ref([])
+// 最终展示的歌曲列表
+const displayTracks = ref([])
 
-// 编辑状态
-const showEditDialog = ref(false)
-const editName = ref('')
-const editBirthPlace = ref('')
-const editDescription = ref('')
-const editLinks = ref('')
-const editCoverImg = ref('')
-const editLoading = ref(false)
-
-const coverInputRef = ref(null)
-const isFollowed = ref(false)
-
-// 歌曲模拟数据（当数据库中无关联歌曲时的兜底显示）
-const mockTracks = ref([
-  { id: 'mock-1', title: '夜曲 (Nocturne)', album: '十一月的萧邦', duration: 226, playCount: 4212567, cover: '' },
-  { id: 'mock-2', title: '晴天 (Sunny Day)', album: '叶惠美', duration: 269, playCount: 6108493, cover: '' },
-  { id: 'mock-3', title: '七里香 (Common Jasmin Orange)', album: '七里香', duration: 283, playCount: 5891048, cover: '' },
-  { id: 'mock-4', title: '青花瓷 (Blue and White Porcelain)', album: '我很忙', duration: 239, playCount: 3940182, cover: '' },
-  { id: 'mock-5', title: '稻香 (Rice Field)', album: '魔杰座', duration: 283, playCount: 4761928, cover: '' }
-])
+// 加载状态
+const isLoading = ref(true)
 
 const scrollToTop = () => {
   const mainView = document.querySelector('.main-view')
@@ -63,23 +45,35 @@ watch(artistId, async () => {
 
 const loadArtistData = async () => {
   if (!artistId.value) return
+  isLoading.value = true
   try {
     const result = await window.electronAPI.getArtistById(artistId.value)
     if (result.success && result.data && result.data.artist) {
       const artist = result.data.artist
+      let parsedMetadata = { birthPlace: '', description: '', links: [] }
+      if (artist.metadata) {
+        try {
+          parsedMetadata = JSON.parse(artist.metadata)
+        } catch (e) {
+          parsedMetadata.description = artist.metadata
+        }
+      }
+
       artistInfo.value = {
         id: artist.id,
         name: artist.name,
         coverImg: artist.coverImg || '',
-        metadata: artist.metadata ? JSON.parse(artist.metadata) : { birthPlace: '', description: '', links: [] }
+        metadata: parsedMetadata
       }
-      realTracks.value = artist.tracks || []
+      displayTracks.value = artist.tracks || []
     } else {
       ElMessage.error('歌手加载失败: ' + (result.message || '未知错误'))
     }
   } catch (err) {
     console.error('加载歌手数据出错:', err)
     ElMessage.error('加载歌手数据出错')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -99,10 +93,7 @@ const monthlyListeners = computed(() => {
   return count.toLocaleString()
 })
 
-// 最终展示的歌曲列表
-const displayTracks = computed(() => {
-  return realTracks.value.length > 0 ? realTracks.value : mockTracks.value
-})
+// 最终展示的歌曲列表 (已改为 ref)
 
 // 当前歌手是否有歌正在播放
 const isArtistPlaying = computed(() => {
@@ -160,104 +151,6 @@ const isTrackPlaying = (trackId) => {
   return isTrackActive(trackId) && player.isPlaying
 }
 
-// 编辑弹窗操作
-const openEditDialog = () => {
-  editName.value = artistInfo.value.name
-  editBirthPlace.value = artistInfo.value.metadata.birthPlace || ''
-  editDescription.value = artistInfo.value.metadata.description || ''
-  editLinks.value = (artistInfo.value.metadata.links || []).join('\n')
-  editCoverImg.value = artistInfo.value.coverImg || ''
-  showEditDialog.value = true
-}
-
-const triggerCoverInput = () => {
-  coverInputRef.value?.click()
-}
-
-const handleCoverUpload = async (e) => {
-  const file = e.target.files[0]
-  if (!file) return
-  const ALLOWED_IMG_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp']
-  if (!ALLOWED_IMG_TYPES.includes(file.type)) {
-    ElMessage.error('不支持的图片格式，请选择 PNG/JPG/WEBP/GIF/BMP')
-    return
-  }
-  try {
-    const base64 = await resizeImage(file, 1920) // 提升至 1920 高清大小
-    editCoverImg.value = base64
-  } catch (err) {
-    ElMessage.error('图片处理失败: ' + err.message)
-  }
-  e.target.value = ''
-}
-
-const resizeImage = (file, maxPx) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        let targetW = img.width
-        let targetH = img.height
-        if (targetW > maxPx || targetH > maxPx) {
-          if (targetW > targetH) {
-            targetH = Math.round((targetH / targetW) * maxPx)
-            targetW = maxPx
-          } else {
-            targetW = Math.round((targetW / targetH) * maxPx)
-            targetH = maxPx
-          }
-        }
-        canvas.width = targetW
-        canvas.height = targetH
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, targetW, targetH)
-        resolve(canvas.toDataURL('image/jpeg', 0.9)) // 提升压缩质量至 0.90
-      }
-      img.onerror = () => reject(new Error('图片加载错误'))
-      img.src = ev.target.result
-    }
-    reader.onerror = () => reject(new Error('图片读取错误'))
-    reader.readAsDataURL(file)
-  })
-}
-
-const handleSaveEdit = async () => {
-  const nameVal = editName.value.trim()
-  if (!nameVal) {
-    ElMessage.warning('歌手姓名不能为空')
-    return
-  }
-  
-  editLoading.value = true
-  try {
-    const linksArray = editLinks.value.split('\n').map(l => l.trim()).filter(Boolean)
-    const updates = {
-      name: nameVal,
-      coverImg: editCoverImg.value || null,
-      metadata: {
-        birthPlace: editBirthPlace.value.trim(),
-        description: editDescription.value.trim(),
-        links: linksArray
-      }
-    }
-    
-    const result = await window.electronAPI.updateArtist(artistId.value, updates)
-    if (result.success) {
-      ElMessage.success('更新歌手信息成功')
-      showEditDialog.value = false
-      await loadArtistData()
-    } else {
-      ElMessage.error(result.message || '更新失败')
-    }
-  } catch (err) {
-    ElMessage.error('更新发生错误: ' + err.message)
-  } finally {
-    editLoading.value = false
-  }
-}
-
 const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00'
   const m = Math.floor(seconds / 60)
@@ -273,6 +166,11 @@ const formatPlayCount = (num) => {
 
 <template>
   <div class="artist-detail">
+    <div v-if="isLoading" class="page-loading-state">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+    <template v-else>
     <!-- Widescreen Banner Section -->
     <div class="artist-banner">
       <!-- 模糊背景层 -->
@@ -337,26 +235,6 @@ const formatPlayCount = (num) => {
         {{ isFollowed ? 'Following' : 'Follow' }}
       </button>
 
-      <!-- Edit bio button -->
-      <button class="edit-bio-btn-outline" @click="openEditDialog">
-        Edit Profile
-      </button>
-
-      <!-- More options ellipsis -->
-      <el-dropdown trigger="click" @command="(cmd) => cmd === 'edit' ? openEditDialog() : null">
-        <button class="options-ellipsis">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="2"/>
-            <circle cx="12" cy="12" r="2"/>
-            <circle cx="19" cy="12" r="2"/>
-          </svg>
-        </button>
-        <template #dropdown>
-          <el-dropdown-menu class="dark-dropdown">
-            <el-dropdown-item command="edit">编辑歌手资料</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
     </div>
 
     <!-- Main Content Layout (1 Column, About section removed) -->
@@ -431,65 +309,7 @@ const formatPlayCount = (num) => {
       </div>
     </div>
 
-    <!-- 编辑歌手资料弹窗 (Element Plus) -->
-    <el-dialog
-      v-model="showEditDialog"
-      title="Edit Profile"
-      width="460px"
-      :close-on-click-modal="false"
-      class="custom-dialog"
-    >
-      <div class="edit-dialog-content">
-        <!-- 表单头像上传 -->
-        <div class="edit-avatar-upload" @click="triggerCoverInput">
-          <img v-if="editCoverImg" :src="editCoverImg" class="upload-avatar" alt="avatar" />
-          <div v-else class="upload-placeholder">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-            <span>点击上传歌手图片</span>
-          </div>
-          <input
-            type="file"
-            ref="coverInputRef"
-            style="display: none"
-            accept="image/*"
-            @change="handleCoverUpload"
-          />
-        </div>
-        
-        <!-- 表单 -->
-        <div class="edit-form">
-          <div class="form-item">
-            <label>歌手姓名</label>
-            <input type="text" v-model="editName" placeholder="输入歌手姓名" />
-          </div>
-          <div class="form-item">
-            <label>国家 / 地区</label>
-            <input type="text" v-model="editBirthPlace" placeholder="例如：日本神户 / 台湾台北" />
-          </div>
-          <div class="form-item">
-            <label>主页 / 链接 (每行一个)</label>
-            <textarea v-model="editLinks" rows="2" placeholder="例如：https://sim.music/"></textarea>
-          </div>
-          <div class="form-item">
-            <label>歌手简介 / Bio</label>
-            <textarea v-model="editDescription" rows="4" placeholder="输入歌手介绍..."></textarea>
-          </div>
-        </div>
-      </div>
-      
-      <template #footer>
-        <div class="dialog-footer">
-          <button class="cancel-btn" @click="showEditDialog = false" :disabled="editLoading">取消</button>
-          <button class="save-btn" @click="handleSaveEdit" :disabled="editLoading">
-            {{ editLoading ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </template>
-    </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -1027,5 +847,18 @@ const formatPlayCount = (num) => {
 
 .dark-dropdown :deep(.el-dropdown-menu__item:hover) {
   background-color: var(--surface-3) !important;
+}
+.page-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  font-size: 14px;
+}
+.page-loading-state .spinner {
+  margin-bottom: 12px;
 }
 </style>

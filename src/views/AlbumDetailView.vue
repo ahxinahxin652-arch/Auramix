@@ -254,6 +254,18 @@ function resizeImage(file, maxPx) {
   })
 }
 
+function parseArtists(track) {
+  if (track.artistNames && track.artistIds) {
+    return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name }))
+  }
+  if (!track.artists) return []
+  try {
+    return JSON.parse(track.artists)
+  } catch (e) {
+    return []
+  }
+}
+
 async function handleSaveEdit() {
   const title = editTitle.value.trim()
   if (!title) {
@@ -288,7 +300,12 @@ async function handleSaveEdit() {
 </script>
 
 <template>
-  <div class="album-detail-view" v-loading="isLoading">
+  <div class="album-detail-view">
+    <div v-if="isLoading" class="page-loading-state">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+    <template v-else>
     <!-- 顶部渐变横幅与信息区 -->
     <div class="album-banner">
       <!-- 隐藏的文件选择 input -->
@@ -302,7 +319,7 @@ async function handleSaveEdit() {
       
       <div class="album-header">
         <!-- 专辑封面 -->
-        <div class="album-cover" @click="openEditDialog" title="编辑专辑信息">
+        <div class="album-cover">
           <img v-if="albumInfo.coverUrl" :src="albumInfo.coverUrl" class="cover-img" alt="" />
           <div v-else class="cover-empty">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
@@ -310,13 +327,6 @@ async function handleSaveEdit() {
               <circle cx="6" cy="18" r="3"/>
               <circle cx="18" cy="16" r="3"/>
             </svg>
-          </div>
-          <div class="cover-hover-overlay">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 20h9"/>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-            <span>修改专辑</span>
           </div>
         </div>
 
@@ -371,27 +381,6 @@ async function handleSaveEdit() {
             <line x1="4" y1="4" x2="9" y2="9"/>
           </svg>
         </button>
-
-        <!-- Edit Album button -->
-        <button class="edit-album-btn-outline" @click="openEditDialog">
-          编辑专辑
-        </button>
-
-        <!-- More options ellipsis -->
-        <el-dropdown trigger="click" @command="(cmd) => cmd === 'edit' ? openEditDialog() : null">
-          <button class="options-ellipsis">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="5" cy="12" r="2"/>
-              <circle cx="12" cy="12" r="2"/>
-              <circle cx="19" cy="12" r="2"/>
-            </svg>
-          </button>
-          <template #dropdown>
-            <el-dropdown-menu class="dark-dropdown">
-              <el-dropdown-item command="edit">编辑专辑信息</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
       </div>
 
       <!-- 歌曲列表表格 -->
@@ -440,9 +429,9 @@ async function handleSaveEdit() {
               <div class="title-details">
                 <span class="track-title-text">{{ track.title }}</span>
                 <span class="track-artists-links">
-                  <span v-for="(tArt, tIdx) in (track.artists ? JSON.parse(track.artists) : [])" :key="tArt.id">
+                  <span v-for="(tArt, tIdx) in parseArtists(track)" :key="tArt.id || tIdx">
                     <span class="artist-link-small" @click.stop="goToArtist(tArt.id)">{{ tArt.name }}</span>
-                    <span v-if="tIdx < JSON.parse(track.artists).length - 1">, </span>
+                    <span v-if="tIdx < parseArtists(track).length - 1">, </span>
                   </span>
                 </span>
               </div>
@@ -457,81 +446,8 @@ async function handleSaveEdit() {
         </div>
       </div>
     </div>
-
-    <!-- 编辑专辑对话框 -->
-    <div v-if="showEditDialog" class="dialog-overlay" @click.self="showEditDialog = false">
-      <div class="dialog edit-dialog" @click.stop>
-        <h3 class="dialog-title">编辑专辑信息</h3>
-        
-        <div class="edit-body">
           <!-- 左侧封面区域 -->
-          <div
-            class="edit-cover-area"
-            @click="triggerCoverInput"
-            @mouseenter="editCoverHover = true"
-            @mouseleave="editCoverHover = false"
-          >
-            <img v-if="editCoverUrl" :src="editCoverUrl" class="edit-cover-img" alt="" />
-            <div v-else class="edit-cover-empty">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M9 18V5l12-2v13"/>
-                <circle cx="6" cy="18" r="3"/>
-                <circle cx="18" cy="16" r="3"/>
-              </svg>
-              <span class="cover-add-text">选择图片</span>
-            </div>
-            <div v-if="editCoverUrl && editCoverHover" class="edit-cover-overlay">
-              <button class="cover-remove-btn" @click.stop="removeCover" title="移除封面">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
-              <span class="cover-change-text">更改封面</span>
-            </div>
-          </div>
-
-          <!-- 右侧表单字段 -->
-          <div class="edit-fields">
-            <div class="form-item">
-              <label>专辑名称</label>
-              <input
-                v-model="editTitle"
-                class="dialog-input edit-input"
-                placeholder="专辑名称"
-                maxlength="50"
-              />
-            </div>
-            
-            <div class="form-item">
-              <label>发布时间</label>
-              <input
-                type="date"
-                v-model="editReleaseDate"
-                class="dialog-input edit-input"
-              />
-            </div>
-            
-            <div class="form-item">
-              <label>唱片类型</label>
-              <select v-model="editAlbumType" class="dialog-select edit-input">
-                <option value="album">专辑 (Album)</option>
-                <option value="single">单曲 (Single)</option>
-                <option value="ep">EP (Extended Play)</option>
-                <option value="compilation">精选集 (Compilation)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="edit-footer">
-          <button class="btn btn-secondary" @click="showEditDialog = false" :disabled="editLoading">取消</button>
-          <button class="btn btn-primary" @click="handleSaveEdit" :disabled="editLoading">
-            {{ editLoading ? '保存中...' : '保存' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -1131,5 +1047,18 @@ async function handleSaveEdit() {
 
 .btn-primary:active {
   transform: scale(0.98);
+}
+.page-loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-secondary);
+  background-color: var(--bg-primary);
+  font-size: 14px;
+}
+.page-loading-state .spinner {
+  margin-bottom: 12px;
 }
 </style>

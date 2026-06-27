@@ -95,7 +95,7 @@ function updateFileMetadata(data) {
 
 // ========== 歌手 API ==========
 function getArtistById(artistId) {
-  return apiFetch(`/api/music/artists/${encodeURIComponent(artistId)}`)
+  return apiFetch(`/api/music/remote/artists/${encodeURIComponent(artistId)}`)
 }
 
 function updateArtist(artistId, updates) {
@@ -104,7 +104,7 @@ function updateArtist(artistId, updates) {
 
 // ========== 专辑 API ==========
 function getAlbumById(albumId) {
-  return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`)
+  return apiFetch(`/api/music/remote/albums/${encodeURIComponent(albumId)}`)
 }
 
 function updateAlbum(albumId, updates) {
@@ -166,6 +166,11 @@ async function saveRemotePlaylist(playlistId, { name, description, isPublic, cle
 /** 删除远端歌单 */
 function deleteRemotePlaylist(playlistId) {
   return apiFetch(`/api/music/remote/playlists/${encodeURIComponent(playlistId)}`, { method: 'DELETE' })
+}
+
+function globalSearchRemote(params) {
+  const qs = new URLSearchParams(params).toString()
+  return apiFetch(`/api/music/remote/search?${qs}`)
 }
 
 // ========== 格式转换 API ==========
@@ -335,6 +340,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createRemotePlaylist,
   saveRemotePlaylist,
   deleteRemotePlaylist,
+  globalSearchRemote,
   // 歌手 API
   getArtistById,
   updateArtist,

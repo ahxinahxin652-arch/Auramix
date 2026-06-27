@@ -661,6 +661,30 @@ async function deleteMusicWarehouseRemote(token, playlistId) {
   return ApiResult.ok(null, result.message || '歌单已删除')
 }
 
+async function globalSearchRemote(token, params) {
+  const result = await musicDao.globalSearchRemote(params, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '搜索失败')
+  }
+  return ApiResult.ok(result.data)
+}
+
+async function getAlbumDetailRemote(token, albumId) {
+  const result = await musicDao.fetchAlbumDetailRemote(albumId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取专辑详情失败')
+  }
+  return ApiResult.ok({ album: result.data })
+}
+
+async function getArtistDetailRemote(token, artistId) {
+  const result = await musicDao.fetchArtistDetailRemote(artistId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取歌手详情失败')
+  }
+  return ApiResult.ok({ artist: result.data })
+}
+
 module.exports = {
   getMusicWarehouses,
   createMusicWarehouse,
@@ -685,4 +709,7 @@ module.exports = {
   createMusicWarehouseRemote,
   saveMusicWarehouseRemote,
   deleteMusicWarehouseRemote,
+  globalSearchRemote,
+  getAlbumDetailRemote,
+  getArtistDetailRemote,
 }

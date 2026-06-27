@@ -1047,6 +1047,10 @@ async function deletePlaylistRemote(playlistId, token) {
     return remoteApi.deletePlaylist(playlistId, token)
 }
 
+async function globalSearchRemote(params, token) {
+    return remoteApi.globalSearch(params, token)
+}
+
 // ========== 本地 SQLite 镜像同步 ==========
 // 远端 playlist 操作后同步创建/更新本地记录，保证本地 track 操作能查询到 playlist
 
@@ -1095,6 +1099,14 @@ async function updatePlaylistMirror(id, fields) {
     }
 }
 
+async function fetchAlbumDetailRemote(id, token) {
+    return remoteApi.fetchAlbumDetail(id, token)
+}
+
+async function fetchArtistDetailRemote(id, token) {
+    return remoteApi.fetchArtistDetail(id, token)
+}
+
 /**
  * 删除本地 SQLite 的 playlist 镜像
  */
@@ -1132,9 +1144,12 @@ module.exports = {
     updatePlaylistRemote,
     savePlaylistRemote,
     deletePlaylistRemote,
+    fetchAlbumDetailRemote,
+    fetchArtistDetailRemote,
 
     // ========== 本地 SQLite 镜像同步 ==========
     createPlaylistMirror,
     updatePlaylistMirror,
     deletePlaylistMirror,
+    globalSearchRemote,
 }

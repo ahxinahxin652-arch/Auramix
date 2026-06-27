@@ -1,6 +1,6 @@
 <script setup>
 // todo 假设现在播放的音乐库就一首歌曲，但是增加了20首，但是无法切换下一首（内存tracks未更新）
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSidebarStore } from './stores/sidebar'
 import { useLeftSidebarStore } from './stores/leftSidebar.js'
@@ -20,21 +20,38 @@ const localStorageStore = useLocalStorageStore()
 const isMaximized = ref(false)
 const sidebarTransition = ref(null)
 
-// ========== 左右侧边栏互斥 ==========
-// 左侧展开 → 关闭右侧
+// ========== 左右侧边栏互斥 (小屏时) ==========
+const MIN_WIDTH_FOR_BOTH_SIDEBARS = 1100
+
+// 左侧展开 → 检查是否需要关闭右侧
 watch(() => leftSidebarStore.mode, (newMode) => {
   if (newMode === 'expanded' && sidebarStore.isOpen) {
-    sidebarStore.setOpen(false)
-    localStorageStore.setRightBarShow(false)
+    if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+      sidebarStore.setOpen(false)
+      localStorageStore.setRightBarShow(false)
+    }
   }
 })
 
-// 右侧打开 → 缩回左侧
+// 右侧打开 → 检查是否需要缩回左侧
 watch(() => sidebarStore.isOpen, (isOpen) => {
   if (isOpen && leftSidebarStore.mode === 'expanded') {
-    leftSidebarStore.collapse()
+    if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+      leftSidebarStore.collapse()
+    }
   }
 })
+
+// 监听窗口大小改变，当窗口变小时，如果两个侧边栏都打开，则关闭其中一个
+const handleResize = () => {
+  sidebarStore.updateWidthOnResize()
+  if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+    if (leftSidebarStore.mode === 'expanded' && sidebarStore.isOpen) {
+      // 优先保留右侧（正在播放），缩回左侧
+      leftSidebarStore.collapse()
+    }
+  }
+}
 
 const canBack = ref(false)
 const canForward = ref(false)
@@ -59,6 +76,13 @@ onMounted(() => {
   
   // 初始化导航按钮状态
   updateNavButtons()
+  
+  window.addEventListener('resize', handleResize)
+  handleResize()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 
 function handleMinimize() {
@@ -105,6 +129,11 @@ const searchQuery = ref('')
 window.globalSearchQuery = searchQuery
 
 function handleSearch() {
+  if (currentRoute.value !== 'Search') {
+    router.push({ path: '/search', query: { q: searchQuery.value } })
+  } else {
+    router.replace({ path: '/search', query: { q: searchQuery.value } })
+  }
   window.dispatchEvent(new CustomEvent('global-search', { detail: { query: searchQuery.value } }))
 }
 
@@ -320,6 +349,7 @@ function onSidebarAfterLeave() {
         <aside
           class="right-sidebar-wrapper"
           v-show="sidebarStore.isOpen"
+          :style="{ width: sidebarStore.width + 'px', maxWidth: 'none' }"
           @click.stop
         >
           <RightSideBar />

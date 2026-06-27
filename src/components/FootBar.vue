@@ -15,12 +15,16 @@ const sidebarStore = useSidebarStore()
 const router = useRouter()
 
 const parsedArtists = computed(() => {
-  if (!player.currentTrack) return []
-  if (!player.currentTrack.artists) return []
+  const track = player.currentTrack
+  if (!track) return []
+  if (track.artistNames && track.artistIds) {
+    return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name, role: 'Main Artist' }))
+  }
+  if (!track.artists) return []
   try {
-    const list = typeof player.currentTrack.artists === 'string'
-      ? JSON.parse(player.currentTrack.artists)
-      : player.currentTrack.artists
+    const list = typeof track.artists === 'string'
+      ? JSON.parse(track.artists)
+      : track.artists
     return Array.isArray(list) ? list : []
   } catch (e) {
     return []

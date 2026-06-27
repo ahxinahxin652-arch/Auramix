@@ -180,6 +180,37 @@ module.exports = function(mainWindow) {
     }
   })
 
- 
+  // 远端全局搜索
+  router.get('/remote/search', async (req, res) => {
+    try {
+      res.json(await musicService.globalSearchRemote(getToken(req), req.query))
+    } catch (err) {
+      console.error('[Express] GET /remote/search error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 获取远端专辑信息
+  router.get('/remote/albums/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.getAlbumDetailRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] GET /remote/albums/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 获取远端歌手信息
+  router.get('/remote/artists/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.getArtistDetailRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] GET /remote/artists/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
   return router
 }
