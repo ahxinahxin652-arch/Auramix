@@ -38,6 +38,18 @@ interface UserMembership {
   purchaseCount: number
 }
 
+interface BenefitItem {
+  id: number
+  planId: number
+  benefitKey: string
+  benefitValue: string
+  benefitType: number
+  status: number
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
 // 会员方案：与后端 GET /api/admin/manage/member/plans 响应一致
 interface MemberPlan {
   id?: number
@@ -51,6 +63,7 @@ interface MemberPlan {
   sortOrder: number
   createdAt?: string
   updatedAt?: string
+  benefits?: BenefitItem[]
 }
 
 interface PaymentOrder {
@@ -492,6 +505,8 @@ onMounted(() => {
               </el-table-column>
 
               <el-table-column prop="durationMonths" label="时长(月)" width="100" align="center" />
+
+              <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
 
               <el-table-column label="价格" width="160" align="center">
                 <template #default="{ row }">
