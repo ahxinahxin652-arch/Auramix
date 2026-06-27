@@ -188,10 +188,11 @@ const sidebarWidth = computed(() => (collapsed.value ? SIDEBAR_COLLAPSED_WIDTH :
 
 <style scoped lang="scss">
 .admin-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: $bg-page;
+  overflow: hidden;
 }
 
 .admin-header {
@@ -273,7 +274,8 @@ const sidebarWidth = computed(() => (collapsed.value ? SIDEBAR_COLLAPSED_WIDTH :
   border-right: 1px solid $border-subtle;
   flex-shrink: 0;
   transition: width 200ms ease-out;
-  overflow: hidden;
+  overflow: hidden auto;
+  height: 100%;
 
   &--collapsed {
     :deep(.el-menu-item) {

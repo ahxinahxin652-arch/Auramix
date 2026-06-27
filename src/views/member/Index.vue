@@ -66,6 +66,12 @@ interface MemberPlan {
   benefits?: BenefitItem[]
 }
 
+// 分页响应数据类型
+interface PageData<T> {
+  records: T[]
+  total: number
+}
+
 interface PaymentOrder {
   id: number
   orderNo: string
@@ -87,12 +93,12 @@ interface PaymentOrder {
   updatedAt: string
 }
 
-// ==================== 会员用户：全量数据 + 前端过滤 ====================
+// ==================== 会员用户：服务端分页 + 筛选 ====================
 const userAllList = ref<UserMembership[]>([])
 const userLoading = ref(false)
 
 const userFilter = reactive({
-  query: '',
+  email: '',
   planLevel: undefined as number | undefined,
 })
 
@@ -141,64 +147,76 @@ const planRules = reactive<FormRules>({
   level: [{ required: true, message: '会员等级不能为空', trigger: 'change' }],
 })
 
-// ==================== 订阅记录：全量数据 + 前端过滤 ====================
+// ==================== 订阅记录：服务端过滤 ====================
 const subAllList = ref<PaymentOrder[]>([])
 const subLoading = ref(false)
 
 const subFilter = reactive({
-  query: '',
+  email: '',
+  payType: undefined as number | undefined,
   status: undefined as number | undefined,
 })
 
-const subList = computed(() => {
-  return subAllList.value.filter((s) => {
-    if (
-      subFilter.query &&
-      !s.orderNo.toLowerCase().includes(subFilter.query.toLowerCase()) &&
-      !s.displayName.toLowerCase().includes(subFilter.query.toLowerCase()) &&
-      !s.email.toLowerCase().includes(subFilter.query.toLowerCase())
-    )
-      return false
-    if (subFilter.status !== undefined && s.status !== subFilter.status) return false
-    return true
-  })
-})
+const userPage = ref(1)
+const userPageSize = ref(10)
+const userTotal = ref(0)
 
-// ==================== 会员用户：前端过滤 ====================
-const userList = computed(() => {
-  return userAllList.value.filter((u) => {
-    if (
-      userFilter.query &&
-      !u.displayName.toLowerCase().includes(userFilter.query.toLowerCase()) &&
-      !u.email.toLowerCase().includes(userFilter.query.toLowerCase())
-    )
-      return false
-    if (userFilter.planLevel !== undefined && u.planLevel !== userFilter.planLevel) return false
-    return true
-  })
-})
+const subPage = ref(1)
+const subPageSize = ref(10)
+const subTotal = ref(0)
 
 // ==================== 会员用户：方法 ====================
 async function loadUsers() {
   userLoading.value = true
   try {
-    const res = await request.get<unknown, UserMembership[]>('/admin/manage/member/userMemberships')
-    userAllList.value = Array.isArray(res) ? res : []
+    const params: Record<string, unknown> = {
+      page: userPage.value,
+      pageSize: userPageSize.value,
+    }
+    if (userFilter.email) params.email = userFilter.email
+    if (userFilter.planLevel !== undefined) params.planLevel = userFilter.planLevel
+
+    const res: any = await request.get('/admin/manage/member/search', { params })
+    if (res && typeof res === 'object' && 'records' in res) {
+      userAllList.value = res.records ?? []
+      userTotal.value = Number(res.total ?? 0)
+    } else if (Array.isArray(res)) {
+      userAllList.value = res
+      userTotal.value = res.length
+    } else {
+      userAllList.value = []
+      userTotal.value = 0
+    }
   } catch (err) {
     console.error('加载会员用户列表异常:', err)
     userAllList.value = []
+    userTotal.value = 0
   } finally {
     userLoading.value = false
   }
 }
 
 function handleUserSearch() {
-  // 前端过滤，computed 自动响应
+  userPage.value = 1
+  loadUsers()
 }
 
 function handleUserReset() {
-  userFilter.query = ''
+  userFilter.email = ''
   userFilter.planLevel = undefined
+  userPage.value = 1
+  loadUsers()
+}
+
+function handleUserPageChange(page: number) {
+  userPage.value = page
+  loadUsers()
+}
+
+function handleUserSizeChange(size: number) {
+  userPageSize.value = size
+  userPage.value = 1
+  loadUsers()
 }
 
 // ==================== 会员方案：方法 ====================
@@ -306,31 +324,66 @@ function goToPerks(row: MemberPlan) {
 async function loadSubscriptions() {
   subLoading.value = true
   try {
-    const res = await request.get<unknown, PaymentOrder[]>('/admin/manage/member/paymentOrders')
-    subAllList.value = Array.isArray(res) ? res : []
+    const params: Record<string, unknown> = {
+      page: subPage.value,
+      pageSize: subPageSize.value,
+    }
+    if (subFilter.email) params.email = subFilter.email
+    if (subFilter.payType !== undefined) params.payType = subFilter.payType
+    if (subFilter.status !== undefined) params.status = subFilter.status
+
+    const res: any = await request.get('/admin/manage/member/paymentOrders', { params })
+    if (res && typeof res === 'object' && 'records' in res) {
+      subAllList.value = res.records ?? []
+      subTotal.value = Number(res.total ?? 0)
+    } else if (Array.isArray(res)) {
+      subAllList.value = res
+      subTotal.value = res.length
+    } else {
+      subAllList.value = []
+      subTotal.value = 0
+    }
   } catch (err) {
     console.error('加载订阅记录异常:', err)
     subAllList.value = []
+    subTotal.value = 0
   } finally {
     subLoading.value = false
   }
 }
 
 function handleSubSearch() {
-  // 前端过滤，computed 自动响应
+  subPage.value = 1
+  loadSubscriptions()
 }
 
 function handleSubReset() {
-  subFilter.query = ''
+  subFilter.email = ''
+  subFilter.payType = undefined
   subFilter.status = undefined
+  subPage.value = 1
+  loadSubscriptions()
+}
+
+function handleSubPageChange(page: number) {
+  subPage.value = page
+  loadSubscriptions()
+}
+
+function handleSubSizeChange(size: number) {
+  subPageSize.value = size
+  subPage.value = 1
+  loadSubscriptions()
 }
 
 // ==================== Tab 切换加载 ====================
 function handleTabChange(name: string | number) {
   const tab = name as 'plans' | 'users' | 'subscriptions'
   if (tab === 'users' && userAllList.value.length === 0) {
+    userPage.value = 1
     loadUsers()
   } else if (tab === 'subscriptions' && subAllList.value.length === 0) {
+    subPage.value = 1
     loadSubscriptions()
   }
 }
@@ -389,12 +442,10 @@ function levelTagType(level: number): 'success' | 'warning' | 'primary' | 'dange
 
 function payTypeText(type: number): string {
   switch (type) {
-    case 1:
+    case 0:
       return '微信支付'
-    case 2:
+    case 1:
       return '支付宝'
-    case 3:
-      return 'Apple Pay'
     default:
       return '未知'
   }
@@ -405,13 +456,11 @@ function payStatusText(status: number): string {
     case 0:
       return '待支付'
     case 1:
-      return '处理中'
-    case 2:
       return '已支付'
+    case 2:
+      return '已取消'
     case 3:
       return '已退款'
-    case 4:
-      return '已取消'
     default:
       return '未知'
   }
@@ -422,12 +471,10 @@ function payStatusTagType(status: number): 'success' | 'warning' | 'danger' | 'i
     case 0:
       return 'warning'
     case 1:
-      return 'info'
-    case 2:
       return 'success'
-    case 3:
+    case 2:
       return 'info'
-    case 4:
+    case 3:
       return 'danger'
     default:
       return 'info'
@@ -566,8 +613,8 @@ onMounted(() => {
           <!-- 筛选栏 -->
           <div class="filter-bar">
             <el-input
-              v-model="userFilter.query"
-              placeholder="搜索用户昵称 / 邮箱..."
+              v-model="userFilter.email"
+              placeholder="搜索用户邮箱..."
               clearable
               class="filter-input"
               @keyup.enter="handleUserSearch"
@@ -589,14 +636,15 @@ onMounted(() => {
               <el-option label="终身会员" :value="4" />
             </el-select>
 
+            <el-button type="primary" :icon="Search" @click="handleUserSearch">搜索</el-button>
             <el-button :icon="Refresh" @click="handleUserReset">重置</el-button>
           </div>
 
           <!-- 用户表格 -->
           <el-card shadow="never" class="page-card">
-            <el-empty v-if="!userLoading && userList.length === 0" description="暂无会员用户数据" />
+            <el-empty v-if="!userLoading && userAllList.length === 0" description="暂无会员用户数据" />
 
-            <el-table v-else v-loading="userLoading" :data="userList" style="width: 100%">
+            <el-table v-else v-loading="userLoading" :data="userAllList" style="width: 100%">
               <el-table-column label="会员用户" min-width="220">
                 <template #default="{ row }">
                   <div class="member-user-info">
@@ -616,6 +664,14 @@ onMounted(() => {
                   <div>
                     <el-tag :type="levelTagType(row.planLevel)" size="small">{{ row.planName }}</el-tag>
                   </div>
+                </template>
+              </el-table-column>
+
+              <el-table-column label="会员等级" width="110" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="levelTagType(row.planLevel)" size="small" effect="plain">
+                    {{ levelText(row.planLevel) }}
+                  </el-tag>
                 </template>
               </el-table-column>
 
@@ -659,6 +715,19 @@ onMounted(() => {
               </el-table-column>
             </el-table>
           </el-card>
+
+          <!-- 会员用户分页 -->
+          <div class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="userPage"
+              v-model:page-size="userPageSize"
+              :total="userTotal"
+              :page-sizes="[10, 20, 50]"
+              layout="total, sizes, prev, pager, next"
+              @current-change="handleUserPageChange"
+              @size-change="handleUserSizeChange"
+            />
+          </div>
         </el-tab-pane>
 
         <!-- ========== 订阅记录 ========== -->
@@ -673,8 +742,8 @@ onMounted(() => {
           <!-- 筛选栏 -->
           <div class="filter-bar">
             <el-input
-              v-model="subFilter.query"
-              placeholder="搜索订单号 / 用户昵称 / 邮箱..."
+              v-model="subFilter.email"
+              placeholder="搜索用户邮箱..."
               clearable
               class="filter-input"
               @keyup.enter="handleSubSearch"
@@ -685,26 +754,36 @@ onMounted(() => {
             </el-input>
 
             <el-select
+              v-model="subFilter.payType"
+              placeholder="支付方式"
+              clearable
+              class="filter-select"
+            >
+              <el-option label="微信支付" :value="0" />
+              <el-option label="支付宝" :value="1" />
+            </el-select>
+
+            <el-select
               v-model="subFilter.status"
               placeholder="支付状态"
               clearable
               class="filter-select"
             >
               <el-option label="待支付" :value="0" />
-              <el-option label="处理中" :value="1" />
-              <el-option label="已支付" :value="2" />
+              <el-option label="已支付" :value="1" />
+              <el-option label="已取消" :value="2" />
               <el-option label="已退款" :value="3" />
-              <el-option label="已取消" :value="4" />
             </el-select>
 
+            <el-button type="primary" :icon="Search" @click="handleSubSearch">搜索</el-button>
             <el-button :icon="Refresh" @click="handleSubReset">重置</el-button>
           </div>
 
           <!-- 订阅记录表格 -->
           <el-card shadow="never" class="page-card">
-            <el-empty v-if="!subLoading && subList.length === 0" description="暂无订阅记录" />
+            <el-empty v-if="!subLoading && subAllList.length === 0" description="暂无订阅记录" />
 
-            <el-table v-else v-loading="subLoading" :data="subList" style="width: 100%">
+            <el-table v-else v-loading="subLoading" :data="subAllList" style="width: 100%">
               <el-table-column prop="orderNo" label="订单号" min-width="180">
                 <template #default="{ row }">
                   <span class="order-no">{{ row.orderNo }}</span>
@@ -759,13 +838,22 @@ onMounted(() => {
                 </template>
               </el-table-column>
 
-              <el-table-column label="创建时间" width="160" align="center">
-                <template #default="{ row }">
-                  <span>{{ formatDateTime(row.createdAt) }}</span>
-                </template>
-              </el-table-column>
+
             </el-table>
           </el-card>
+
+          <!-- 订阅记录分页 -->
+          <div class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="subPage"
+              v-model:page-size="subPageSize"
+              :total="subTotal"
+              :page-sizes="[10, 20, 50]"
+              layout="total, sizes, prev, pager, next"
+              @current-change="handleSubPageChange"
+              @size-change="handleSubSizeChange"
+            />
+          </div>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -1092,7 +1180,7 @@ onMounted(() => {
 
 .pagination-wrapper {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin-top: $spacing-md;
 }
 
