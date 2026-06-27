@@ -115,8 +115,8 @@ auramix:
       username: admin
       password: 123456
     token:
-      # 管理员 token 2 小时滑动过期
-      ttl-seconds: 7200000
+      # 管理员 token 7 天滑动过期
+      ttl-seconds: 604800
   user:
     token:
       # 用户 token 30 天滑动过期
