@@ -288,7 +288,14 @@ function normalizeMimeType(format) {
  * 读取独立文件的元数据（使用 music-metadata）
  */
 async function getFileMetadata(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) {
+  if (!filePath) {
+    return ApiResult.fail('文件路径为空')
+  }
+  // 如果是远程 URL，则无法解析本地元数据，直接返回空信息避免报错
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return ApiResult.ok({ lyrics: '', title: '', artist: '', album: '', coverBase64: '' })
+  }
+  if (!fs.existsSync(filePath)) {
     return ApiResult.fail('文件不存在')
   }
   try {

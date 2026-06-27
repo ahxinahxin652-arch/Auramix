@@ -240,17 +240,20 @@ async function playTrack(track, playlist = [], index = -1) {
     }
   }).catch(() => {})
 
-  // 通过 Electron IPC 读取文件为 Blob，绕过 file:// 限制
-  let audioBlob
-  try {
-    audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
-  } catch (err) {
-    console.error('读取音频文件失败:', err)
-    player.setPlaying(false)
-    return
+  // 通过 Electron IPC 读取文件的 Blob，绕过 file:// 限制
+  if (currentTrack.path.startsWith('http://') || currentTrack.path.startsWith('https://')) {
+    currentBlobUrl = currentTrack.path
+  } else {
+    let audioBlob
+    try {
+      audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
+    } catch (err) {
+      console.error('读取音频文件失败:', err)
+      player.setPlaying(false)
+      return
+    }
+    currentBlobUrl = URL.createObjectURL(audioBlob)
   }
-
-  currentBlobUrl = URL.createObjectURL(audioBlob)
 
   // 读取真实的后缀名
   const fileExtension = currentTrack.path.split('.').pop().toLowerCase()
@@ -319,7 +322,9 @@ function stopCurrent() {
     howl = null
   }
   if (currentBlobUrl) {
-    URL.revokeObjectURL(currentBlobUrl)
+    if (currentBlobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(currentBlobUrl)
+    }
     currentBlobUrl = null
   }
   stopProgressLoop()
