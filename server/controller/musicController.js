@@ -38,10 +38,10 @@ module.exports = function(mainWindow) {
     res.json(await musicService.updateRecentPlayedById(decodeURIComponent(id)))
   })
 
-  // 通过 track ID 解析当前最新的 track 信息
+  // 通过 track ID 解析当前最新的 track 信息 // 获取曲目详情及音频文件信息
   router.get('/tracks/:id', async (req, res) => {
     const { id } = req.params
-    res.json(await musicService.resolveTrackById(decodeURIComponent(id)))
+    res.json(await musicService.resolveTrackById(decodeURIComponent(id), getToken(req)))
   })
 
   // 更新曲目信息
@@ -59,7 +59,7 @@ module.exports = function(mainWindow) {
   // 通过 library ID 获取曲目列表
   router.get('/libraries/:id/tracks', async (req, res) => {
     const { id } = req.params
-    res.json(await musicService.getWarehouseTracksById(decodeURIComponent(id)))
+    res.json(await musicService.getWarehouseTracksById(decodeURIComponent(id), getToken(req)))
   })
 
   // 通过 library ID 导入文件

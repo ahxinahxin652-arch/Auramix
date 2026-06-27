@@ -1107,6 +1107,10 @@ async function fetchArtistDetailRemote(id, token) {
     return remoteApi.fetchArtistDetail(id, token)
 }
 
+async function fetchTrackDetailRemote(id, token) {
+    return remoteApi.fetchTrackDetail(id, token)
+}
+
 /**
  * 删除本地 SQLite 的 playlist 镜像
  */
@@ -1146,6 +1150,7 @@ module.exports = {
     deletePlaylistRemote,
     fetchAlbumDetailRemote,
     fetchArtistDetailRemote,
+    fetchTrackDetailRemote,
 
     // ========== 本地 SQLite 镜像同步 ==========
     createPlaylistMirror,

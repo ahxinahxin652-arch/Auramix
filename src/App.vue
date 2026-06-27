@@ -11,8 +11,11 @@ import { backendFetch } from './utils/backendApi'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
 import LeftSideBar from './components/LeftSideBar.vue'
+import PlaylistSelectorModal from './components/PlaylistSelectorModal.vue'
+import { useLibraryStore } from './stores/library'
 
 const userStore = useUserStore()
+const globalLibraryStore = useLibraryStore()
 
 // 会员标识 badge
 const membershipBadge = ref('')
@@ -123,6 +126,9 @@ onMounted(() => {
 
   // 获取会员标识
   fetchMembershipBadge()
+  
+  // 初始化媒体库同步
+  globalLibraryStore.initialize()
   
   window.addEventListener('resize', handleResize)
   handleResize()
@@ -424,4 +430,14 @@ function onSidebarAfterLeave() {
     <!-- ===== 底部播放条 ===== -->
     <FootBar @toggle-right-sidebar="toggleRightSidebar" />
   </div>
+
+  <!-- 全局挂载：歌单选择弹窗 -->
+  <PlaylistSelectorModal 
+    v-if="globalLibraryStore.selectorVisible"
+    :track-id="globalLibraryStore.selectorTrackId"
+    :x="globalLibraryStore.selectorX"
+    :y="globalLibraryStore.selectorY"
+    :visible="globalLibraryStore.selectorVisible"
+    @update:visible="globalLibraryStore.closeSelector()"
+  />
 </template>

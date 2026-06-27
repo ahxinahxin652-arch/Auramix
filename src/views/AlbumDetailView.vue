@@ -4,11 +4,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
+import { useLibraryStore } from '../stores/library'
 
 const router = useRouter()
 const route = useRoute()
 const player = usePlayerStore()
 const library = useMusicLibraryStore()
+const globalLibraryStore = useLibraryStore()
 
 const albumId = computed(() => route.params.id)
 const albumInfo = ref({
@@ -440,8 +442,23 @@ async function handleSaveEdit() {
             <!-- 模拟播放量 -->
             <span class="col-plays">{{ getPlayCount(track.title) }}</span>
 
-            <!-- 歌曲时长 -->
-            <span class="col-duration">{{ formatDuration(track.duration) }}</span>
+            <!-- 歌曲时长与添加按钮 -->
+            <span class="col-duration">
+              <button 
+                class="add-to-playlist-btn" 
+                :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
+                @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
+                title="添加到歌单"
+              >
+                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              {{ formatDuration(track.duration) }}
+            </span>
           </div>
         </div>
       </div>
@@ -792,6 +809,31 @@ async function handleSaveEdit() {
   height: 12px;
   width: 12px;
   margin-left: 1px;
+}
+
+.add-to-playlist-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-right: 24px;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+.track-row:hover .add-to-playlist-btn {
+  opacity: 0.6;
+}
+.add-to-playlist-btn.is-saved {
+  opacity: 1 !important;
+  color: #1db954;
+}
+.add-to-playlist-btn:hover {
+  opacity: 1 !important;
+  color: #fff;
+  transform: scale(1.1);
 }
 
 .active-playing-indicator .bar {

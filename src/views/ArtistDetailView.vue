@@ -3,10 +3,12 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
+import { useLibraryStore } from '../stores/library'
 
 const route = useRoute()
 const router = useRouter()
 const player = usePlayerStore()
+const globalLibraryStore = useLibraryStore()
 
 const artistId = computed(() => route.params.id)
 const artistInfo = ref({
@@ -229,10 +231,10 @@ const formatPlayCount = (num) => {
       <!-- Follow button -->
       <button 
         class="follow-btn-outline" 
-        :class="{ active: isFollowed }" 
-        @click="isFollowed = !isFollowed"
+        :class="{ active: globalLibraryStore.isFollowingArtist(artistInfo.id) }" 
+        @click="globalLibraryStore.toggleFollowArtist(artistInfo.id)"
       >
-        {{ isFollowed ? 'Following' : 'Follow' }}
+        {{ globalLibraryStore.isFollowingArtist(artistInfo.id) ? 'Following' : 'Follow' }}
       </button>
 
     </div>
@@ -302,6 +304,19 @@ const formatPlayCount = (num) => {
 
             <!-- Column 6: Duration -->
             <div class="col-time-cell">
+              <button 
+                class="add-to-playlist-btn" 
+                :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
+                @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
+                title="添加到歌单"
+              >
+                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
               {{ formatDuration(track.duration) }}
             </div>
           </div>
@@ -694,12 +709,39 @@ const formatPlayCount = (num) => {
 }
 
 .col-time-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   font-size: 13px;
   font-family: var(--mono);
   color: var(--text);
   opacity: 0.8;
-  text-align: right;
   padding-right: 8px;
+}
+
+.add-to-playlist-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-right: 16px;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+.track-row-item:hover .add-to-playlist-btn {
+  opacity: 0.6;
+}
+.add-to-playlist-btn.is-saved {
+  opacity: 1 !important;
+  color: #1db954;
+}
+.add-to-playlist-btn:hover {
+  opacity: 1 !important;
+  color: #fff;
+  transform: scale(1.1);
 }
 
 /* Modal form adjustments */

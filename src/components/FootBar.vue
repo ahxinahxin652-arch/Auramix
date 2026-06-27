@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
+import { useLibraryStore } from '../stores/library'
 import { Howl } from 'howler'
 
 // ========== 状态 ==========
@@ -12,6 +13,7 @@ let currentLyrics = ''
 
 const player = usePlayerStore()
 const sidebarStore = useSidebarStore()
+const globalLibraryStore = useLibraryStore()
 const router = useRouter()
 
 const parsedArtists = computed(() => {
@@ -454,6 +456,20 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        <button 
+          v-if="player.currentTrack"
+          class="add-to-playlist-btn" 
+          :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id) }"
+          @click.stop="globalLibraryStore.openSelector(player.currentTrack.id, $event.clientX, $event.clientY)" 
+          title="添加到歌单"
+        >
+          <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
       </div>
       <div v-else class="track-info">
         <div class="track-cover empty">
@@ -623,3 +639,31 @@ onUnmounted(() => {
     </div>
   </footer>
 </template>
+
+<style scoped>
+.add-to-playlist-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-left: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.foot-left:hover .add-to-playlist-btn {
+  opacity: 1;
+}
+.add-to-playlist-btn.is-saved {
+  opacity: 1 !important;
+  color: #1db954;
+}
+.add-to-playlist-btn:hover {
+  opacity: 1 !important;
+  color: #fff;
+  transform: scale(1.1);
+}
+</style>

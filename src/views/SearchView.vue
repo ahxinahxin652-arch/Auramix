@@ -2,9 +2,11 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useLibraryStore } from '../stores/library'
 
 const route = useRoute()
 const router = useRouter()
+const globalLibraryStore = useLibraryStore()
 
 const query = ref(route.query.q || '')
 const currentTab = ref('all') // all, tracks, artists, playlists, albums
@@ -153,7 +155,19 @@ onMounted(() => {
                 <div class="track-title">{{ track.title }}</div>
                 <div class="track-artist">{{ track.artistNames?.join(' / ') }}</div>
               </div>
-              <button class="add-btn" @click.stop="ElMessage.success('Add to library')">+</button>
+              <button 
+                class="add-to-playlist-btn" 
+                :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
+                @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
+                title="添加到歌单"
+              >
+                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -204,7 +218,19 @@ onMounted(() => {
             <div class="track-title">{{ track.title }}</div>
             <div class="track-artist">{{ track.artistNames?.join(' / ') }}</div>
           </div>
-          <button class="add-btn" @click.stop="ElMessage.success('Add to library')">+</button>
+          <button 
+            class="add-to-playlist-btn" 
+            :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
+            @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
+            title="添加到歌单"
+          >
+            <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+            </svg>
+            <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -332,13 +358,12 @@ onMounted(() => {
   margin-top: 4px;
 }
 
-.add-btn {
+.add-to-playlist-btn {
   background: transparent;
-  border: 1px solid #a7a7a7;
+  border: none;
   color: #a7a7a7;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -346,10 +371,13 @@ onMounted(() => {
   transition: all 0.2s;
 }
 
-.add-btn:hover {
+.add-to-playlist-btn:hover {
   color: #fff;
-  border-color: #fff;
-  transform: scale(1.05);
+  transform: scale(1.1);
+}
+
+.add-to-playlist-btn.is-saved {
+  color: #1db954;
 }
 
 /* Cards Grid */

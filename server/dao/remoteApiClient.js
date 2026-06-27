@@ -193,6 +193,10 @@ async function fetchArtistDetail(artistId, token) {
     return request('/api/user/artists/' + artistId, { token })
 }
 
+async function fetchTrackDetail(trackId, token) {
+    return request('/api/user/tracks/' + trackId, { token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -206,4 +210,5 @@ module.exports = {
     globalSearch,
     fetchAlbumDetail,
     fetchArtistDetail,
+    fetchTrackDetail
 }
