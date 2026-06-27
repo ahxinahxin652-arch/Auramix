@@ -1,5 +1,6 @@
 package com.son.auramix.controller.user;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.dto.user.PlaylistCreateDTO;
@@ -11,17 +12,22 @@ import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.service.user.PlaylistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户歌单接口
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/user/playlists")
 @RequiredArgsConstructor
 public class PlaylistController {
 
     private final PlaylistService playlistService;
+    private final ObjectMapper objectMapper;
 
     // ============================ 创建歌单 ============================
 
@@ -31,13 +37,30 @@ public class PlaylistController {
         return Result.success(resp, "歌单创建成功");
     }
 
-    // ============================ 更新歌单 ============================
+    // ============================ 更新歌单（JSON） ============================
 
-    @PutMapping("/{playlistId}")
+    @PutMapping(value = "/{playlistId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Result<Void> update(@PathVariable Long playlistId,
                                @Valid @RequestBody PlaylistUpdateDTO req) {
         playlistService.updatePlaylist(playlistId, req);
         return Result.success(null, "歌单已更新");
+    }
+
+    // ============================ 更新歌单（multipart — 含可选封面） ============================
+
+    @PutMapping(value = "/{playlistId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Result<PlaylistVO> updateWithCover(
+            @PathVariable Long playlistId,
+            @RequestPart("info") String infoJson,
+            @RequestPart(value = "cover", required = false) MultipartFile cover) {
+        try {
+            PlaylistUpdateDTO req = objectMapper.readValue(infoJson, PlaylistUpdateDTO.class);
+            PlaylistVO resp = playlistService.updatePlaylistWithCover(playlistId, req, cover);
+            return Result.success(resp, "歌单已保存");
+        } catch (Exception e) {
+            log.error("[PlaylistController] multipart 更新失败 playlistId={}", playlistId, e);
+            return Result.error("保存歌单失败: " + e.getMessage());
+        }
     }
 
     // ============================ 删除歌单 ============================

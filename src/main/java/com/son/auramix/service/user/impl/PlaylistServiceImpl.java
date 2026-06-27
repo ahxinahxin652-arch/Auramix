@@ -16,14 +16,19 @@ import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
+import com.son.auramix.service.oss.OssService;
+import com.son.auramix.service.oss.OssUploadResult;
 import com.son.auramix.service.user.PlaylistService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,6 +48,10 @@ public class PlaylistServiceImpl implements PlaylistService {
     private final TrackArtistMapper trackArtistMapper;
     private final ArtistMapper artistMapper;
     private final UserMapper userMapper;
+
+    /** OSS 服务（当 OSS 未配置时可能为 null） */
+    @Autowired(required = false)
+    private OssService ossService;
 
     // ============================ 已有方法 ============================
 
@@ -177,6 +186,50 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         playlistMapper.updateById(playlist);
         log.info("[PlaylistService] 更新歌单 playlistId={}, ownerId={}", playlistId, ownerId);
+    }
+
+    @Override
+    @Transactional
+    public PlaylistVO updatePlaylistWithCover(Long playlistId, PlaylistUpdateDTO req, MultipartFile cover) {
+        Long ownerId = getCurrentUserId();
+        Playlist playlist = getOwnedPlaylist(ownerId, playlistId);
+
+        // 1. 更新基本信息
+        if (req.getName() != null) {
+            playlist.setName(req.getName());
+        }
+        if (req.getDescription() != null) {
+            playlist.setDescription(req.getDescription());
+        }
+        if (req.getIsPublic() != null) {
+            playlist.setIsPublic(req.getIsPublic());
+        }
+
+        // 2. 处理封面
+        if (Boolean.TRUE.equals(req.getClearCover())) {
+            playlist.setCoverUrl(null);
+        } else if (cover != null && !cover.isEmpty()) {
+            if (ossService == null) {
+                throw new BusinessException(ResultCode.INTERNAL_ERROR, "OSS 服务未配置，无法上传封面");
+            }
+            try {
+                OssUploadResult ossResult = ossService.upload(
+                        cover.getBytes(), cover.getOriginalFilename(), "image");
+                playlist.setCoverUrl(ossResult.getUrl());
+                log.info("[PlaylistService] 封面上传成功 playlistId={}, url={}", playlistId, ossResult.getUrl());
+            } catch (IOException e) {
+                log.error("[PlaylistService] 封面上传失败 playlistId={}", playlistId, e);
+                throw new BusinessException(ResultCode.INTERNAL_ERROR, "封面上传失败: " + e.getMessage());
+            }
+        } else if (req.getCoverUrl() != null) {
+            // 如果通过 coverUrl 字段直接设置（JSON 兼容）
+            playlist.setCoverUrl(req.getCoverUrl());
+        }
+
+        playlistMapper.updateById(playlist);
+        log.info("[PlaylistService] 保存歌单(含封面) playlistId={}, ownerId={}", playlistId, ownerId);
+
+        return toResponse(playlist);
     }
 
     @Override

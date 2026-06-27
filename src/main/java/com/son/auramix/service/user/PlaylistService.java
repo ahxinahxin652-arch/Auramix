@@ -7,6 +7,7 @@ import com.son.auramix.domain.dto.user.PlaylistUpdateDTO;
 import com.son.auramix.domain.vo.user.PlaylistDetailVO;
 import com.son.auramix.domain.vo.user.PlaylistSearchItemVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 用户歌单服务
@@ -27,6 +28,9 @@ public interface PlaylistService {
 
     /** 更新歌单信息（仅创建者，所有字段可选） */
     void updatePlaylist(Long playlistId, PlaylistUpdateDTO req);
+
+    /** 更新歌单信息 + 可选封面上传（合并 multipart） */
+    PlaylistVO updatePlaylistWithCover(Long playlistId, PlaylistUpdateDTO req, MultipartFile cover);
 
     /** 我的歌单列表（含私密），分页 */
     PageResult<PlaylistVO> listMyPlaylists(Integer pageNum, Integer pageSize);

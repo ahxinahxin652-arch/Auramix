@@ -115,9 +115,12 @@ auramix:
       username: admin
       password: 123456
     token:
-      # 管理员 token 2 小时滑动过期
+      # 管理员 token 7 天滑动过期
       ttl-seconds: 604800
   user:
     token:
       # 用户 token 30 天滑动过期
       ttl-seconds: 2592000
+  # 内部 API Key — 用于桌面端 Express Server → Java 后端之间的服务间调用
+  # 桌面端通过 X-Internal-Api-Key 请求头传递此密钥，绕过 Admin JWT 认证
+  internal-api-key: auramix-desktop-internal-key-2026
