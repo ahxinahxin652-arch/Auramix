@@ -1,0 +1,7 @@
+package com.son.auramix.service.user;
+
+import com.son.auramix.domain.vo.user.UserArtistDetailVO;
+
+public interface UserArtistService {
+    UserArtistDetailVO getArtistDetail(Long artistId);
+}
