@@ -9,8 +9,9 @@ import com.son.auramix.domain.vo.admin.TrackListItemVO;
 import com.son.auramix.domain.entity.*;
 import com.son.auramix.mapper.*;
 import com.son.auramix.service.admin.TrackService;
-import com.son.auramix.service.admin.ReviewService;
+import com.son.auramix.event.TrackCreatedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,7 @@ public class TrackServiceImpl implements TrackService {
     private final TrackAudioResourceMapper audioMapper;
     private final TrackVideoResourceMapper videoMapper;
     private final TrackGenreMapper trackGenreMapper;
-    private final ReviewService reviewService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
@@ -265,7 +266,7 @@ public class TrackServiceImpl implements TrackService {
         t.setTrackNumber(req.getTrackNumber());
         t.setDiscNumber(req.getDiscNumber() != null ? req.getDiscNumber() : 1);
         t.setMember(req.getMember() != null ? req.getMember() : 0);
-        t.setStatus(req.getStatus() != null ? req.getStatus() : 0);
+        t.setStatus(req.getStatus() != null ? req.getStatus() : 3); // 默认待审核
         t.setLyricsUrl(req.getLyricsUrl());
         t.setDuration(req.getDuration() != null ? req.getDuration() : 0);
         t.setPlayCount(0L);
@@ -274,8 +275,9 @@ public class TrackServiceImpl implements TrackService {
 
         saveRelations(t.getId(), req.getArtists(), req.getAudioResources(), req.getVideoResources());
 
-        // 触发 AI 内容审核（异步）
-        reviewService.triggerReview(t.getId());
+        // 触发 AI 内容审核：通过 AFTER_COMMIT 事务事件异步触发，
+        // 避免异步线程在事务提交前查询不到刚插入的 track
+        eventPublisher.publishEvent(new TrackCreatedEvent(t.getId()));
     }
 
     @Override
@@ -338,8 +340,9 @@ public class TrackServiceImpl implements TrackService {
             saveRelations(id, null, null, req.getVideoResources());
         }
 
-        // 触发 AI 内容审核（异步）
-        reviewService.triggerReview(id);
+        // 触发 AI 内容审核：通过 AFTER_COMMIT 事务事件异步触发，
+        // 确保异步线程能读到本次事务提交的最新数据
+        eventPublisher.publishEvent(new TrackCreatedEvent(id));
     }
 
     @Override

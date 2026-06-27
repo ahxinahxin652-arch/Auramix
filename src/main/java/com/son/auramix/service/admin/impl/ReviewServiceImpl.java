@@ -48,8 +48,8 @@ public class ReviewServiceImpl implements ReviewService {
                 return;
             }
 
-            // 设置 Track.status = -3 (待审核，隔离播放)
-            track.setStatus(-3);
+            // 设置 Track.status = 3 (待审核，隔离播放)
+            track.setStatus(3);
             trackMapper.updateById(track);
 
             // 查询专辑信息
@@ -190,7 +190,7 @@ public class ReviewServiceImpl implements ReviewService {
             if (dto.getAdminVerdict() == 1) {
                 track.setStatus(0); // 正常
             } else {
-                track.setStatus(-1); // 已下架
+                track.setStatus(1); // 已下架
             }
             trackMapper.updateById(track);
         }
