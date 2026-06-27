@@ -5,6 +5,7 @@ import com.son.auramix.domain.dto.admin.MemberBenefitCreateDTO;
 import com.son.auramix.domain.dto.admin.MemberBenefitUpdateDTO;
 import com.son.auramix.domain.dto.admin.MembershipPlanCreateDTO;
 import com.son.auramix.domain.dto.admin.MembershipPlanUpdateDTO;
+import com.son.auramix.domain.dto.admin.PaymentOrderUpdateDTO;
 import com.son.auramix.domain.vo.admin.MembershipPlanVO;
 import com.son.auramix.domain.vo.admin.PlanBenefitsVO;
 import com.son.auramix.domain.vo.admin.PaymentOrderVO;
@@ -68,9 +69,21 @@ public class AdminMemberMangeController {
         return Result.success(userMembershipService.listAllUserMemberships());
     }
 
+    @PutMapping("/userMemberships/{id}/expire")
+    public Result<Void> expireMembership(@PathVariable Long id) {
+        userMembershipService.expireMembership(id);
+        return Result.success();
+    }
+
     @GetMapping("/paymentOrders")
     public Result<List<PaymentOrderVO>> listPaymentOrders() {
         return Result.success(paymentOrderService.listAllPaymentOrders());
+    }
+
+    @PutMapping("/paymentOrders/{id}")
+    public Result<Void> updatePaymentOrder(@PathVariable Long id, @Valid @RequestBody PaymentOrderUpdateDTO req) {
+        paymentOrderService.updatePaymentOrder(id, req);
+        return Result.success();
     }
 
 }
