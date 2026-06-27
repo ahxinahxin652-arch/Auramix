@@ -21,3 +21,6 @@
 
 /* MusicUnlockView + MusicConverterView — 共享样式 */
 @import './styles/shared.css';
+
+/* PremiumView.vue — 会员购买页 */
+@import './styles/premiumView.css';
