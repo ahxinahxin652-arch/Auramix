@@ -61,4 +61,10 @@ public class UserMemberManageController {
     public Result<List<UserPendingOrderVO>> pendingOrders() {
         return Result.success(userPaymentOrderService.listMyPendingOrders());
     }
+
+    @PutMapping("/userMemberships/{id}/expire")
+    public Result<Void> expireMembership(@PathVariable Long id) {
+        userMembershipService.expireMembership(id);
+        return Result.success();
+    }
 }

@@ -3,12 +3,15 @@ package com.son.auramix.controller.admin;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.dto.admin.MemberBenefitCreateDTO;
 import com.son.auramix.domain.dto.admin.MemberBenefitUpdateDTO;
+import com.son.auramix.domain.dto.admin.MemberSearchDTO;
 import com.son.auramix.domain.dto.admin.MembershipPlanCreateDTO;
 import com.son.auramix.domain.dto.admin.MembershipPlanUpdateDTO;
+import com.son.auramix.domain.dto.admin.PaymentOrderSearchDTO;
 import com.son.auramix.domain.dto.admin.PaymentOrderUpdateDTO;
 import com.son.auramix.domain.vo.admin.MembershipPlanVO;
 import com.son.auramix.domain.vo.admin.PlanBenefitsVO;
 import com.son.auramix.domain.vo.admin.PaymentOrderVO;
+import com.son.auramix.domain.vo.common.PageResult;
 import com.son.auramix.domain.vo.user.UserMembershipVO;
 import com.son.auramix.service.admin.MemberPlanService;
 import com.son.auramix.service.admin.PaymentOrderService;
@@ -64,20 +67,32 @@ public class AdminMemberMangeController {
         return Result.success();
     }
 
-    @GetMapping("/userMemberships")
-    public Result<List<UserMembershipVO>> listUserMemberships() {
-        return Result.success(userMembershipService.listAllUserMemberships());
-    }
-
-    @PutMapping("/userMemberships/{id}/expire")
-    public Result<Void> expireMembership(@PathVariable Long id) {
-        userMembershipService.expireMembership(id);
-        return Result.success();
+    @GetMapping("/search")
+    public Result<PageResult<UserMembershipVO>> searchMembers(@RequestParam(required = false) String email,
+                                                               @RequestParam(required = false) Integer planLevel,
+                                                               @RequestParam(defaultValue = "1") Integer page,
+                                                               @RequestParam(defaultValue = "10") Integer pageSize) {
+        MemberSearchDTO dto = new MemberSearchDTO();
+        dto.setEmail(email);
+        dto.setPlanLevel(planLevel);
+        dto.setPage(page);
+        dto.setPageSize(pageSize);
+        return Result.success(userMembershipService.searchMembers(dto));
     }
 
     @GetMapping("/paymentOrders")
-    public Result<List<PaymentOrderVO>> listPaymentOrders() {
-        return Result.success(paymentOrderService.listAllPaymentOrders());
+    public Result<PageResult<PaymentOrderVO>> listPaymentOrders(@RequestParam(required = false) String email,
+                                                                 @RequestParam(required = false) Integer payType,
+                                                                 @RequestParam(required = false) Integer status,
+                                                                 @RequestParam(defaultValue = "1") Integer page,
+                                                                 @RequestParam(defaultValue = "10") Integer pageSize) {
+        PaymentOrderSearchDTO dto = new PaymentOrderSearchDTO();
+        dto.setEmail(email);
+        dto.setPayType(payType);
+        dto.setStatus(status);
+        dto.setPage(page);
+        dto.setPageSize(pageSize);
+        return Result.success(paymentOrderService.searchPaymentOrders(dto));
     }
 
     @PutMapping("/paymentOrders/{id}")
