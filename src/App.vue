@@ -7,11 +7,21 @@ import { useLeftSidebarStore } from './stores/leftSidebar.js'
 import { useLocalStorageStore } from './stores/localStorage'
 import { useUserStore } from './stores/user'
 import { ElMessage } from 'element-plus'
+import { backendFetch } from './utils/backendApi'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
 import LeftSideBar from './components/LeftSideBar.vue'
 
 const userStore = useUserStore()
+
+// 会员标识 badge
+const membershipBadge = ref('')
+
+function findMemberBadge(benefits) {
+  if (!benefits || !Array.isArray(benefits)) return ''
+  const badge = benefits.find(b => b.benefitKey === '会员标识' && b.status === 1)
+  return badge?.benefitValue || ''
+}
 
 const router = useRouter()
 const sidebarStore = useSidebarStore()
@@ -55,6 +65,15 @@ const handleResize = () => {
 
 const canBack = ref(false)
 const canForward = ref(false)
+const refreshing = ref(false)
+
+function refreshPage() {
+  if (refreshing.value) return
+  refreshing.value = true
+  setTimeout(() => {
+    router.go(0)
+  }, 300)
+}
 
 const updateNavButtons = () => {
   nextTick(() => {
@@ -64,6 +83,31 @@ const updateNavButtons = () => {
     canBack.value = hasBack && typeof state.back === 'string' && !state.back.includes('login')
     canForward.value = hasForward && typeof state.forward === 'string' && !state.forward.includes('login')
   })
+}
+
+async function fetchMembershipBadge() {
+  try {
+    const membership = await backendFetch('/api/user/manage/member/myMembership').catch(() => null)
+    const membershipData = Array.isArray(membership) ? membership[0] : membership
+    if (!membershipData) {
+      membershipBadge.value = ''
+      return
+    }
+    const isExpired = new Date(membershipData.endDate).getTime() <= Date.now()
+    if (isExpired) {
+      // 会员已到期，调用到期接口
+      if (membershipData.id) {
+        await backendFetch(`/api/admin/manage/member/userMemberships/${membershipData.id}/expire`, {
+          method: 'PUT'
+        }).catch(() => {})
+      }
+      membershipBadge.value = ''
+      return
+    }
+    membershipBadge.value = findMemberBadge(membershipData.benefits)
+  } catch {
+    membershipBadge.value = ''
+  }
 }
 
 onMounted(() => {
@@ -76,6 +120,9 @@ onMounted(() => {
   
   // 初始化导航按钮状态
   updateNavButtons()
+
+  // 获取会员标识
+  fetchMembershipBadge()
   
   window.addEventListener('resize', handleResize)
   handleResize()
@@ -162,6 +209,8 @@ function handleUserCommand(cmd) {
   if (cmd === 'logout') {
     userStore.logout()
     ElMessage.success('已成功登出账号')
+  } else if (cmd === 'premium') {
+    router.push('/premium')
   } else {
     ElMessage.success(`点击了: ${labelMap[cmd] || cmd}`)
   }
@@ -253,6 +302,13 @@ function onSidebarAfterLeave() {
               <polyline points="12 5 19 12 12 19"></polyline>
             </svg>
           </button>
+          <button class="arrow-btn refresh-btn" @click="refreshPage" :disabled="refreshing" title="刷新">
+            <svg :class="{ spinning: refreshing }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -287,6 +343,15 @@ function onSidebarAfterLeave() {
 
       <!-- Right: User Avatar Dropdown & Traffic Lights -->
       <div class="header-right">
+        <span v-if="membershipBadge" class="membership-badge-gold">{{ membershipBadge }}</span>
+        <div class="premium-icon-btn" :class="{ 'has-badge': membershipBadge }" @click="router.push('/premium')" title="会员">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
+            <path d="M3 20h18"/>
+          </svg>
+          <span class="premium-hover-text">会员</span>
+        </div>
+
         <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-profile-dropdown">
           <div class="user-avatar-btn">
             <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" class="user-avatar-img" />
