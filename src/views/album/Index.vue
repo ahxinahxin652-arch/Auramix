@@ -107,7 +107,7 @@ async function loadData() {
   loading.value = true
   try {
     const res = await listAlbums({ query: filter.query, pageNum: pageNum.value, pageSize: pageSize.value })
-    list.value = res.records; total.value = res.total
+    list.value = res.records; total.value = Number(res.total) || 0
   } catch (err) { console.error('加载专辑列表失败:', err) } finally { loading.value = false }
 }
 

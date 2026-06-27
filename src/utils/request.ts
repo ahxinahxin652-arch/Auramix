@@ -14,6 +14,21 @@ const service: AxiosInstance = axios.create({
   timeout: 15000,
 })
 
+// 防止并发请求重复触发登出跳转
+let isRedirecting = false
+
+/** 统一处理凭证过期：清状态 + 提示 + 跳登录（防重复） */
+function handleSessionExpired(query: Record<string, string>, message: string) {
+  if (isRedirecting) return
+  isRedirecting = true
+  const auth = useAuthStore()
+  auth.clearAuth()
+  ElMessage.warning(message)
+  router.push({ path: '/login', query }).finally(() => {
+    isRedirecting = false
+  })
+}
+
 // 请求拦截器:自动注入 Bearer token
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -43,17 +58,13 @@ service.interceptors.response.use(
 
     // 4012: token 失效,清状态 + 跳登录
     if (res.code === 4012) {
-      const auth = useAuthStore()
-      auth.clearAuth()
-      router.push({ path: '/login', query: { expired: '1' } })
+      handleSessionExpired({ expired: '1' }, res.message || '会话已过期,请重新登录')
       return Promise.reject(new Error(res.message || '会话已过期'))
     }
 
     // 4031: 账号停用,清状态 + 跳登录
     if (res.code === 4031) {
-      const auth = useAuthStore()
-      auth.clearAuth()
-      router.push({ path: '/login', query: { disabled: '1' } })
+      handleSessionExpired({ disabled: '1' }, res.message || '账号已被停用')
       return Promise.reject(new Error(res.message || '账号已被停用'))
     }
 
@@ -70,6 +81,12 @@ service.interceptors.response.use(
     return Promise.reject(new Error(msg))
   },
   (error) => {
+    // HTTP 401: 凭证无效或过期（后端未返回标准业务码时的兜底）
+    if (error.response?.status === 401) {
+      handleSessionExpired({ expired: '1' }, '登录凭证已过期,请重新登录')
+      return Promise.reject(new Error('登录凭证已过期'))
+    }
+
     ElMessage.error('网络异常,请检查连接')
     return Promise.reject(error)
   },

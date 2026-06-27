@@ -54,6 +54,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/member/Perks.vue'),
         meta: { requiresAuth: true, title: '会员权益管理' },
       },
+      {
+        path: 'approval',
+        name: 'Approval',
+        component: () => import('@/views/approval/Index.vue'),
+        meta: { requiresAuth: true, title: '智能审批' },
+      },
     ],
   },
   {

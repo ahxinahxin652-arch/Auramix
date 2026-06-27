@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus,
@@ -26,6 +26,15 @@ const auth = useAuthStore()
 // ---- 数据表格状态 ----
 const list = ref<AdminProfile[]>([])
 const loading = ref(false)
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
+
+const pagedList = computed(() => {
+  const start = (pageNum.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return list.value.slice(start, end)
+})
 
 // ---- 新建管理员弹窗状态 ----
 const createDialogVisible = ref(false)
@@ -72,11 +81,21 @@ async function loadData() {
   try {
     const res = await fetchAdminsApi()
     list.value = res
+    total.value = res.length
   } catch (err) {
     console.error('加载管理员列表异常:', err)
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(p: number) {
+  pageNum.value = p
+}
+
+function handleSizeChange(size: number) {
+  pageSize.value = size
+  pageNum.value = 1
 }
 
 // ---- 启用/停用管理员 ----
@@ -203,11 +222,11 @@ onMounted(() => {
 
     <div class="page-admin__content">
       <div class="page-admin__filter">
-        <el-button :icon="Refresh" @click="loadData"> 刷新数据 </el-button>
+        <el-button :icon="Refresh" @click="() => { pageNum = 1; loadData() }"> 刷新数据 </el-button>
       </div>
-
+      <!-- 数据表格 -->
       <el-card shadow="never" class="page-card">
-        <el-table v-loading="loading" :data="list" style="width: 100%">
+        <el-table v-loading="loading" :data="pagedList" style="width: 100%">
           <el-table-column label="用户名" min-width="150">
             <template #default="{ row }">
               <div class="admin-info">
@@ -281,6 +300,18 @@ onMounted(() => {
             </template>
           </el-table-column>
         </el-table>
+
+        <div class="pagination-wrapper">
+          <el-pagination
+            v-model:current-page="pageNum"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="handlePageChange"
+            @size-change="handleSizeChange"
+          />
+        </div>
       </el-card>
     </div>
 
@@ -394,5 +425,11 @@ onMounted(() => {
 
 .text-placeholder {
   color: $text-tertiary;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: $spacing-md;
 }
 </style>

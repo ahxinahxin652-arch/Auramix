@@ -7,8 +7,16 @@ export interface AdminCreateParams {
   email?: string
 }
 
+export interface PageResult<T> {
+  current: number
+  size: number
+  total: number
+  pages: number
+  records: T[]
+}
+
 /**
- * 全量获取管理员列表
+ * 分页获取管理员列表
  * GET /api/admin/manage/admins
  */
 export function fetchAdminsApi(): Promise<AdminProfile[]> {
