@@ -4,11 +4,13 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
+import { useLibraryStore } from '../stores/library'
 
 const router = useRouter()
 const route = useRoute()
 const player = usePlayerStore()
 const library = useMusicLibraryStore()
+const globalLibraryStore = useLibraryStore()
 
 const libraryId = computed(() => route.params.id)  // 直接从路由获取稳定 UUID
 const warehouseInfo = ref({ name: '', description: '', coverPath: '' })
@@ -103,11 +105,31 @@ async function loadTracks() {
       return
     }
 
-    const result = await window.electronAPI.getWarehouseTracksById(libraryId.value)
+    const isRemote = route.query.remote === '1' || route.query.remote === 'true'
+    let result
+    if (isRemote) {
+      result = await window.electronAPI.getRemotePlaylistDetail(libraryId.value)
+    } else {
+      result = await window.electronAPI.getWarehouseTracksById(libraryId.value)
+    }
+
     if (result.success && result.data) {
-      tracks.value = result.data.tracks
-      if (result.data.warehouse) {
-        warehouseInfo.value = result.data.warehouse
+      if (isRemote) {
+        const data = result.data
+        tracks.value = data.tracks || []
+        warehouseInfo.value = {
+          id: libraryId.value,
+          name: data.name,
+          description: data.description,
+          coverPath: data.coverUrl,
+          coverUrl: data.coverUrl,
+          isOwner: data.isOwner
+        }
+      } else {
+        tracks.value = result.data.tracks || []
+        if (result.data.warehouse) {
+          warehouseInfo.value = result.data.warehouse
+        }
       }
     }
   } catch (err) {
@@ -121,14 +143,14 @@ const filteredTracks = computed(() => {
   let list = [...tracks.value]
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase()
-    list = list.filter(t => t.name.toLowerCase().includes(q))
+    list = list.filter(t => (t.name || t.title || '').toLowerCase().includes(q))
   }
   if (sortBy.value === 'artist') {
     list.sort((a, b) => (a.artist || '未知作者').localeCompare(b.artist || '未知作者'))
   } else if (sortBy.value === 'size') {
-    list.sort((a, b) => b.size - a.size)
+    list.sort((a, b) => (b.size || 0) - (a.size || 0))
   } else if (sortBy.value === 'modified') {
-    list.sort((a, b) => b.modified - a.modified)
+    list.sort((a, b) => (b.modified || 0) - (a.modified || 0))
   }
   return list
 })
@@ -485,9 +507,13 @@ function goToAlbum(albumId) {
   }
 }
 
-function parseArtists(artistsStr) {
+function parseArtists(track) {
+  if (track.artistNames && track.artistIds) {
+    return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name }))
+  }
+  if (!track.artists) return []
   try {
-    return JSON.parse(artistsStr)
+    return JSON.parse(track.artists)
   } catch (e) {
     return []
   }
@@ -496,12 +522,17 @@ function parseArtists(artistsStr) {
 
 <template>
   <div class="warehouse-view">
+    <div v-if="isLoading" class="page-loading-state">
+      <div class="spinner"></div>
+      <span>加载中...</span>
+    </div>
+    <template v-else>
     <!-- Spotify 风格 Hero 头部 -->
     <div class="warehouse-hero">
       <div class="hero-top-bar">
       </div>
       <div class="hero-content">
-        <div class="hero-cover" @click="openEditDialog" title="点击编辑封面">
+        <div class="hero-cover" @click="warehouseInfo.isOwner !== false ? openEditDialog() : null" :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }" :title="warehouseInfo.isOwner !== false ? '点击编辑封面' : ''">
           <img
             v-if="warehouseInfo.coverUrl || warehouseInfo.coverPath"
             :src="warehouseInfo.coverUrl || warehouseInfo.coverPath"
@@ -517,12 +548,13 @@ function parseArtists(artistsStr) {
           </div>
         </div>
         <div class="hero-info">
-          <h1 class="hero-title" @click="openEditDialog" title="点击编辑">{{ warehouseInfo.name }}</h1>
+          <h1 class="hero-title" @click="warehouseInfo.isOwner !== false ? openEditDialog() : null" :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }" :title="warehouseInfo.isOwner !== false ? '点击编辑' : ''">{{ warehouseInfo.name }}</h1>
           <p
             v-if="warehouseInfo.description"
             class="hero-description"
-            @click="openEditDialog"
-            title="点击编辑"
+            @click="warehouseInfo.isOwner !== false ? openEditDialog() : null"
+            :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }"
+            :title="warehouseInfo.isOwner !== false ? '点击编辑' : ''"
           >{{ warehouseInfo.description }}</p>
           <div class="hero-meta">
             <span class="meta-item">{{ tracks.length }} 首曲目</span>
@@ -568,6 +600,7 @@ function parseArtists(artistsStr) {
           </svg>
         </button>
         <button
+          v-if="warehouseInfo.isOwner !== false"
           class="action-btn"
           @click="openWarehouseMenu"
           title="更多选项"
@@ -648,15 +681,10 @@ function parseArtists(artistsStr) {
     <!-- 曲目列表 -->
     <div
       class="track-list-container"
-      @drop="handleFileDrop"
+      @drop="warehouseInfo.isOwner !== false ? handleFileDrop($event) : null"
       @dragover.prevent
     >
-      <div v-if="isLoading" class="loading-state">
-        <div class="spinner"></div>
-        <span>加载中...</span>
-      </div>
-
-      <div v-else-if="filteredTracks.length === 0" class="empty-state">
+      <div v-if="filteredTracks.length === 0" class="empty-state">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
           <path d="M9 18V5l12-2v13"/>
           <circle cx="6" cy="18" r="3"/>
@@ -707,10 +735,10 @@ function parseArtists(artistsStr) {
               <div class="track-text">
                 <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span>
                 <span class="track-artists-links">
-                  <template v-if="track.artists && parseArtists(track.artists).length > 0">
-                    <span v-for="(tArt, tIdx) in parseArtists(track.artists)" :key="tArt.id">
+                  <template v-if="parseArtists(track).length > 0">
+                    <span v-for="(tArt, tIdx) in parseArtists(track)" :key="tArt.id || tIdx">
                       <span class="artist-link-small" @click.stop="goToArtist(tArt.id)">{{ tArt.name }}</span>
-                      <span v-if="tIdx < parseArtists(track.artists).length - 1">, </span>
+                      <span v-if="tIdx < parseArtists(track).length - 1">, </span>
                     </span>
                   </template>
                   <template v-else>
@@ -725,7 +753,20 @@ function parseArtists(artistsStr) {
             <div class="track-date" @click="playTrack(track, index)">{{ formatDate(track.createdAt) }}</div>
             <div class="track-duration" @click="playTrack(track, index)">{{ track.duration ? formatTime(track.duration) : '' }}</div>
             <div class="track-actions">
-              <el-dropdown trigger="click" @command="(cmd) => handleTrackAction(cmd, track, $event)" popper-class="warehouse-dropdown">
+              <button 
+                class="add-to-playlist-btn" 
+                :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
+                @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
+                title="添加到歌单"
+              >
+                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              <el-dropdown v-if="warehouseInfo.isOwner !== false" trigger="click" @command="(cmd) => handleTrackAction(cmd, track, $event)" popper-class="warehouse-dropdown">
                 <button class="track-menu-btn" @click.stop>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="5" cy="12" r="2"/>
@@ -745,6 +786,7 @@ function parseArtists(artistsStr) {
         </ul>
       </div>
     </div>
+    </template>
 
     <!-- 编辑音乐库对话框 -->
     <div v-if="showEditDialog" class="dialog-overlay" @click.self="showEditDialog = false">
@@ -882,3 +924,35 @@ function parseArtists(artistsStr) {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.track-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.add-to-playlist-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+.track-item:hover .add-to-playlist-btn {
+  opacity: 0.6;
+}
+.add-to-playlist-btn.is-saved {
+  opacity: 1 !important;
+  color: #1db954;
+}
+.add-to-playlist-btn:hover {
+  opacity: 1 !important;
+  color: #fff;
+  transform: scale(1.1);
+}
+</style>

@@ -95,7 +95,7 @@ function updateFileMetadata(data) {
 
 // ========== 歌手 API ==========
 function getArtistById(artistId) {
-  return apiFetch(`/api/music/artists/${encodeURIComponent(artistId)}`)
+  return apiFetch(`/api/music/remote/artists/${encodeURIComponent(artistId)}`)
 }
 
 function updateArtist(artistId, updates) {
@@ -104,11 +104,40 @@ function updateArtist(artistId, updates) {
 
 // ========== 专辑 API ==========
 function getAlbumById(albumId) {
-  return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`)
+  return apiFetch(`/api/music/remote/albums/${encodeURIComponent(albumId)}`)
 }
 
 function updateAlbum(albumId, updates) {
   return apiFetch(`/api/music/albums/${encodeURIComponent(albumId)}`, { method: 'PUT', body: updates })
+}
+
+// ========== 本地媒体库同步 API ==========
+function syncLocalLibrary() {
+  return apiFetch('/api/library/sync', { method: 'POST' })
+}
+
+function getLocalPlaylists() {
+  return apiFetch('/api/library/playlists')
+}
+
+function getLocalFollowedArtists() {
+  return apiFetch('/api/library/artists/followed')
+}
+
+function addTrackToLocalPlaylist(playlistId, trackId) {
+  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/tracks`, { method: 'POST', body: { trackId } })
+}
+
+function removeTrackFromLocalPlaylist(playlistId, trackId) {
+  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/tracks/${encodeURIComponent(trackId)}`, { method: 'DELETE' })
+}
+
+function followLocalArtist(artistId) {
+  return apiFetch(`/api/library/artists/${encodeURIComponent(artistId)}/follow`, { method: 'POST' })
+}
+
+function unfollowLocalArtist(artistId) {
+  return apiFetch(`/api/library/artists/${encodeURIComponent(artistId)}/unfollow`, { method: 'DELETE' })
 }
 
 // ========== 远端歌单（音乐库）管理 API（代理到 Java 后端 8080 端口） ==========
@@ -166,6 +195,11 @@ async function saveRemotePlaylist(playlistId, { name, description, isPublic, cle
 /** 删除远端歌单 */
 function deleteRemotePlaylist(playlistId) {
   return apiFetch(`/api/music/remote/playlists/${encodeURIComponent(playlistId)}`, { method: 'DELETE' })
+}
+
+function globalSearchRemote(params) {
+  const qs = new URLSearchParams(params).toString()
+  return apiFetch(`/api/music/remote/search?${qs}`)
 }
 
 // ========== 格式转换 API ==========
@@ -335,12 +369,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createRemotePlaylist,
   saveRemotePlaylist,
   deleteRemotePlaylist,
+  globalSearchRemote,
   // 歌手 API
   getArtistById,
   updateArtist,
   // 专辑 API
   getAlbumById,
   updateAlbum,
+  // 媒体库同步 API
+  syncLocalLibrary,
+  getLocalPlaylists,
+  getLocalFollowedArtists,
+  addTrackToLocalPlaylist,
+  removeTrackFromLocalPlaylist,
+  followLocalArtist,
+  unfollowLocalArtist,
   // 格式转换
   scanFiles,
   startConvert,

@@ -206,12 +206,14 @@ function startExpressServer() {
   const convertController = require('../server/controller/convertController')
   const decryptController = require('../server/controller/decryptController')
   const lyricsDecryptController = require('../server/controller/lyricsDecryptController')
+  const libraryController = require('../server/controller/libraryController')
 
   // ---- 挂载路由 ----
   expressApp.use('/api/music', musicController(mainWindow))
   expressApp.use('/api/convert', convertController(mainWindow))
   expressApp.use('/api/decrypt', decryptController(mainWindow))
   expressApp.use('/api/lyrics-decrypt', lyricsDecryptController(mainWindow))
+  expressApp.use('/api/library', libraryController(mainWindow))
 
   expressServer = expressApp.listen(EXPRESS_PORT, () => {
     console.log(`[Express] Server running on http://localhost:${EXPRESS_PORT}`)

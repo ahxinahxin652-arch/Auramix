@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
+import { useLibraryStore } from '../stores/library'
 import { Howl } from 'howler'
 
 // ========== 状态 ==========
@@ -12,15 +13,20 @@ let currentLyrics = ''
 
 const player = usePlayerStore()
 const sidebarStore = useSidebarStore()
+const globalLibraryStore = useLibraryStore()
 const router = useRouter()
 
 const parsedArtists = computed(() => {
-  if (!player.currentTrack) return []
-  if (!player.currentTrack.artists) return []
+  const track = player.currentTrack
+  if (!track) return []
+  if (track.artistNames && track.artistIds) {
+    return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name, role: 'Main Artist' }))
+  }
+  if (!track.artists) return []
   try {
-    const list = typeof player.currentTrack.artists === 'string'
-      ? JSON.parse(player.currentTrack.artists)
-      : player.currentTrack.artists
+    const list = typeof track.artists === 'string'
+      ? JSON.parse(track.artists)
+      : track.artists
     return Array.isArray(list) ? list : []
   } catch (e) {
     return []
@@ -234,17 +240,20 @@ async function playTrack(track, playlist = [], index = -1) {
     }
   }).catch(() => {})
 
-  // 通过 Electron IPC 读取文件为 Blob，绕过 file:// 限制
-  let audioBlob
-  try {
-    audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
-  } catch (err) {
-    console.error('读取音频文件失败:', err)
-    player.setPlaying(false)
-    return
+  // 通过 Electron IPC 读取文件的 Blob，绕过 file:// 限制
+  if (currentTrack.path.startsWith('http://') || currentTrack.path.startsWith('https://')) {
+    currentBlobUrl = currentTrack.path
+  } else {
+    let audioBlob
+    try {
+      audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
+    } catch (err) {
+      console.error('读取音频文件失败:', err)
+      player.setPlaying(false)
+      return
+    }
+    currentBlobUrl = URL.createObjectURL(audioBlob)
   }
-
-  currentBlobUrl = URL.createObjectURL(audioBlob)
 
   // 读取真实的后缀名
   const fileExtension = currentTrack.path.split('.').pop().toLowerCase()
@@ -313,7 +322,9 @@ function stopCurrent() {
     howl = null
   }
   if (currentBlobUrl) {
-    URL.revokeObjectURL(currentBlobUrl)
+    if (currentBlobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(currentBlobUrl)
+    }
     currentBlobUrl = null
   }
   stopProgressLoop()
@@ -450,6 +461,20 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        <button 
+          v-if="player.currentTrack"
+          class="add-to-playlist-btn" 
+          :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id) }"
+          @click.stop="globalLibraryStore.openSelector(player.currentTrack.id, $event.clientX, $event.clientY)" 
+          title="添加到歌单"
+        >
+          <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
       </div>
       <div v-else class="track-info">
         <div class="track-cover empty">
@@ -619,3 +644,31 @@ onUnmounted(() => {
     </div>
   </footer>
 </template>
+
+<style scoped>
+.add-to-playlist-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  margin-left: 16px;
+  opacity: 0.7;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.foot-left:hover .add-to-playlist-btn {
+  opacity: 1;
+}
+.add-to-playlist-btn.is-saved {
+  opacity: 1 !important;
+  color: #1db954;
+}
+.add-to-playlist-btn:hover {
+  opacity: 1 !important;
+  color: #fff;
+  transform: scale(1.1);
+}
+</style>

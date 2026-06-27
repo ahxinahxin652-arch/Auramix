@@ -180,6 +180,23 @@ async function deletePlaylist(playlistId, token) {
     return request('/api/user/playlists/' + playlistId, { method: 'DELETE', token })
 }
 
+async function globalSearch(params, token) {
+    const qs = new URLSearchParams(params).toString()
+    return request('/api/user/search?' + qs, { token })
+}
+
+async function fetchAlbumDetail(albumId, token) {
+    return request('/api/user/albums/' + albumId, { token })
+}
+
+async function fetchArtistDetail(artistId, token) {
+    return request('/api/user/artists/' + artistId, { token })
+}
+
+async function fetchTrackDetail(trackId, token) {
+    return request('/api/user/tracks/' + trackId, { token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -190,4 +207,8 @@ module.exports = {
     updatePlaylist,
     savePlaylist,
     deletePlaylist,
+    globalSearch,
+    fetchAlbumDetail,
+    fetchArtistDetail,
+    fetchTrackDetail
 }

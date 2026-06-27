@@ -38,10 +38,10 @@ module.exports = function(mainWindow) {
     res.json(await musicService.updateRecentPlayedById(decodeURIComponent(id)))
   })
 
-  // 通过 track ID 解析当前最新的 track 信息
+  // 通过 track ID 解析当前最新的 track 信息 // 获取曲目详情及音频文件信息
   router.get('/tracks/:id', async (req, res) => {
     const { id } = req.params
-    res.json(await musicService.resolveTrackById(decodeURIComponent(id)))
+    res.json(await musicService.resolveTrackById(decodeURIComponent(id), getToken(req)))
   })
 
   // 更新曲目信息
@@ -59,7 +59,7 @@ module.exports = function(mainWindow) {
   // 通过 library ID 获取曲目列表
   router.get('/libraries/:id/tracks', async (req, res) => {
     const { id } = req.params
-    res.json(await musicService.getWarehouseTracksById(decodeURIComponent(id)))
+    res.json(await musicService.getWarehouseTracksById(decodeURIComponent(id), getToken(req)))
   })
 
   // 通过 library ID 导入文件
@@ -180,6 +180,37 @@ module.exports = function(mainWindow) {
     }
   })
 
- 
+  // 远端全局搜索
+  router.get('/remote/search', async (req, res) => {
+    try {
+      res.json(await musicService.globalSearchRemote(getToken(req), req.query))
+    } catch (err) {
+      console.error('[Express] GET /remote/search error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 获取远端专辑信息
+  router.get('/remote/albums/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.getAlbumDetailRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] GET /remote/albums/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
+  // 获取远端歌手信息
+  router.get('/remote/artists/:id', async (req, res) => {
+    try {
+      const { id } = req.params
+      res.json(await musicService.getArtistDetailRemote(getToken(req), decodeURIComponent(id)))
+    } catch (err) {
+      console.error('[Express] GET /remote/artists/:id error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
   return router
 }

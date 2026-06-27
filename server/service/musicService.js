@@ -97,7 +97,48 @@ async function deleteMusicWarehouseById(libraryId) {
  * @param {string} libraryId
  * @returns {Promise<import('../pojo/vo/ApiResult')>}
  */
-async function getWarehouseTracksById(libraryId) {
+async function getWarehouseTracksById(libraryId, token) {
+  if (token) {
+    try {
+      const remoteRes = await musicDao.fetchPlaylistDetailRemote(libraryId, token)
+      if (remoteRes && remoteRes.success && remoteRes.data) {
+        const pd = remoteRes.data
+        const validTracks = (pd.tracks || []).map(t => ({
+          id: String(t.trackId),
+          title: t.title || '',
+          name: t.title || '',
+          artist: (t.artistNames || []).join(' / '),
+          album: t.albumTitle || '',
+          albumId: '',
+          cover: t.coverUrl || '',
+          duration: t.duration ? t.duration / 1000 : 0,
+          path: '', // No local path for remote tracks until downloaded/cached
+          format: 'mp3',
+          size: 0,
+          artists: JSON.stringify((t.artistNames || []).map(name => ({name}))),
+          trackNumber: 1,
+          discNumber: 1,
+          member: '',
+          lyrics: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }))
+        return ApiResult.ok({
+          warehouseName: pd.name || '',
+          tracks: validTracks,
+          libraryId: String(pd.id),
+          warehouse: {
+            name: pd.name || '',
+            description: pd.description || '',
+            coverPath: pd.coverUrl || ''
+          }
+        })
+      }
+    } catch (err) {
+      console.error('[MusicService] Failed to fetch remote playlist detail, fallback to local', err)
+    }
+  }
+
   const result = await musicDao.getWarehouseTracksById(libraryId)
   if (!result.success) {
     return ApiResult.fail(result.error)
@@ -148,7 +189,38 @@ async function validateTrackPlayable(trackId, filePath) {
  * @param {string} trackId
  * @returns {Promise<import('../pojo/vo/ApiResult')>}
  */
-async function resolveTrackById(trackId) {
+async function resolveTrackById(trackId, token) {
+  if (token) {
+    try {
+      const remoteRes = await musicDao.fetchTrackDetailRemote(trackId, token)
+      if (remoteRes && remoteRes.success && remoteRes.data) {
+        const t = remoteRes.data
+        const track = {
+          id: String(t.id),
+          title: t.title || '',
+          name: t.title || '',
+          artist: (t.artistNames || []).join(' / '),
+          album: t.albumTitle || 'Unknown Album',
+          albumId: String(t.albumId || ''),
+          cover: t.coverUrl || '',
+          duration: t.duration ? t.duration / 1000 : 0,
+          path: t.audioUrl || '',
+          format: t.format || 'mp3',
+          size: t.size || 0,
+          artists: JSON.stringify((t.artistNames || []).map(name => ({name}))),
+          trackNumber: 1,
+          discNumber: 1,
+          lyrics: t.lyricsUrl || '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        return ApiResult.ok({ track })
+      }
+    } catch (err) {
+      console.error('[MusicService] Failed to fetch remote track detail, fallback to local', err)
+    }
+  }
+
   const result = await musicDao.resolveTrackById(trackId)
   if (!result.success) {
     return ApiResult.fail(result.error)
@@ -216,7 +288,14 @@ function normalizeMimeType(format) {
  * 读取独立文件的元数据（使用 music-metadata）
  */
 async function getFileMetadata(filePath) {
-  if (!filePath || !fs.existsSync(filePath)) {
+  if (!filePath) {
+    return ApiResult.fail('文件路径为空')
+  }
+  // 如果是远程 URL，则无法解析本地元数据，直接返回空信息避免报错
+  if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+    return ApiResult.ok({ lyrics: '', title: '', artist: '', album: '', coverBase64: '' })
+  }
+  if (!fs.existsSync(filePath)) {
     return ApiResult.fail('文件不存在')
   }
   try {
@@ -661,6 +740,30 @@ async function deleteMusicWarehouseRemote(token, playlistId) {
   return ApiResult.ok(null, result.message || '歌单已删除')
 }
 
+async function globalSearchRemote(token, params) {
+  const result = await musicDao.globalSearchRemote(params, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '搜索失败')
+  }
+  return ApiResult.ok(result.data)
+}
+
+async function getAlbumDetailRemote(token, albumId) {
+  const result = await musicDao.fetchAlbumDetailRemote(albumId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取专辑详情失败')
+  }
+  return ApiResult.ok({ album: result.data })
+}
+
+async function getArtistDetailRemote(token, artistId) {
+  const result = await musicDao.fetchArtistDetailRemote(artistId, token)
+  if (!result.success) {
+    return ApiResult.fail(result.error || '获取歌手详情失败')
+  }
+  return ApiResult.ok({ artist: result.data })
+}
+
 module.exports = {
   getMusicWarehouses,
   createMusicWarehouse,
@@ -685,4 +788,7 @@ module.exports = {
   createMusicWarehouseRemote,
   saveMusicWarehouseRemote,
   deleteMusicWarehouseRemote,
+  globalSearchRemote,
+  getAlbumDetailRemote,
+  getArtistDetailRemote,
 }

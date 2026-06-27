@@ -13,6 +13,11 @@ export const useSidebarStore = defineStore('sidebar', () => {
   const data = ref(null)
   // 侧栏是否正在执行动画（切换中）
   const isAnimating = ref(false)
+  
+  // 侧栏宽度
+  const width = ref(280)
+  // 侧栏宽度相对窗口宽度的比例
+  const widthRatio = ref(280 / window.innerWidth)
 
   // ---- Actions ----
 
@@ -67,16 +72,47 @@ export const useSidebarStore = defineStore('sidebar', () => {
     isAnimating.value = false
   }
 
+  const MIN_WIDTH = 250
+  const ABSOLUTE_MAX_WIDTH = 350
+  
+  function getDynamicMaxWidth() {
+    // 最大宽度由窗口宽度决定，最大不超过 350 (原500的3/5)
+    let dynamicMax = Math.min(ABSOLUTE_MAX_WIDTH, window.innerWidth * 0.35)
+    return Math.max(dynamicMax, MIN_WIDTH)
+  }
+
+  function setWidth(newWidth) {
+    const maxW = getDynamicMaxWidth()
+    if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH
+    if (newWidth > maxW) newWidth = maxW
+    
+    width.value = newWidth
+    widthRatio.value = newWidth / window.innerWidth
+  }
+  
+  function updateWidthOnResize() {
+    const maxW = getDynamicMaxWidth()
+    let newWidth = window.innerWidth * widthRatio.value
+    
+    if (newWidth < MIN_WIDTH) newWidth = MIN_WIDTH
+    if (newWidth > maxW) newWidth = maxW
+    
+    width.value = newWidth
+  }
+
   return {
     isOpen,
     contentType,
     data,
     isAnimating,
+    width,
     open,
     close,
     toggle,
     setOpen,
     startAnimation,
     endAnimation,
+    setWidth,
+    updateWidthOnResize,
   }
 })

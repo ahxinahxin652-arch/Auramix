@@ -21,13 +21,43 @@ function closeSidebar() {
   localStorageStore.setRightBarShow(false)
 }
 
+// ---- 拖拽状态 ----
+const dragStartX = ref(0)
+const dragStartWidth = ref(0)
+
+const onDragStart = (e) => {
+  dragStartX.value = e.clientX
+  dragStartWidth.value = sidebarStore.width
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', onDragEnd)
+  document.body.style.userSelect = 'none'
+  document.body.style.cursor = 'col-resize'
+}
+
+const onDragMove = (e) => {
+  const diff = dragStartX.value - e.clientX // Right sidebar expands leftwards
+  let newWidth = dragStartWidth.value + diff
+  sidebarStore.setWidth(newWidth)
+}
+
+const onDragEnd = () => {
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
+  document.body.style.userSelect = ''
+  document.body.style.cursor = ''
+}
+
 const parsedArtists = computed(() => {
-  if (!player.currentTrack) return []
-  if (!player.currentTrack.artists) return []
+  const track = player.currentTrack
+  if (!track) return []
+  if (track.artistNames && track.artistIds) {
+    return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name, role: 'Main Artist' }))
+  }
+  if (!track.artists) return []
   try {
-    const list = typeof player.currentTrack.artists === 'string'
-      ? JSON.parse(player.currentTrack.artists)
-      : player.currentTrack.artists
+    const list = typeof track.artists === 'string'
+      ? JSON.parse(track.artists)
+      : track.artists
     return Array.isArray(list) ? list : []
   } catch (e) {
     return []
@@ -87,7 +117,9 @@ const loadArtistDetail = async (track) => {
   }
 
   let artists = []
-  if (track.artists) {
+  if (track.artistNames && track.artistIds) {
+    artists = track.artistNames.map((name, i) => ({ id: track.artistIds[i], name, role: 'Main Artist' }))
+  } else if (track.artists) {
     try {
       const list = typeof track.artists === 'string'
         ? JSON.parse(track.artists)
@@ -223,9 +255,13 @@ const trackInfo = () => {
   if (!player.currentTrack) {
     return { title: '未播放', artist: '' }
   }
+  let artistStr = player.currentTrack.artist || ''
+  if (!artistStr && sidebarArtists.value && sidebarArtists.value.length > 0) {
+    artistStr = sidebarArtists.value.map(a => a.name).join(', ')
+  }
   return {
     title: player.currentTrack.title || player.currentTrack.name,
-    artist: player.currentTrack.artist || ''
+    artist: artistStr
   }
 }
 
@@ -250,12 +286,17 @@ const handleCardArtistClick = (art) => {
 
 <template>
   <div class="right-sidebar">
+    <!-- 拖拽缩放把手 -->
+    <div class="sidebar-resizer" @mousedown.prevent="onDragStart"></div>
+
     <!-- 头部：标题 + 关闭按钮 -->
     <div class="sidebar-header">
-      <span class="sidebar-title">{{ player.currentTrack?.warehouse || '正在播放' }}</span>
+      <div class="header-left-part">
+        <span class="sidebar-title">{{ player.currentTrack?.warehouse || '正在播放' }}</span>
+      </div>
       <button class="btn-sidebar-close" @click="closeSidebar" title="关闭">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6"/>
+          <polyline points="9 18 15 12 9 6"/>
         </svg>
       </button>
     </div>
@@ -438,3 +479,28 @@ const handleCardArtistClick = (art) => {
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.sidebar-resizer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 10;
+}
+.sidebar-resizer:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.header-left-part {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.btn-sidebar-close {
+  order: -1;
+  margin-right: 8px;
+}
+</style>

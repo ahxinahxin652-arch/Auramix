@@ -1,6 +1,6 @@
 <script setup>
 // todo 假设现在播放的音乐库就一首歌曲，但是增加了20首，但是无法切换下一首（内存tracks未更新）
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSidebarStore } from './stores/sidebar'
 import { useLeftSidebarStore } from './stores/leftSidebar.js'
@@ -11,8 +11,11 @@ import { backendFetch } from './utils/backendApi'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
 import LeftSideBar from './components/LeftSideBar.vue'
+import PlaylistSelectorModal from './components/PlaylistSelectorModal.vue'
+import { useLibraryStore } from './stores/library'
 
 const userStore = useUserStore()
+const globalLibraryStore = useLibraryStore()
 
 // 会员标识 badge
 const membershipBadge = ref('')
@@ -31,21 +34,38 @@ const localStorageStore = useLocalStorageStore()
 const isMaximized = ref(false)
 const sidebarTransition = ref(null)
 
-// ========== 左右侧边栏互斥 ==========
-// 左侧展开 → 关闭右侧
+// ========== 左右侧边栏互斥 (小屏时) ==========
+const MIN_WIDTH_FOR_BOTH_SIDEBARS = 1100
+
+// 左侧展开 → 检查是否需要关闭右侧
 watch(() => leftSidebarStore.mode, (newMode) => {
   if (newMode === 'expanded' && sidebarStore.isOpen) {
-    sidebarStore.setOpen(false)
-    localStorageStore.setRightBarShow(false)
+    if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+      sidebarStore.setOpen(false)
+      localStorageStore.setRightBarShow(false)
+    }
   }
 })
 
-// 右侧打开 → 缩回左侧
+// 右侧打开 → 检查是否需要缩回左侧
 watch(() => sidebarStore.isOpen, (isOpen) => {
   if (isOpen && leftSidebarStore.mode === 'expanded') {
-    leftSidebarStore.collapse()
+    if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+      leftSidebarStore.collapse()
+    }
   }
 })
+
+// 监听窗口大小改变，当窗口变小时，如果两个侧边栏都打开，则关闭其中一个
+const handleResize = () => {
+  sidebarStore.updateWidthOnResize()
+  if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+    if (leftSidebarStore.mode === 'expanded' && sidebarStore.isOpen) {
+      // 优先保留右侧（正在播放），缩回左侧
+      leftSidebarStore.collapse()
+    }
+  }
+}
 
 const canBack = ref(false)
 const canForward = ref(false)
@@ -109,6 +129,7 @@ onMounted(() => {
   // 初始化导航按钮状态
   updateNavButtons()
 
+<<<<<<< HEAD
   // 获取会员标识（已登录才执行）
   if (userStore.isLoggedIn) {
     fetchMembershipBadge()
@@ -123,6 +144,20 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     membershipBadge.value = ''
     isMembershipActive.value = false
   }
+=======
+  // 获取会员标识
+  fetchMembershipBadge()
+  
+  // 初始化媒体库同步
+  globalLibraryStore.initialize()
+  
+  window.addEventListener('resize', handleResize)
+  handleResize()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+>>>>>>> 84f755e661cf4395a679f3b20dc96fa9cf10fc05
 })
 
 function handleMinimize() {
@@ -169,6 +204,11 @@ const searchQuery = ref('')
 window.globalSearchQuery = searchQuery
 
 function handleSearch() {
+  if (currentRoute.value !== 'Search') {
+    router.push({ path: '/search', query: { q: searchQuery.value } })
+  } else {
+    router.replace({ path: '/search', query: { q: searchQuery.value } })
+  }
   window.dispatchEvent(new CustomEvent('global-search', { detail: { query: searchQuery.value } }))
 }
 
@@ -180,7 +220,6 @@ function clearSearch() {
 function goHome() {
   searchQuery.value = ''
   router.push('/')
-  handleSearch()
 }
 
 // 用户头像操作
@@ -402,6 +441,7 @@ function onSidebarAfterLeave() {
         <aside
           class="right-sidebar-wrapper"
           v-show="sidebarStore.isOpen"
+          :style="{ width: sidebarStore.width + 'px', maxWidth: 'none' }"
           @click.stop
         >
           <RightSideBar />
@@ -412,4 +452,14 @@ function onSidebarAfterLeave() {
     <!-- ===== 底部播放条 ===== -->
     <FootBar @toggle-right-sidebar="toggleRightSidebar" />
   </div>
+
+  <!-- 全局挂载：歌单选择弹窗 -->
+  <PlaylistSelectorModal 
+    v-if="globalLibraryStore.selectorVisible"
+    :track-id="globalLibraryStore.selectorTrackId"
+    :x="globalLibraryStore.selectorX"
+    :y="globalLibraryStore.selectorY"
+    :visible="globalLibraryStore.selectorVisible"
+    @update:visible="globalLibraryStore.closeSelector()"
+  />
 </template>
