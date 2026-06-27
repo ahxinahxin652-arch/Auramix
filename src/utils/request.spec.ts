@@ -3,14 +3,18 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/store/modules/auth'
 
 // 必须在 import request 之前 mock router,避免循环
-const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }))
+const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/router', () => ({
   default: { push: routerPush },
 }))
 
 // 必须在 import request 之前 mock element-plus,避免副作用
+const { elMessageError, elMessageWarning } = vi.hoisted(() => ({
+  elMessageError: vi.fn(),
+  elMessageWarning: vi.fn(),
+}))
 vi.mock('element-plus', () => ({
-  ElMessage: { error: vi.fn() },
+  ElMessage: { error: elMessageError, warning: elMessageWarning },
 }))
 
 import service from './request'
@@ -30,6 +34,8 @@ describe('request interceptors', () => {
     setActivePinia(createPinia())
     localStorage.clear()
     routerPush.mockClear()
+    elMessageError.mockClear()
+    elMessageWarning.mockClear()
     // 替换 adapter,避免真实网络请求
     service.defaults.adapter = vi.fn() as any
   })
@@ -69,7 +75,7 @@ describe('request interceptors', () => {
       expect(result).toEqual({ foo: 1 })
     })
 
-    it('clears auth and redirects on 4012', async () => {
+    it('clears auth, warns and redirects on 4012', async () => {
       const auth = useAuthStore()
       auth.token = 'old-tok'
       service.defaults.adapter = vi
@@ -78,13 +84,14 @@ describe('request interceptors', () => {
 
       await expect(service.get('/test')).rejects.toThrow('会话已过期')
       expect(auth.token).toBe('')
+      expect(elMessageWarning).toHaveBeenCalledWith('会话已过期')
       expect(routerPush).toHaveBeenCalledWith({
         path: '/login',
         query: { expired: '1' },
       })
     })
 
-    it('clears auth and redirects on 4031', async () => {
+    it('clears auth, warns and redirects on 4031', async () => {
       const auth = useAuthStore()
       auth.token = 'old-tok'
       service.defaults.adapter = vi
@@ -93,10 +100,24 @@ describe('request interceptors', () => {
 
       await expect(service.get('/test')).rejects.toThrow('账号已被停用')
       expect(auth.token).toBe('')
+      expect(elMessageWarning).toHaveBeenCalledWith('账号已被停用')
       expect(routerPush).toHaveBeenCalledWith({
         path: '/login',
         query: { disabled: '1' },
       })
+    })
+
+    it('does not redirect twice on concurrent 4012', async () => {
+      const auth = useAuthStore()
+      auth.token = 'old-tok'
+      service.defaults.adapter = vi
+        .fn()
+        .mockResolvedValue(mockReply({ code: 4012, data: null, message: '会话已过期' }))
+
+      // 并发两个请求,应只跳转一次
+      await Promise.allSettled([service.get('/test'), service.get('/test')])
+
+      expect(routerPush).toHaveBeenCalledTimes(1)
     })
 
     it('rewrites 5000 message to 服务异常', async () => {
@@ -125,6 +146,23 @@ describe('request interceptors', () => {
 
       await expect(service.get('/test')).rejects.toThrow()
       expect(ElMessage.error).toHaveBeenCalledWith('网络异常,请检查连接')
+    })
+
+    it('handles HTTP 401 as session expired', async () => {
+      const auth = useAuthStore()
+      auth.token = 'old-tok'
+      const error401 = Object.assign(new Error('Unauthorized'), {
+        response: { status: 401 },
+      })
+      service.defaults.adapter = vi.fn().mockRejectedValue(error401)
+
+      await expect(service.get('/test')).rejects.toThrow('登录凭证已过期')
+      expect(auth.token).toBe('')
+      expect(elMessageWarning).toHaveBeenCalledWith('登录凭证已过期,请重新登录')
+      expect(routerPush).toHaveBeenCalledWith({
+        path: '/login',
+        query: { expired: '1' },
+      })
     })
   })
 })

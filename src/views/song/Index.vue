@@ -64,7 +64,7 @@ const form = reactive<{
   member: 0,
   trackNumber: undefined,
   discNumber: 1,
-  status: 0,
+  status: 3,
   lyricsUrl: '',
   duration: 0,
   artists: [],
@@ -82,9 +82,6 @@ const formRules = reactive<FormRules>({
   ],
   discNumber: [
     { required: true, message: '碟片号不能为空', trigger: 'blur' }
-  ],
-  status: [
-    { required: true, message: '播放状态不能为空', trigger: 'change' }
   ]
 })
 
@@ -440,7 +437,7 @@ function openCreateDrawer() {
   form.member = 0
   form.trackNumber = undefined
   form.discNumber = 1
-  form.status = 0
+  form.status = 3
   form.lyricsUrl = ''
   form.duration = 0
   form.artists = []
@@ -558,7 +555,7 @@ async function handleSave() {
       member: form.member,
       trackNumber: form.trackNumber || 1,
       discNumber: form.discNumber,
-      status: form.status,
+      status: isEdit.value ? form.status : 3,
       lyricsUrl: form.lyricsUrl,
       duration: form.duration,
       artists: form.artists,
@@ -708,8 +705,9 @@ onMounted(() => {
           @change="handleSearch"
         >
           <el-option label="正常播放" :value="0" />
-          <el-option label="已下架" :value="-1" />
-          <el-option label="暂无版权" :value="-2" />
+          <el-option label="已下架" :value="1" />
+          <el-option label="暂无版权" :value="2" />
+          <el-option label="待审核" :value="3" />
         </el-select>
 
         <el-button type="primary" @click="handleSearch"> 查询 </el-button>
@@ -806,8 +804,9 @@ onMounted(() => {
           <el-table-column prop="status" label="状态" width="100" align="center">
             <template #default="{ row }">
               <el-tag v-if="row.status === 0" type="success" size="small">正常</el-tag>
-              <el-tag v-else-if="row.status === -1" type="danger" size="small">下架</el-tag>
-              <el-tag v-else-if="row.status === -2" type="warning" size="small">无版权</el-tag>
+              <el-tag v-else-if="row.status === 1" type="danger" size="small">下架</el-tag>
+              <el-tag v-else-if="row.status === 2" type="warning" size="small">无版权</el-tag>
+              <el-tag v-else-if="row.status === 3" type="info" size="small">待审核</el-tag>
             </template>
           </el-table-column>
 
@@ -897,14 +896,6 @@ onMounted(() => {
               <el-select v-model="form.member" style="width: 100%;">
                 <el-option label="非会员（免费）" :value="0" />
                 <el-option label="会员专属" :value="1" />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="播放状态" prop="status">
-              <el-select v-model="form.status" style="width: 100%;">
-                <el-option label="正常播放" :value="0" />
-                <el-option label="下架" :value="-1" />
-                <el-option label="暂无版权" :value="-2" />
               </el-select>
             </el-form-item>
           </el-form>
