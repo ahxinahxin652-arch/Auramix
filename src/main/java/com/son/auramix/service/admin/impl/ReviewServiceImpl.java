@@ -146,7 +146,7 @@ public class ReviewServiceImpl implements ReviewService {
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<TrackReviewRecord> page = new Page<>(current, size);
         LambdaQueryWrapper<TrackReviewRecord> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(TrackReviewRecord::getStatus, 3);
+        // 返回所有状态的审核记录，按创建时间倒序
         wrapper.orderByDesc(TrackReviewRecord::getCreatedAt);
         reviewRecordMapper.selectPage(page, wrapper);
 
@@ -158,6 +158,7 @@ public class ReviewServiceImpl implements ReviewService {
             vo.setVerdict(r.getVerdict());
             vo.setConfidence(r.getConfidence());
             vo.setFailReasons(r.getFailReasons());
+            vo.setStatus(r.getStatus());
             vo.setCreatedAt(r.getCreatedAt());
             return vo;
         }).collect(Collectors.toList());
