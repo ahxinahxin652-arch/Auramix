@@ -294,7 +294,7 @@ CREATE TABLE `track_review_records` (
   `confidence`      INT          NOT NULL DEFAULT 0 COMMENT '最终置信度 0-100',
   `fail_reasons`    TEXT         NULL   COMMENT '不通过原因(各fail agent拼接)',
   `agent_results`   TEXT         NULL   COMMENT '4+1个agent的完整JSON输出',
-  `status`          INT          NOT NULL DEFAULT 0 COMMENT '处理状态: 0=AI审核中, 1=AI审核完成待自动处理, 2=已自动处理, 3=待人工确认, 4=人工已确认',
+  `status`          INT          NOT NULL DEFAULT 0 COMMENT '处理状态: 0=AI审核中, 1=AI审核完成待自动处理, 2=已自动处理, 3=待人工确认, 4=人工已确认, 5=失败/异常',
   `admin_id`        BIGINT       NULL   COMMENT '人工确认的管理员ID',
   `admin_verdict`   INT          NULL   COMMENT '管理员裁决: 1=通过, -1=不通过',
   `admin_note`      VARCHAR(500) NULL   COMMENT '管理员备注',
