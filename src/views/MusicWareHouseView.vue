@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
@@ -70,10 +70,29 @@ onMounted(async () => {
     showSearch.value = true
   }
   window.addEventListener('global-search', handleGlobalSearch)
+  document.addEventListener('click', onWarehouseDocClick)
+  window.addEventListener('playlist-updated', onPlaylistUpdated)
 })
 
 onUnmounted(() => {
   window.removeEventListener('global-search', handleGlobalSearch)
+  document.removeEventListener('click', onWarehouseDocClick)
+  window.removeEventListener('playlist-updated', onPlaylistUpdated)
+})
+
+// 侧边栏编辑保存后同步刷新当前歌单数据
+function onPlaylistUpdated(e) {
+  const updatedId = e.detail?.id
+  if (updatedId && String(updatedId) === String(libraryId.value)) {
+    loadTracks()
+  }
+}
+
+// 监听路由参数变化，切换歌单时重新加载数据（同路由不同 param 不会 remount 组件）
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    loadTracks()
+  }
 })
 
 async function loadTracks() {
@@ -177,6 +196,59 @@ function toggleShuffleMode() {
   player.toggleShuffle()
 }
 
+function handleDownload() {
+  ElMessage.info('下载功能开发中')
+}
+
+// ---- 歌单菜单 ----
+const showContextMenu = ref(false)
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
+
+function openWarehouseMenu(e) {
+  e.stopPropagation()
+  const btn = e.currentTarget
+  const rect = btn.getBoundingClientRect()
+  contextMenuX.value = rect.left
+  contextMenuY.value = rect.bottom + 4
+  showContextMenu.value = true
+}
+
+function closeContextMenu() {
+  showContextMenu.value = false
+}
+
+function handleWarehouseEdit() {
+  closeContextMenu()
+  openEditDialog()
+}
+
+async function handleWarehouseDelete() {
+  closeContextMenu()
+  try {
+    await ElMessageBox.confirm(
+      `确定删除歌单「${warehouseInfo.value.name || ''}」？删除后不可恢复。`,
+      '删除歌单',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    const ok = await library.deleteWarehouse(libraryId.value)
+    if (ok) {
+      ElMessage.success('已删除')
+      router.push('/')
+    } else {
+      ElMessage.error('删除失败')
+    }
+  } catch (_) {
+    // 用户取消
+  }
+}
+
+function onWarehouseDocClick() {
+  if (showContextMenu.value) {
+    closeContextMenu()
+  }
+}
+
 function isCurrentTrack(track) {
   return player.currentTrack && player.currentTrack.path === track.path
 }
@@ -205,9 +277,9 @@ async function handleAddFiles() {
 
 // ========== 编辑弹窗 ==========
 function openEditDialog() {
-  editName.value = warehouseInfo.value.name || warehouseName.value
+  editName.value = warehouseInfo.value.name || ''
   editDescription.value = warehouseInfo.value.description || ''
-  editCoverBase64.value = warehouseInfo.value.coverPath || ''
+  editCoverBase64.value = warehouseInfo.value.coverUrl || warehouseInfo.value.coverPath || ''
   editCoverHover.value = false
   showEditDialog.value = true
 }
@@ -300,41 +372,48 @@ async function handleSaveEdit() {
   editLoading.value = true
 
   const currentName = warehouseInfo.value.name
-  const updates = {}
-  if (newName !== currentName) updates.name = newName
+  const currentCover = warehouseInfo.value.coverUrl || warehouseInfo.value.coverPath || ''
+  const coverChanged = editCoverBase64.value !== currentCover
+
+  // 构建保存选项
+  const saveOptions = {}
+  if (newName !== currentName) saveOptions.name = newName
   if ((editDescription.value.trim() || '') !== (warehouseInfo.value.description || '')) {
-    updates.description = editDescription.value.trim()
-  }
-  if (editCoverBase64.value !== (warehouseInfo.value.coverPath || '')) {
-    updates.coverPath = editCoverBase64.value
+    saveOptions.description = editDescription.value.trim()
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (coverChanged) {
+    if (editCoverBase64.value) {
+      saveOptions.coverBase64 = editCoverBase64.value
+      saveOptions.coverFilename = 'cover.jpg'
+    } else {
+      saveOptions.clearCover = true
+    }
+  }
+
+  if (Object.keys(saveOptions).length === 0) {
     showEditDialog.value = false
     editLoading.value = false
     return
   }
 
-  const result = await library.updateWarehouse(libraryId.value, updates)
+  const result = await library.saveWarehouse(libraryId.value, saveOptions)
   editLoading.value = false
 
   if (result.success) {
+    // 更新本地 warehouseInfo
+    if (saveOptions.name) warehouseInfo.value.name = saveOptions.name
+    if (saveOptions.description !== undefined) warehouseInfo.value.description = saveOptions.description
+    if (result.data && result.data.coverUrl) {
+      warehouseInfo.value.coverPath = result.data.coverUrl
+      warehouseInfo.value.coverUrl = result.data.coverUrl
+    } else if (saveOptions.clearCover) {
+      warehouseInfo.value.coverPath = ''
+      warehouseInfo.value.coverUrl = ''
+    }
+
     showEditDialog.value = false
     ElMessage.success('保存成功')
-    // 直接更新本地 warehouseInfo，不重载 tracks
-    if (result.warehouse) {
-      warehouseInfo.value = {
-        name: result.warehouse.name || warehouseInfo.value.name,
-        description: result.warehouse.description ?? warehouseInfo.value.description,
-        coverPath: result.warehouse.coverPath ?? warehouseInfo.value.coverPath,
-      }
-    } else {
-      // 兜底：用本地编辑值更新
-      if (updates.name) warehouseInfo.value.name = updates.name
-      if (updates.description !== undefined) warehouseInfo.value.description = updates.description
-      if (updates.coverPath !== undefined) warehouseInfo.value.coverPath = updates.coverPath
-    }
-    // 刷新首页列表
     library.loadWarehouses()
   } else {
     ElMessage.error(result.error || '保存失败')
@@ -424,8 +503,8 @@ function parseArtists(artistsStr) {
       <div class="hero-content">
         <div class="hero-cover" @click="openEditDialog" title="点击编辑封面">
           <img
-            v-if="warehouseInfo.coverPath"
-            :src="warehouseInfo.coverPath"
+            v-if="warehouseInfo.coverUrl || warehouseInfo.coverPath"
+            :src="warehouseInfo.coverUrl || warehouseInfo.coverPath"
             class="hero-cover-img"
             alt=""
           />
@@ -477,6 +556,28 @@ function parseArtists(artistsStr) {
             <line x1="4" y1="4" x2="9" y2="9"/>
           </svg>
         </button>
+        <button
+          class="action-btn"
+          @click="handleDownload"
+          title="下载"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+        <button
+          class="action-btn"
+          @click="openWarehouseMenu"
+          title="更多选项"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2"/>
+            <circle cx="12" cy="12" r="2"/>
+            <circle cx="19" cy="12" r="2"/>
+          </svg>
+        </button>
       </div>
       <div class="actions-right">
         <div class="search-inline" :class="{ expanded: showSearch }">
@@ -499,8 +600,19 @@ function parseArtists(artistsStr) {
             </button>
           </div>
           <button
+            v-if="showSearch"
             class="action-btn"
-            :class="{ active: showSearch }"
+            @click="closeSearch"
+            title="关闭搜索"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <button
+            v-else
+            class="action-btn"
             @click="toggleSearch"
             title="搜索"
           >
@@ -529,13 +641,6 @@ function parseArtists(artistsStr) {
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <button class="btn btn-add" @click="handleAddFiles">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          添加曲目
-        </button>
 
       </div>
     </div>
@@ -557,7 +662,7 @@ function parseArtists(artistsStr) {
           <circle cx="6" cy="18" r="3"/>
           <circle cx="18" cy="16" r="3"/>
         </svg>
-        <p>{{ searchQuery ? '未找到匹配的曲目' : '此音乐库为空，拖拽文件到此处或点击"添加曲目"' }}</p>
+        <p>{{ searchQuery ? '未找到匹配的曲目' : '此音乐库为空，拖拽文件到此处添加曲目' }}</p>
       </div>
 
       <div v-else class="track-list-wrapper">
@@ -645,6 +750,12 @@ function parseArtists(artistsStr) {
     <div v-if="showEditDialog" class="dialog-overlay" @click.self="showEditDialog = false">
       <div class="dialog edit-dialog" @click.stop>
         <h3 class="dialog-title">编辑音乐库</h3>
+        <button class="dialog-close-btn" @click="showEditDialog = false" title="关闭">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
         <input
           ref="coverInputRef"
           type="file"
@@ -744,5 +855,30 @@ function parseArtists(artistsStr) {
         </div>
       </div>
     </div>
+
+    <!-- 歌单菜单 -->
+    <Teleport to="body">
+      <div
+        v-if="showContextMenu"
+        class="playlist-context-menu"
+        :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }"
+        @click.stop
+      >
+        <div class="context-menu-item" @click="handleWarehouseEdit">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          <span>编辑</span>
+        </div>
+        <div class="context-menu-item delete" @click="handleWarehouseDelete">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span>删除</span>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -1,0 +1,383 @@
+/* ========== 左侧边栏：Spotify 风格歌单面板 ========== */
+
+.left-sidebar {
+    height: 100%;
+    background: #0a0a0f;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    /* 宽度由 JS 动态设置 */
+    transition: none;
+    /* 阻止内部文字选中 */
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ========== 右侧拖拽手柄 ========== */
+.resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    background: transparent;
+    transition: background 0.15s;
+}
+
+.resize-handle:hover,
+.left-sidebar.dragging .resize-handle {
+    background: var(--accent);
+    opacity: 0.4;
+}
+
+/* ========== 顶部操作区 ========== */
+.sidebar-top {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    flex-shrink: 0;
+    gap: 6px;
+    min-height: 48px;
+}
+
+/* 缩略模式：按钮垂直排列 */
+.left-sidebar.collapsed .sidebar-top {
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    gap: 8px;
+}
+
+.left-sidebar.collapsed .sidebar-top .sidebar-toggle-btn,
+.left-sidebar.collapsed .sidebar-top .sidebar-add-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 展开模式：按钮水平排列 */
+.left-sidebar.expanded .sidebar-top {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.left-sidebar.expanded .sidebar-top .sidebar-toggle-btn,
+.left-sidebar.expanded .sidebar-top .sidebar-add-btn {
+    width: 32px;
+    height: 32px;
+}
+
+/* 通用按钮样式 */
+.sidebar-toggle-btn,
+.sidebar-add-btn {
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover,
+.sidebar-add-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-h);
+}
+
+.sidebar-toggle-btn svg,
+.sidebar-add-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* 展开模式下的标题 */
+.sidebar-title-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-h);
+    white-space: nowrap;
+    overflow: hidden;
+    flex: 1;
+    margin: 0 6px;
+}
+
+/* ========== 歌单列表区域 ========== */
+.sidebar-playlists {
+    flex: 1;
+    overflow-y: scroll;   /* 始终显示滚动条，避免出现时挤压内容 */
+    overflow-x: hidden;
+    padding: 4px 15px 12px 18px;
+}
+
+/* 缩略模式：减小左右 padding */
+.left-sidebar.collapsed .sidebar-playlists {
+    padding: 4px 4px 12px;
+}
+
+.sidebar-playlists::-webkit-scrollbar {
+    width: 14px;
+}
+
+.sidebar-playlists::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-playlists::-webkit-scrollbar-thumb {
+    background: rgba(180, 180, 190, 0.25);
+    border-radius: 7px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+}
+
+.sidebar-playlists::-webkit-scrollbar-thumb:hover {
+    background: rgba(180, 180, 190, 0.4);
+    background-clip: padding-box;
+}
+
+/* 缩略模式滚动条稍窄 */
+.left-sidebar.collapsed .sidebar-playlists::-webkit-scrollbar {
+    width: 8px;
+}
+.left-sidebar.collapsed .sidebar-playlists::-webkit-scrollbar-thumb {
+    border: 1px solid transparent;
+    border-radius: 4px;
+}
+
+/* ========== 缩略模式：歌单项（仅封面）========== */
+.playlist-item-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 0;
+    margin: 0 4px;
+    position: relative;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.playlist-item-collapsed:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.playlist-cover-collapsed {
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    object-fit: cover;
+    background: var(--surface-2);
+    flex-shrink: 0;
+    transition: none;
+}
+
+/* 无封面占位 */
+.playlist-cover-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+    transition: none;
+}
+
+.playlist-cover-placeholder svg {
+    width: 24px;
+    height: 24px;
+    opacity: 0.6;
+}
+
+/* ========== 缩略模式悬浮 tooltip（position: fixed 突破 overflow 裁剪）========== */
+.playlist-tooltip-fixed {
+    position: fixed;
+    transform: translateY(-50%);
+    background: var(--surface-3);
+    color: var(--text-h);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ========== 展开模式：歌单项（封面 + 信息）========== */
+.playlist-item-expanded {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.playlist-item-expanded:hover {
+    background: var(--surface-2);
+}
+
+.playlist-item-expanded.active {
+    background: var(--surface-3);
+}
+
+.playlist-cover-expanded {
+    width: 56px;
+    height: 56px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: var(--surface-2);
+    flex-shrink: 0;
+}
+
+.playlist-cover-expanded-placeholder {
+    width: 56px;
+    height: 56px;
+    border-radius: 4px;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.playlist-cover-expanded-placeholder svg {
+    width: 20px;
+    height: 20px;
+    opacity: 0.6;
+}
+
+.playlist-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.playlist-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-h);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.playlist-owner {
+    font-size: 12px;
+    color: var(--text);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ========== 展开模式下的空列表 ========== */
+.sidebar-empty-expanded {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px 10px;
+    color: var(--text);
+    opacity: 0.5;
+    text-align: center;
+}
+
+.sidebar-empty-expanded svg {
+    width: 32px;
+    height: 32px;
+    opacity: 0.5;
+}
+
+.sidebar-empty-expanded p {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ========== 缩略模式下的空列表 ========== */
+.sidebar-empty-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+    color: var(--text);
+    opacity: 0.3;
+}
+
+.sidebar-empty-collapsed svg {
+    width: 24px;
+    height: 24px;
+}
+
+/* ========== 拖拽时全局禁止文字选中 ========== */
+body.left-sidebar-resizing {
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: col-resize;
+}
+
+body.left-sidebar-resizing * {
+    cursor: col-resize;
+}
+
+/* ========== 右键菜单 ========== */
+.playlist-context-menu {
+    position: fixed;
+    z-index: 10000;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 150px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-h);
+    font-size: 13px;
+    transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+    background: var(--surface-3);
+}
+
+.context-menu-item.delete {
+    color: #ef4444;
+}
+
+.context-menu-item.delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.context-menu-item svg {
+    flex-shrink: 0;
+}

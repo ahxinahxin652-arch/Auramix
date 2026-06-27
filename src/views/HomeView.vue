@@ -1,31 +1,8 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { onMounted } from 'vue'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
 
-const router = useRouter()
 const library = useMusicLibraryStore()
-
-const showCreateDialog = ref(false)
-const newWarehouseName = ref('')
-const isLoading = ref(false)
-
-// ---- 编辑弹窗状态 ----
-const showEditDialog = ref(false)
-const editingWarehouse = ref(null)
-const editName = ref('')
-const editDescription = ref('')
-const editCoverBase64 = ref('')
-const editLoading = ref(false)
-const editCoverHover = ref(false)
-
-// ---- 图片相关 ----
-const ALLOWED_IMG_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/bmp']
-const MIN_IMG_SIZE = 600
-const MAX_IMG_SIZE = 3000
-const COMPRESS_SIZE = 1000
-const coverInputRef = ref(null)
 
 onMounted(() => {
   library.loadWarehouses()
@@ -34,6 +11,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
+<<<<<<< HEAD
 
 // ---- 排序 ----
 const sortOptions = [
@@ -482,4 +460,10 @@ async function handleImportFiles(warehouseId, files) {
       </div>
     </div>
   </div>
+=======
+</script>
+
+<template>
+  <div class="home-view"></div>
+>>>>>>> 33fb2b48e728f903becf2a77b0aab4e3f9ec28ba
 </template>

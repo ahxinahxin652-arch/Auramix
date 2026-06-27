@@ -1,14 +1,16 @@
 <script setup>
 // todo 假设现在播放的音乐库就一首歌曲，但是增加了20首，但是无法切换下一首（内存tracks未更新）
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useSidebarStore } from './stores/sidebar'
+import { useLeftSidebarStore } from './stores/leftSidebar.js'
 import { useLocalStorageStore } from './stores/localStorage'
 import { useUserStore } from './stores/user'
 import { ElMessage } from 'element-plus'
 import { backendFetch } from './utils/backendApi'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
+import LeftSideBar from './components/LeftSideBar.vue'
 
 const userStore = useUserStore()
 
@@ -23,9 +25,26 @@ function findMemberBadge(benefits) {
 
 const router = useRouter()
 const sidebarStore = useSidebarStore()
+const leftSidebarStore = useLeftSidebarStore()
 const localStorageStore = useLocalStorageStore()
 const isMaximized = ref(false)
 const sidebarTransition = ref(null)
+
+// ========== 左右侧边栏互斥 ==========
+// 左侧展开 → 关闭右侧
+watch(() => leftSidebarStore.mode, (newMode) => {
+  if (newMode === 'expanded' && sidebarStore.isOpen) {
+    sidebarStore.setOpen(false)
+    localStorageStore.setRightBarShow(false)
+  }
+})
+
+// 右侧打开 → 缩回左侧
+watch(() => sidebarStore.isOpen, (isOpen) => {
+  if (isOpen && leftSidebarStore.mode === 'expanded') {
+    leftSidebarStore.collapse()
+  }
+})
 
 const canBack = ref(false)
 const canForward = ref(false)
@@ -347,6 +366,9 @@ function onSidebarAfterLeave() {
 
     <!-- ===== 主内容区 ===== -->
     <div class="app-body">
+      <!-- 左侧歌单边栏：Spotify 风格，可拖拽宽度 -->
+      <LeftSideBar />
+
       <!-- 中心区域：路由视图，可滚动 -->
       <main class="main-view">
         <router-view />

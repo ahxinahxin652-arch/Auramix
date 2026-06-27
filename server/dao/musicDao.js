@@ -978,6 +978,138 @@ async function deleteTrack(id) {
     }
 }
 
+// ========== 远端 API（管理端后端 8080 端口）歌单管理 DAO ==========
+// 这些函数代理到 Java 管理端后端 (http://localhost:8080)，
+// 代替本地 SQLite 进行歌单的 CRUD 操作。
+
+const remoteApi = require('./remoteApiClient')
+
+/**
+ * 从远端 API 获取所有歌单（音乐库）列表
+ * @param {object} [params]
+ * @param {string} [params.token] - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Array, error?: string }>}
+ */
+async function fetchAllPlaylistsRemote(params = {}) {
+    return remoteApi.fetchAllPlaylists(params)
+}
+
+/**
+ * 从远端 API 获取歌单详情（含歌曲列表）
+ * @param {string|number} playlistId
+ * @param {string} token - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Object, error?: string }>}
+ */
+async function fetchPlaylistDetailRemote(playlistId, token) {
+    return remoteApi.fetchPlaylistDetail(playlistId, token)
+}
+
+/**
+ * 通过远端 API 创建歌单
+ * @param {object} body - { name, description?, isPublic? }
+ * @param {string} token - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Object, error?: string }>}
+ */
+async function createPlaylistRemote(body, token) {
+    return remoteApi.createPlaylist(body, token)
+}
+
+/**
+ * 通过远端 API 更新歌单基本信息（JSON）
+ * @param {string|number} playlistId
+ * @param {object} body - { name?, description?, isPublic?, coverUrl? }
+ * @param {string} token - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Object, error?: string }>}
+ */
+async function updatePlaylistRemote(playlistId, body, token) {
+    return remoteApi.updatePlaylist(playlistId, body, token)
+}
+
+/**
+ * 通过远端 API 保存歌单（合并信息更新 + 可选封面上传，multipart）
+ * @param {string|number} playlistId
+ * @param {object} info - { name?, description?, isPublic?, clearCover? }
+ * @param {object} [coverFile] - multer file object { buffer, originalname, mimetype }
+ * @param {string} token - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Object, error?: string }>}
+ */
+async function savePlaylistRemote(playlistId, info, coverFile, token) {
+    return remoteApi.savePlaylist(playlistId, info, coverFile, token)
+}
+
+/**
+ * 通过远端 API 删除歌单
+ * @param {string|number} playlistId
+ * @param {string} token - 用户 JWT token
+ * @returns {Promise<{ success: boolean, data?: Object, error?: string }>}
+ */
+async function deletePlaylistRemote(playlistId, token) {
+    return remoteApi.deletePlaylist(playlistId, token)
+}
+
+// ========== 本地 SQLite 镜像同步 ==========
+// 远端 playlist 操作后同步创建/更新本地记录，保证本地 track 操作能查询到 playlist
+
+/**
+ * 在本地 SQLite 创建 playlist 镜像
+ */
+async function createPlaylistMirror(id, name, description, coverUrl) {
+    const db = getDb()
+    try {
+        await db.playlist.create({
+            data: {
+                id: BigInt(id),
+                ownerId: 1n, // 本地镜像用默认 ownerId
+                name: name || '',
+                description: description || '',
+                coverUrl: coverUrl || '',
+                isPublic: 1,
+            },
+        })
+        return { success: true }
+    } catch (err) {
+        if (err.code === 'P2002') {
+            return { success: true } // 已存在，忽略
+        }
+        console.error('[Mirror] createPlaylistMirror error:', err.message)
+        return { success: false, error: err.message }
+    }
+}
+
+/**
+ * 更新本地 SQLite 的 playlist 镜像
+ */
+async function updatePlaylistMirror(id, fields) {
+    const db = getDb()
+    try {
+        const data = {}
+        if (fields.name !== undefined) data.name = fields.name
+        if (fields.description !== undefined) data.description = fields.description
+        if (fields.coverUrl !== undefined) data.coverUrl = fields.coverUrl
+        if (Object.keys(data).length === 0) return { success: true }
+        await db.playlist.update({ where: { id: BigInt(id) }, data })
+        return { success: true }
+    } catch (err) {
+        console.error('[Mirror] updatePlaylistMirror error:', err.message)
+        return { success: false, error: err.message }
+    }
+}
+
+/**
+ * 删除本地 SQLite 的 playlist 镜像
+ */
+async function deletePlaylistMirror(id) {
+    const db = getDb()
+    try {
+        await db.playlist.delete({ where: { id: BigInt(id) } })
+        return { success: true }
+    } catch (err) {
+        if (err.code === 'P2025') return { success: true } // 不存在，忽略
+        console.error('[Mirror] deletePlaylistMirror error:', err.message)
+        return { success: false, error: err.message }
+    }
+}
+
 module.exports = {
     getMusicWarehouseRoot,
     getAllWarehouses,
@@ -992,4 +1124,17 @@ module.exports = {
     updateTrack,
     deleteTrack,
     buildArtistsJson,
+
+    // ========== 远端 API（管理端后端 8080 端口）歌单管理 ==========
+    fetchAllPlaylistsRemote,
+    fetchPlaylistDetailRemote,
+    createPlaylistRemote,
+    updatePlaylistRemote,
+    savePlaylistRemote,
+    deletePlaylistRemote,
+
+    // ========== 本地 SQLite 镜像同步 ==========
+    createPlaylistMirror,
+    updatePlaylistMirror,
+    deletePlaylistMirror,
 }
