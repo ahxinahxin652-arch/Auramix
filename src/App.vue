@@ -192,7 +192,6 @@ function clearSearch() {
 function goHome() {
   searchQuery.value = ''
   router.push('/')
-  handleSearch()
 }
 
 // 用户头像操作
