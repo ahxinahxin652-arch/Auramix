@@ -129,11 +129,16 @@ onMounted(() => {
   // 初始化导航按钮状态
   updateNavButtons()
 
-<<<<<<< HEAD
   // 获取会员标识（已登录才执行）
   if (userStore.isLoggedIn) {
     fetchMembershipBadge()
   }
+
+  // 初始化媒体库同步
+  globalLibraryStore.initialize()
+  
+  window.addEventListener('resize', handleResize)
+  handleResize()
 })
 
 // 登录后刷新会员信息
@@ -144,20 +149,10 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
     membershipBadge.value = ''
     isMembershipActive.value = false
   }
-=======
-  // 获取会员标识
-  fetchMembershipBadge()
-  
-  // 初始化媒体库同步
-  globalLibraryStore.initialize()
-  
-  window.addEventListener('resize', handleResize)
-  handleResize()
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
->>>>>>> 84f755e661cf4395a679f3b20dc96fa9cf10fc05
 })
 
 function handleMinimize() {
