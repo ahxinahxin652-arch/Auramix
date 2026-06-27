@@ -60,7 +60,12 @@ const routes = [
     path: '/search',
     name: 'Search',
     component: () => import('../views/SearchView.vue'),
-  }
+  },
+  {
+    path: '/premium',
+    name: 'premium',
+    component: () => import('../views/PremiumView.vue'),
+  },
 ]
 
 const router = createRouter({
