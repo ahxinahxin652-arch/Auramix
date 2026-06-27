@@ -19,11 +19,8 @@ export interface PageResult<T> {
  * 分页获取管理员列表
  * GET /api/admin/manage/admins
  */
-export function fetchAdminsApi(params: {
-  pageNum: number
-  pageSize: number
-}): Promise<PageResult<AdminProfile>> {
-  return request.get('/admin/manage/admins', { params })
+export function fetchAdminsApi(): Promise<AdminProfile[]> {
+  return request.get('/admin/manage/admins')
 }
 
 /**

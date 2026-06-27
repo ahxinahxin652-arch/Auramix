@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import {
   Plus,
@@ -29,6 +29,12 @@ const loading = ref(false)
 const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
+
+const pagedList = computed(() => {
+  const start = (pageNum.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return list.value.slice(start, end)
+})
 
 // ---- 新建管理员弹窗状态 ----
 const createDialogVisible = ref(false)
@@ -73,12 +79,9 @@ const pwdRules = reactive<FormRules>({
 async function loadData() {
   loading.value = true
   try {
-    const res = await fetchAdminsApi({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-    })
-    list.value = res.records
-    total.value = res.total
+    const res = await fetchAdminsApi()
+    list.value = res
+    total.value = res.length
   } catch (err) {
     console.error('加载管理员列表异常:', err)
   } finally {
@@ -88,13 +91,11 @@ async function loadData() {
 
 function handlePageChange(p: number) {
   pageNum.value = p
-  loadData()
 }
 
 function handleSizeChange(size: number) {
   pageSize.value = size
   pageNum.value = 1
-  loadData()
 }
 
 // ---- 启用/停用管理员 ----
@@ -223,9 +224,9 @@ onMounted(() => {
       <div class="page-admin__filter">
         <el-button :icon="Refresh" @click="() => { pageNum = 1; loadData() }"> 刷新数据 </el-button>
       </div>
-
+      <!-- 数据表格 -->
       <el-card shadow="never" class="page-card">
-        <el-table v-loading="loading" :data="list" style="width: 100%">
+        <el-table v-loading="loading" :data="pagedList" style="width: 100%">
           <el-table-column label="用户名" min-width="150">
             <template #default="{ row }">
               <div class="admin-info">
