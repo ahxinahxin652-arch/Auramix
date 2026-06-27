@@ -43,7 +43,7 @@ const formRules = reactive<FormRules>({ name: [{ required: true, message: '歌�
 // ---- 数据 ----
 async function loadData() {
   loading.value = true
-  try { const res = await listArtists({ query: filter.query, pageNum: pageNum.value, pageSize: pageSize.value }); list.value = res.records; total.value = res.total } catch (err) { console.error('加载歌手列表失败:', err) } finally { loading.value = false }
+  try { const res = await listArtists({ query: filter.query, pageNum: pageNum.value, pageSize: pageSize.value }); list.value = res.records; total.value = Number(res.total) || 0 } catch (err) { console.error('加载歌手列表失败:', err) } finally { loading.value = false }
 }
 function handleSearch() { pageNum.value = 1; loadData() }
 function handleReset() { filter.query = ''; pageNum.value = 1; loadData() }

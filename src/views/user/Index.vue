@@ -61,7 +61,7 @@ async function loadData() {
       pageSize: pageSize.value,
     })
     list.value = res.records
-    total.value = res.total
+    total.value = Number(res.total) || 0
   } catch (err) {
     console.error('加载用户列表异常:', err)
   } finally {

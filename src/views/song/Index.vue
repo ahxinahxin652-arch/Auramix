@@ -19,12 +19,12 @@ import { searchAlbums, quickCreateAlbum, type AlbumSearchItem } from '@/api/admi
 import { searchArtists, type ArtistSearchItem } from '@/api/admin/artistManage'
 import { uploadFile } from '@/api/admin/oss'
 
-// ---- Paging & Table data ----
+// ---- 分页与数据 ----
 const list = ref<TrackListItem[]>([])
 const loading = ref(false)
-const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
+const total = ref(0)
 
 // ---- Filtering conditions ----
 const filter = reactive({
@@ -146,15 +146,22 @@ async function loadData() {
       pageNum: pageNum.value,
       pageSize: pageSize.value
     })
+
     list.value = res.records
-    total.value = res.total
+
+    // 关键修改：将字符串强转为数字
+    total.value = Number(res.total) || 0
+
+    // 如果你在别的地方还需要用到后端返回的页码，也建议一起强转：
+    // pageNum.value = Number(res.current) || 1
+    // pageSize.value = Number(res.size) || 10
+
   } catch (err) {
     console.error('加载歌曲列表出错:', err)
   } finally {
     loading.value = false
   }
 }
-
 function handleSearch() {
   pageNum.value = 1
   loadData()
@@ -342,7 +349,7 @@ function detectAudioMetadata(file: File): Promise<{ duration: number; bitrate: n
       const duration = Math.round(audio.duration)
       const size = file.size
       const bitrate = duration > 0 ? Math.round((size * 8) / duration) : 0
-      
+
       const ext = file.name.split('.').pop()?.toLowerCase() || ''
       let format = 0 // mp3
       if (ext === 'flac') format = 1
@@ -617,7 +624,7 @@ function handleQuickAlbumSubmit() {
         coverUrl: quickAlbumForm.coverUrl || undefined,
         releaseDate: quickAlbumForm.releaseDate || undefined
       })
-      
+
       ElMessage.success('新专辑创建成功')
       // Auto select it in the form
       albumOptions.value.push(created)

@@ -26,6 +26,9 @@ const auth = useAuthStore()
 // ---- 数据表格状态 ----
 const list = ref<AdminProfile[]>([])
 const loading = ref(false)
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
 
 // ---- 新建管理员弹窗状态 ----
 const createDialogVisible = ref(false)
@@ -70,13 +73,28 @@ const pwdRules = reactive<FormRules>({
 async function loadData() {
   loading.value = true
   try {
-    const res = await fetchAdminsApi()
-    list.value = res
+    const res = await fetchAdminsApi({
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
+    })
+    list.value = res.records
+    total.value = res.total
   } catch (err) {
     console.error('加载管理员列表异常:', err)
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(p: number) {
+  pageNum.value = p
+  loadData()
+}
+
+function handleSizeChange(size: number) {
+  pageSize.value = size
+  pageNum.value = 1
+  loadData()
 }
 
 // ---- 启用/停用管理员 ----
@@ -203,7 +221,7 @@ onMounted(() => {
 
     <div class="page-admin__content">
       <div class="page-admin__filter">
-        <el-button :icon="Refresh" @click="loadData"> 刷新数据 </el-button>
+        <el-button :icon="Refresh" @click="() => { pageNum = 1; loadData() }"> 刷新数据 </el-button>
       </div>
 
       <el-card shadow="never" class="page-card">
@@ -281,6 +299,18 @@ onMounted(() => {
             </template>
           </el-table-column>
         </el-table>
+
+        <div class="pagination-wrapper">
+          <el-pagination
+            v-model:current-page="pageNum"
+            v-model:page-size="pageSize"
+            :total="total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next, jumper"
+            @current-change="handlePageChange"
+            @size-change="handleSizeChange"
+          />
+        </div>
       </el-card>
     </div>
 
@@ -394,5 +424,11 @@ onMounted(() => {
 
 .text-placeholder {
   color: $text-tertiary;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: $spacing-md;
 }
 </style>
