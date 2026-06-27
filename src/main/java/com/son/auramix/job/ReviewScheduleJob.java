@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 定时任务：每天 05:00
- * 1. 处理高置信度审核结果（track_review_records.status=1）
- * 2. 扫描仍处于待审核状态的 songs（tracks.status=3）且无活跃审核记录，补触发 AI 审核
+ * 审核定时任务：
+ * 1. 每天 05:00 处理高置信度审核结果（track_review_records.status=1）
+ * 2. 每小时整点扫描仍处于待审核状态的 songs（tracks.status=3）且无活跃审核记录，补触发 AI 审核
  */
 @Slf4j
 @Component
@@ -29,12 +29,24 @@ public class ReviewScheduleJob {
     private final TrackMapper trackMapper;
     private final ReviewService reviewService;
 
+    /**
+     * 每天 05:00 处理高置信度审核结果
+     */
     @Scheduled(cron = "0 0 5 * * ?")
     public void processAutoReviewResults() {
-        log.info("[定时审核] 开始执行");
+        log.info("[定时审核] 高置信度处理开始");
         processHighConfidenceRecords();
+        log.info("[定时审核] 高置信度处理完成");
+    }
+
+    /**
+     * 每小时整点扫描待审核歌曲，对无活跃审核记录的补触发 AI 审核
+     */
+    @Scheduled(cron = "0 0 * * * ?")
+    public void scanPendingReviewTracks() {
+        log.info("[定时审核] 补审核扫描开始");
         retriggerPendingReviewTracks();
-        log.info("[定时审核] 执行完成");
+        log.info("[定时审核] 补审核扫描完成");
     }
 
     /**
