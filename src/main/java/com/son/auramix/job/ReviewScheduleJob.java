@@ -8,6 +8,8 @@ import com.son.auramix.mapper.TrackReviewRecordMapper;
 import com.son.auramix.service.admin.ReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +19,9 @@ import java.util.stream.Collectors;
 
 /**
  * 审核定时任务：
- * 1. 每天 05:00 处理高置信度审核结果（track_review_records.status=1）
- * 2. 每小时整点扫描仍处于待审核状态的 songs（tracks.status=3）且无活跃审核记录，补触发 AI 审核
+ * 1. 应用启动时立即扫描一次待审核歌曲补触发审核
+ * 2. 每天 05:00 处理高置信度审核结果（track_review_records.status=1）
+ * 3. 每小时整点扫描仍处于待审核状态的 songs（tracks.status=3）且无活跃审核记录，补触发 AI 审核
  */
 @Slf4j
 @Component
@@ -28,6 +31,15 @@ public class ReviewScheduleJob {
     private final TrackReviewRecordMapper reviewRecordMapper;
     private final TrackMapper trackMapper;
     private final ReviewService reviewService;
+
+    /**
+     * 应用启动完成后立即执行一次补审核扫描，避免重启后遗漏的待审核歌曲需等到下个整点才处理
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        log.info("[定时审核] 应用启动，立即执行一次补审核扫描");
+        retriggerPendingReviewTracks();
+    }
 
     /**
      * 每天 05:00 处理高置信度审核结果
