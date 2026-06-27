@@ -277,10 +277,10 @@ public class OssService {
     }
 
     /**
-     * 构建文件访问URL（优先使用签名URL，保障私有Bucket可访问）
+     * 构建文件访问URL（使用公网URL，避免数据库存储的URL带过期时间）
      */
     private String buildAccessUrl(String objectKey) {
-        return generateSignedUrl(objectKey);
+        return getPublicUrl(objectKey);
     }
 
     /**

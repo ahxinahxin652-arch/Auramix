@@ -60,7 +60,7 @@ spring:
   # ============================ Spring AI (通义千问) ============================
   ai:
     dashscope:
-      api-key: ${DASHSCOPE_API_KEY}
+      api-key: sk-5c127116e9784b918360d6a912f7f68e
       model: qwen-plus
       chat:
         options:

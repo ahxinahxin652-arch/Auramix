@@ -59,16 +59,13 @@ public class OssController {
                     com.son.auramix.common.result.ResultCode.BAD_REQUEST, "Invalid upload type");
         }
 
-        String dateDir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        String dir = type + "/" + dateDir + "/";
-
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isEmpty()) {
             originalFilename = "untitled";
         }
 
         try (InputStream inputStream = file.getInputStream()) {
-            OssUploadResult result = ossService.upload(inputStream, originalFilename, dir);
+            OssUploadResult result = ossService.upload(inputStream, originalFilename, type);
             return Result.success(result);
         }
     }
