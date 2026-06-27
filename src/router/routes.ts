@@ -42,6 +42,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/artist/Index.vue'),
         meta: { requiresAuth: true, title: '歌手管理' },
       },
+      {
+        path: 'member',
+        name: 'MemberManage',
+        component: () => import('@/views/member/Index.vue'),
+        meta: { requiresAuth: true, title: '会员管理' },
+      },
+      {
+        path: 'member/perks/:planId',
+        name: 'MemberPerks',
+        component: () => import('@/views/member/Perks.vue'),
+        meta: { requiresAuth: true, title: '会员权益管理' },
+      },
     ],
   },
   {
