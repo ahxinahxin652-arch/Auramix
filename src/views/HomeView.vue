@@ -29,6 +29,10 @@ const coverInputRef = ref(null)
 
 onMounted(() => {
   library.loadWarehouses()
+  document.addEventListener('click', handleClickOutside)
+})
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 
 // ---- 排序 ----
@@ -56,13 +60,6 @@ function handleClickOutside(e) {
     sortOpen.value = false
   }
 }
-onMounted(() => {
-  library.loadWarehouses()
-  document.addEventListener('click', handleClickOutside)
-})
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 
 // ---- 新建 ----
 async function handleCreateWarehouse() {
@@ -391,6 +388,7 @@ async function handleImportFiles(warehouseId, files) {
             <span class="tool-desc">编辑音乐文件的封面和详细信息</span>
           </div>
         </div>
+
       </div>
     </section>
 
