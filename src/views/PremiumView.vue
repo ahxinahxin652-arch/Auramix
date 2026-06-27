@@ -42,6 +42,20 @@ async function fetchPendingOrders() {
   }
 }
 
+async function refreshMyMembership() {
+  try {
+    const membership = await backendFetch('/api/user/manage/member/myMembership').catch(() => null)
+    const membershipData = Array.isArray(membership) ? membership[0] : membership
+    if (membershipData && new Date(membershipData.endDate).getTime() > Date.now()) {
+      myMembership.value = membershipData
+    } else {
+      myMembership.value = null
+    }
+  } catch {
+    myMembership.value = null
+  }
+}
+
 function getPendingOrder(planId) {
   return pendingOrders.value.find(o => o.planId === planId) || null
 }
@@ -216,7 +230,8 @@ async function confirmPayment() {
         transactionId
       }
     })
-    // 刷新待支付订单列表
+    // 刷新待支付订单列表和会员信息
+    await refreshMyMembership()
     fetchPendingOrders()
     closePayment()
     ElMessage.success('支付成功（测试模式）')

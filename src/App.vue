@@ -16,6 +16,7 @@ const userStore = useUserStore()
 
 // 会员标识 badge
 const membershipBadge = ref('')
+const isMembershipActive = ref(false)
 
 function findMemberBadge(benefits) {
   if (!benefits || !Array.isArray(benefits)) return ''
@@ -74,22 +75,26 @@ async function fetchMembershipBadge() {
     const membershipData = Array.isArray(membership) ? membership[0] : membership
     if (!membershipData) {
       membershipBadge.value = ''
+      isMembershipActive.value = false
       return
     }
     const isExpired = new Date(membershipData.endDate).getTime() <= Date.now()
     if (isExpired) {
       // 会员已到期，调用到期接口
       if (membershipData.id) {
-        await backendFetch(`/api/admin/manage/member/userMemberships/${membershipData.id}/expire`, {
+        await backendFetch(`/api/user/manage/member/userMemberships/${membershipData.id}/expire`, {
           method: 'PUT'
         }).catch(() => {})
       }
       membershipBadge.value = ''
+      isMembershipActive.value = false
       return
     }
+    isMembershipActive.value = true
     membershipBadge.value = findMemberBadge(membershipData.benefits)
   } catch {
     membershipBadge.value = ''
+    isMembershipActive.value = false
   }
 }
 
@@ -104,8 +109,20 @@ onMounted(() => {
   // 初始化导航按钮状态
   updateNavButtons()
 
-  // 获取会员标识
-  fetchMembershipBadge()
+  // 获取会员标识（已登录才执行）
+  if (userStore.isLoggedIn) {
+    fetchMembershipBadge()
+  }
+})
+
+// 登录后刷新会员信息
+watch(() => userStore.isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    fetchMembershipBadge()
+  } else {
+    membershipBadge.value = ''
+    isMembershipActive.value = false
+  }
 })
 
 function handleMinimize() {
@@ -315,8 +332,8 @@ function onSidebarAfterLeave() {
       <!-- Right: User Avatar Dropdown & Traffic Lights -->
       <div class="header-right">
         <span v-if="membershipBadge" class="membership-badge-gold">{{ membershipBadge }}</span>
-        <div class="premium-icon-btn" :class="{ 'has-badge': membershipBadge }" @click="router.push('/premium')" title="会员">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="premium-icon-btn" :class="{ 'has-badge': membershipBadge, 'is-member': isMembershipActive }" @click="router.push('/premium')" title="会员">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :style="isMembershipActive ? { color: '#fbbf24' } : {}">
             <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
             <path d="M3 20h18"/>
           </svg>

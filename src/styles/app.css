@@ -364,6 +364,16 @@ body {
     transform: scale(1.05);
 }
 
+.premium-icon-btn.is-member {
+    background: rgba(251, 191, 36, 0.12);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+}
+
+.premium-icon-btn.is-member:hover {
+    background: rgba(251, 191, 36, 0.22);
+    box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+}
+
 .premium-hover-text {
     position: absolute;
     top: calc(100% + 8px);
