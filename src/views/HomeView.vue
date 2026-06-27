@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
 
 const library = useMusicLibraryStore()
@@ -11,7 +11,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
-<<<<<<< HEAD
 
 // ---- 排序 ----
 const sortOptions = [
@@ -460,10 +459,4 @@ async function handleImportFiles(warehouseId, files) {
       </div>
     </div>
   </div>
-=======
-</script>
-
-<template>
-  <div class="home-view"></div>
->>>>>>> 33fb2b48e728f903becf2a77b0aab4e3f9ec28ba
 </template>
