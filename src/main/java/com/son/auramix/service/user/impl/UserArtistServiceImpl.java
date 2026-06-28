@@ -8,6 +8,7 @@ import com.son.auramix.domain.entity.Track;
 import com.son.auramix.domain.entity.TrackArtist;
 import com.son.auramix.domain.vo.user.UserArtistDetailVO;
 import com.son.auramix.domain.vo.user.UserTrackSearchVO;
+import com.son.auramix.domain.vo.user.ArtistInfoVO;
 import com.son.auramix.mapper.AlbumMapper;
 import com.son.auramix.mapper.ArtistFollowerMapper;
 import com.son.auramix.mapper.ArtistMapper;
@@ -50,7 +51,7 @@ public class UserArtistServiceImpl implements UserArtistService {
         vo.setCoverImg(artist.getCoverImg());
         vo.setMetadata(artist.getBio());
 
-        // 获取歌手的歌曲ID，取前10首（按热度和时间，这里按 play_count desc, created_at desc）
+        // 获取歌手的歌曲ID，取�?0首（按热度和时间，这里按 play_count desc, created_at desc�?
         List<TrackArtist> trackArtists = trackArtistMapper.selectList(
                 new LambdaQueryWrapper<TrackArtist>().eq(TrackArtist::getArtistId, artistId)
         );
@@ -107,17 +108,18 @@ public class UserArtistServiceImpl implements UserArtistService {
             }
 
             List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(t.getId(), new ArrayList<>());
-            List<String> aNames = new ArrayList<>();
-            List<Long> aIds = new ArrayList<>();
+            List<ArtistInfoVO> artists = new ArrayList<>();
             for (TrackArtist ta : tas) {
                 Artist a = artistMap.get(ta.getArtistId());
                 if (a != null) {
-                    aNames.add(a.getName());
-                    aIds.add(a.getId());
+                    ArtistInfoVO info = new ArtistInfoVO();
+                    info.setId(a.getId());
+                    info.setName(a.getName());
+                    info.setRole(ta.getRole());
+                    artists.add(info);
                 }
             }
-            tVo.setArtistNames(aNames);
-            tVo.setArtistIds(aIds);
+            tVo.setArtists(artists);
 
             return tVo;
         }).collect(Collectors.toList());

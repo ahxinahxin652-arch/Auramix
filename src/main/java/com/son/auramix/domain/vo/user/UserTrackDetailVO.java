@@ -11,7 +11,7 @@ public class UserTrackDetailVO {
     private String albumTitle;
     private String coverUrl;
     private Integer duration;
-    private List<String> artistNames;
+    private List<ArtistInfoVO> artists;
     private String lyricsUrl;
     private String format;
     private Long size;

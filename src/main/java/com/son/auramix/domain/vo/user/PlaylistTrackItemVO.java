@@ -3,7 +3,7 @@ package com.son.auramix.domain.vo.user;
 import lombok.Data;
 
 /**
- * 歌单内歌曲条目
+ * 歌单内歌曲条�?
  */
 @Data
 public class PlaylistTrackItemVO {
@@ -12,6 +12,7 @@ public class PlaylistTrackItemVO {
     private Integer duration;
     private String coverUrl;       // 专辑封面
     private String albumTitle;
-    private java.util.List<String> artistNames;
+    private Long albumId;
+    private java.util.List<ArtistInfoVO> artists;
     private Integer sortOrder;
 }

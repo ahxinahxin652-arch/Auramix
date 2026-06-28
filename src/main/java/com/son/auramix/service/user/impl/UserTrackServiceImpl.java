@@ -8,6 +8,7 @@ import com.son.auramix.domain.entity.Artist;
 import com.son.auramix.domain.entity.Track;
 import com.son.auramix.domain.entity.TrackArtist;
 import com.son.auramix.domain.entity.TrackAudioResource;
+import com.son.auramix.domain.vo.user.ArtistInfoVO;
 import com.son.auramix.domain.vo.user.UserTrackDetailVO;
 import com.son.auramix.mapper.AlbumMapper;
 import com.son.auramix.mapper.ArtistMapper;
@@ -59,12 +60,18 @@ public class UserTrackServiceImpl implements UserTrackService {
                 new LambdaQueryWrapper<TrackArtist>().eq(TrackArtist::getTrackId, trackId)
                         .orderByAsc(TrackArtist::getRole));
         if (!trackArtists.isEmpty()) {
-            List<String> artistNames = trackArtists.stream()
-                    .map(ta -> artistMapper.selectById(ta.getArtistId()))
-                    .filter(Objects::nonNull)
-                    .map(Artist::getName)
-                    .collect(Collectors.toList());
-            vo.setArtistNames(artistNames);
+            List<ArtistInfoVO> artists = trackArtists.stream().map(ta -> {
+                Artist artist = artistMapper.selectById(ta.getArtistId());
+                if (artist != null) {
+                    ArtistInfoVO info = new ArtistInfoVO();
+                    info.setId(artist.getId());
+                    info.setName(artist.getName());
+                    info.setRole(ta.getRole());
+                    return info;
+                }
+                return null;
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+            vo.setArtists(artists);
         }
 
         List<TrackAudioResource> audioResources = trackAudioResourceMapper.selectList(

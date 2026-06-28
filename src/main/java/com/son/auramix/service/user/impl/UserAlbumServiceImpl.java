@@ -7,6 +7,7 @@ import com.son.auramix.domain.entity.Track;
 import com.son.auramix.domain.entity.TrackArtist;
 import com.son.auramix.domain.vo.user.UserAlbumDetailVO;
 import com.son.auramix.domain.vo.user.UserTrackSearchVO;
+import com.son.auramix.domain.vo.user.ArtistInfoVO;
 import com.son.auramix.mapper.AlbumMapper;
 import com.son.auramix.mapper.ArtistMapper;
 import com.son.auramix.mapper.TrackArtistMapper;
@@ -73,17 +74,18 @@ public class UserAlbumServiceImpl implements UserAlbumService {
             tVo.setCoverUrl(album.getCoverUrl());
 
             List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(t.getId(), new ArrayList<>());
-            List<String> aNames = new ArrayList<>();
-            List<Long> aIds = new ArrayList<>();
+            List<ArtistInfoVO> artists = new ArrayList<>();
             for (TrackArtist ta : tas) {
                 Artist a = artistMap.get(ta.getArtistId());
                 if (a != null) {
-                    aNames.add(a.getName());
-                    aIds.add(a.getId());
+                    ArtistInfoVO info = new ArtistInfoVO();
+                    info.setId(a.getId());
+                    info.setName(a.getName());
+                    info.setRole(ta.getRole());
+                    artists.add(info);
                 }
             }
-            tVo.setArtistNames(aNames);
-            tVo.setArtistIds(aIds);
+            tVo.setArtists(artists);
 
             return tVo;
         }).collect(Collectors.toList());
