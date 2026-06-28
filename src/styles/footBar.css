@@ -1,4 +1,4 @@
-/* ========== 底部播放条 ========== */
+/* ========== 搴曢儴鎾鏀炬?========== */
 .footbar {
     display: flex;
     align-items: center;
@@ -106,7 +106,7 @@
     text-underline-offset: 2px;
 }
 
-/* ---- 作者信息滚动 ---- */
+/* ---- 浣滆呬俊鎭婊氬?---- */
 .track-artist-wrap {
     overflow: hidden;
     white-space: nowrap;
@@ -179,7 +179,7 @@
     font-size: 12px;
 }
 
-/* 中间播放控制 */
+/* 涓闂存挱鏀炬帶鍒 */
 .foot-center {
     flex: 2;
     max-width: 700px;
@@ -195,7 +195,7 @@
     gap: 12px;
 }
 
-/* 随机播放 & 循环播放按钮 (Spotify 风格) */
+/* 闅忔満鎾鏀 & 寰鐜鎾鏀炬寜閽 (Spotify 椋庢牸) */
 .shuffle-btn,
 .repeat-btn {
     position: relative;
@@ -225,7 +225,7 @@
     color: var(--accent);
 }
 
-/* 循环单曲模式下 "1" 文字颜色 */
+/* 寰鐜鍗曟洸妯″紡涓?"1" 鏂囧瓧棰滆壊 */
 .repeat-btn svg text {
     fill: var(--accent);
 }
@@ -266,7 +266,7 @@
     transform: scale(1.08);
 }
 
-/* 进度条 */
+/* 杩涘害鏉?*/
 .progress-area {
     display: flex;
     align-items: center;
@@ -324,7 +324,7 @@
     pointer-events: none;
 }
 
-/* 右侧音量 */
+/* 鍙充晶闊抽噺 */
 .foot-right {
     flex: 1;
     min-width: 180px;
@@ -339,7 +339,7 @@
     padding: 4px;
 }
 
-/* 侧栏切换按钮 */
+/* 渚ф爮鍒囨崲鎸夐挳 */
 .sidebar-toggle-btn {
     transition: all 0.15s;
 }
@@ -356,8 +356,8 @@
 
 .volume-slider {
     flex: 1;
-    min-width: 80px;
-    max-width: 120px;
+    min-width: 20px;
+    max-width: 30px;
     height: 4px;
     -webkit-appearance: none;
     background: var(--surface-3);

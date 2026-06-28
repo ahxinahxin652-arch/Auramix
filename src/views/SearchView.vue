@@ -1,8 +1,9 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from '../components/AddPlaylistIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,7 +154,12 @@ onMounted(() => {
               <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
               <div class="track-info">
                 <div class="track-title">{{ track.title }}</div>
-                <div class="track-artist">{{ track.artistNames?.join(' / ') }}</div>
+                <div class="track-artist">
+                  <span v-for="(art, idx) in track.artists" :key="art.id">
+                    <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
+                    <span v-if="idx < track.artists.length - 1">, </span>
+                  </span>
+                </div>
               </div>
               <button 
                 class="add-to-playlist-btn" 
@@ -161,12 +167,7 @@ onMounted(() => {
                 @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
                 title="添加到歌单"
               >
-                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
+                <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(track.id)" />
               </button>
             </div>
           </div>
@@ -216,7 +217,12 @@ onMounted(() => {
           <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
           <div class="track-info">
             <div class="track-title">{{ track.title }}</div>
-            <div class="track-artist">{{ track.artistNames?.join(' / ') }}</div>
+            <div class="track-artist">
+              <span v-for="(art, idx) in track.artists" :key="art.id">
+                <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
+                <span v-if="idx < track.artists.length - 1">, </span>
+              </span>
+            </div>
           </div>
           <button 
             class="add-to-playlist-btn" 
@@ -224,12 +230,7 @@ onMounted(() => {
             @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
             title="添加到歌单"
           >
-            <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
+            <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(track.id)" />
           </button>
         </div>
       </div>
@@ -344,12 +345,25 @@ onMounted(() => {
 
 .track-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .track-title {
   font-size: 16px;
   font-weight: 500;
   color: #fff;
+}
+
+.artist-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.artist-link:hover {
+  color: var(--accent, #1db954);
+  text-decoration: underline;
 }
 
 .track-artist {
@@ -426,3 +440,5 @@ onMounted(() => {
   color: #a7a7a7;
 }
 </style>
+
+

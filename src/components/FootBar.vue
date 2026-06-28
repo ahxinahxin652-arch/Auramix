@@ -1,9 +1,10 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
 import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from './AddPlaylistIcon.vue'
 import { Howl } from 'howler'
 
 // ========== 状态 ==========
@@ -214,11 +215,11 @@ async function playTrack(track, playlist = [], index = -1) {
       }
     } catch (e) {
       // 解析失败，回退使用内存中的 track 数据
-      console.warn('解析 track 最新路径失败，使用内存数据:', e)
+      console.warn('鐟欙絾鐎?track 閺堚偓閺傛媽鐭惧鍕亼鐠愩儻绱濇担璺ㄦ暏閸愬懎鐡ㄩ弫鐗堝祦:', e)
     }
   }
 
-  // 更新音乐库的最近播放时间（使用稳定的 warehouseId）
+  // 更新音乐库的最近播放时间（使用决定的 warehouseId）
   if (currentTrack.warehouseId) {
     window.electronAPI.updateRecentPlayedById(currentTrack.warehouseId).catch(() => {})
   }
@@ -240,7 +241,7 @@ async function playTrack(track, playlist = [], index = -1) {
     }
   }).catch(() => {})
 
-  // 通过 Electron IPC 读取文件的 Blob，绕过 file:// 限制
+  // 通过 Electron IPC 读取文件 Blob，绕过 file:// 限制
   if (currentTrack.path.startsWith('http://') || currentTrack.path.startsWith('https://')) {
     currentBlobUrl = currentTrack.path
   } else {
@@ -248,7 +249,7 @@ async function playTrack(track, playlist = [], index = -1) {
     try {
       audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
     } catch (err) {
-      console.error('读取音频文件失败:', err)
+      console.error('鐠囪褰囬棅鎶筋暥閺傚洣娆㈡径杈Е:', err)
       player.setPlaying(false)
       return
     }
@@ -281,11 +282,11 @@ async function playTrack(track, playlist = [], index = -1) {
       player.setDuration(howl.duration())
     },
     onloaderror: (id, err) => {
-      console.error('加载失败:', err)
+      console.error('閸旂姾娴囨径杈Е:', err)
       player.setPlaying(false)
     },
     onplayerror: (id, err) => {
-      console.error('播放失败:', err)
+      console.error('閹绢厽鏂佹径杈Е:', err)
       player.setPlaying(false)
     },
   })
@@ -294,7 +295,7 @@ async function playTrack(track, playlist = [], index = -1) {
 }
 
 /**
- * 处理曲目播放结束 - 根据循环模式和随机模式决定行为
+ * 婢跺嫮鎮婇弴鑼窗閹绢厽鏂佺紒鎾存将 - 閺嶈宓佸顏嗗箚濡€崇础閸滃矂娈㈤張鐑樐佸蹇撳枀鐎规俺顢戞稉?
  */
 function handleTrackEnd() {
   // 循环单曲：重新播放当前曲目
@@ -468,12 +469,7 @@ onUnmounted(() => {
           @click.stop="globalLibraryStore.openSelector(player.currentTrack.id, $event.clientX, $event.clientY)" 
           title="添加到歌单"
         >
-          <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-          </svg>
-          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
+          <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(player.currentTrack.id)" />
         </button>
       </div>
       <div v-else class="track-info">
@@ -536,7 +532,7 @@ onUnmounted(() => {
           :class="{ active: player.repeatMode !== RepeatMode.OFF }"
           @click="player.toggleRepeatMode()"
           :disabled="player.currentPlaylist.length === 0"
-          :title="player.repeatMode === RepeatMode.OFF ? '循环播放' : player.repeatMode === RepeatMode.LIST ? '循环歌单' : '循环单曲'"
+          :title="player.repeatMode === RepeatMode.OFF ? '循环播放' : player.repeatMode === RepeatMode.LIST ? '列表循环' : '单曲循环'"
         >
           <!-- 循环歌单图标 -->
           <svg v-if="player.repeatMode === RepeatMode.LIST" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -672,3 +668,15 @@ onUnmounted(() => {
   transform: scale(1.1);
 }
 </style>
+
+
+
+
+
+
+
+
+
+
+
+
