@@ -88,6 +88,10 @@ export const useLibraryStore = defineStore('library', {
           window.electronAPI.addTrackToLocalPlaylist(playlistId, trackId)
         }
       }
+
+      window.dispatchEvent(new CustomEvent('playlist-track-toggled', { 
+        detail: { playlistId: pidStr, trackId: tidStr, hasTrack: !hasTrack } 
+      }))
     },
     async toggleFollowArtist(artistId) {
       const aidStr = String(artistId)

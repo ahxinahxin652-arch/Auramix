@@ -262,6 +262,7 @@ function parseArtists(track) {
     return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name }))
   }
   if (!track.artists) return []
+  if (Array.isArray(track.artists)) return track.artists
   try {
     return JSON.parse(track.artists)
   } catch (e) {

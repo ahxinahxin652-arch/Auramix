@@ -64,12 +64,21 @@ onMounted(async () => {
   await loadTracks()
   document.addEventListener('click', onWarehouseDocClick)
   window.addEventListener('playlist-updated', onPlaylistUpdated)
+  window.addEventListener('playlist-track-toggled', onPlaylistTrackToggled)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', onWarehouseDocClick)
   window.removeEventListener('playlist-updated', onPlaylistUpdated)
+  window.removeEventListener('playlist-track-toggled', onPlaylistTrackToggled)
 })
+
+function onPlaylistTrackToggled(e) {
+  const { playlistId, trackId, hasTrack } = e.detail
+  if (String(playlistId) === String(libraryId.value) && !hasTrack) {
+    tracks.value = tracks.value.filter(t => String(t.id) !== String(trackId))
+  }
+}
 
 // 侧边栏编辑保存后同步刷新当前歌单数据
 function onPlaylistUpdated(e) {
@@ -433,7 +442,12 @@ async function handleSaveEdit() {
 
 // ========== 编辑/删除曲目 ==========
 function handleTrackAction(cmd, track) {
-  if (cmd === 'edit') {
+  if (cmd === 'remove') {
+    globalLibraryStore.toggleTrackInPlaylist(libraryId.value, track.id).then(() => {
+      tracks.value = tracks.value.filter(t => String(t.id) !== String(track.id))
+      ElMessage.success('已从歌单移除')
+    })
+  } else if (cmd === 'edit') {
     router.push(`/edit?path=${encodeURIComponent(track.path)}`)
   } else if (cmd === 'delete') {
     ElMessageBox.confirm(`确定要删除「${track.title || track.name}」吗？`, '删除确认', {
@@ -501,6 +515,7 @@ function parseArtists(track) {
     return track.artistNames.map((name, i) => ({ id: track.artistIds[i], name }))
   }
   if (!track.artists) return []
+  if (Array.isArray(track.artists)) return track.artists
   try {
     return JSON.parse(track.artists)
   } catch (e) {
@@ -752,7 +767,7 @@ function parseArtists(track) {
               {{ track.duration ? formatTime(track.duration) : '' }}
             </div>
             <div class="track-actions">
-              <el-dropdown v-if="warehouseInfo.isOwner !== false" trigger="click" @command="(cmd) => handleTrackAction(cmd, track, $event)" popper-class="warehouse-dropdown">
+              <el-dropdown trigger="click" @command="(cmd) => handleTrackAction(cmd, track)" popper-class="warehouse-dropdown">
                 <button class="track-menu-btn" @click.stop>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="5" cy="12" r="2"/>
@@ -762,8 +777,7 @@ function parseArtists(track) {
                 </button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="edit">编辑歌曲</el-dropdown-item>
-                    <el-dropdown-item command="delete">删除歌曲</el-dropdown-item>
+                    <el-dropdown-item command="remove">移除该歌</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
