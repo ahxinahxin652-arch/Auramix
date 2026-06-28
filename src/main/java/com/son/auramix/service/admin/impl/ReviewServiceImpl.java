@@ -2,6 +2,7 @@ package com.son.auramix.service.admin.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.son.auramix.ai.aggregator.AgentResultsFormatter;
 import com.son.auramix.ai.dto.AgentResult;
 import com.son.auramix.ai.dto.ReviewContext;
 import com.son.auramix.ai.lyrics.LyricsFetcher;
@@ -14,13 +15,16 @@ import com.son.auramix.domain.entity.*;
 import com.son.auramix.domain.vo.admin.ReviewListItemVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.service.admin.ReviewService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,19 @@ public class ReviewServiceImpl implements ReviewService {
     private final TrackReviewRecordMapper reviewRecordMapper;
     private final LyricsFetcher lyricsFetcher;
     private final ReviewOrchestrator orchestrator;
+    private final AgentResultsFormatter agentResultsFormatter;
+    /**
+     * Spring 自动注入的事务管理器；用于构造 {@link #transactionTemplate}，
+     * 把"读+校验"放到事务外、只把"两个 UPDATE"放进极短事务内，
+     * 避免行锁持有时间跨整个方法执行窗口，导致与异步 AI 审核的事务互相等待触发 lock_wait_timeout。
+     */
+    private final PlatformTransactionManager transactionManager;
+    private TransactionTemplate transactionTemplate;
+
+    @PostConstruct
+    public void initTransactionTemplate() {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
 
     @Override
     @Async("reviewTaskExecutor")
@@ -112,8 +129,8 @@ public class ReviewServiceImpl implements ReviewService {
             List<AgentResult> dimensionResults = pipeline.getDimensionResults();
             AgentResult finalResult = pipeline.getFinalResult();
 
-            // 构建 agent_results JSON
-            String agentResultsJson = orchestrator.buildAgentResultsJson(dimensionResults, finalResult);
+            // 直接用 orchestrator 聚合好的 JSON（含 dimensionSummary）
+            String agentResultsJson = pipeline.getAgentResultsJson();
 
             // 更新审核记录
             record.setAgentResults(agentResultsJson);
@@ -125,7 +142,7 @@ public class ReviewServiceImpl implements ReviewService {
 
             if (confidence >= 80) {
                 // 高置信度 → 待自动处理(status=1)：由每天 05:00 定时任务自动上架/下架；
-                // 管理员也可在此之前通过 confirmReview 提前人工确认（confirmReview 同时接受 status=1/3）
+                // 管理员也可在此之前通过 confirmReview 提前人工确认（confirmReview 不再做状态检查）
                 record.setVerdict(isFail ? -1 : 1);
                 record.setStatus(1);
             } else {
@@ -134,7 +151,15 @@ public class ReviewServiceImpl implements ReviewService {
                 record.setStatus(3);
             }
 
-            reviewRecordMapper.updateById(record);
+            // 条件更新：仅当 status=0 时才更新，避免在管理员已确认(status=4)后覆盖其决定
+            int updated = reviewRecordMapper.update(record,
+                    new LambdaQueryWrapper<TrackReviewRecord>()
+                            .eq(TrackReviewRecord::getId, record.getId())
+                            .eq(TrackReviewRecord::getStatus, 0));
+            if (updated == 0) {
+                log.info("[AI审核] trackId={} 审核完成时发现记录已被人工确认，跳过更新以保留管理员决定", trackId);
+                return;
+            }
             log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={} status={}",
                     trackId, record.getVerdict(), confidence, record.getStatus());
 
@@ -160,8 +185,10 @@ public class ReviewServiceImpl implements ReviewService {
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
         Page<TrackReviewRecord> page = new Page<>(current, size);
         LambdaQueryWrapper<TrackReviewRecord> wrapper = new LambdaQueryWrapper<>();
-        // 返回所有状态的审核记录，按创建时间倒序
-        wrapper.orderByDesc(TrackReviewRecord::getCreatedAt);
+        // 仅返回真正"待处理"的记录：status=1 (AI审核完成待自动处理) 与 status=3 (待人工确认)
+        // 0/2/4/5 不在待处理列表中显示
+        wrapper.in(TrackReviewRecord::getStatus, Arrays.asList(1, 3))
+                .orderByDesc(TrackReviewRecord::getCreatedAt);
         reviewRecordMapper.selectPage(page, wrapper);
 
         List<ReviewListItemVO> list = page.getRecords().stream().map(r -> {
@@ -174,6 +201,7 @@ public class ReviewServiceImpl implements ReviewService {
             vo.setFailReasons(r.getFailReasons());
             vo.setStatus(r.getStatus());
             vo.setCreatedAt(r.getCreatedAt());
+            vo.setDimensionDetails(agentResultsFormatter.formatDimensions(r.getAgentResults()));
             return vo;
         }).collect(Collectors.toList());
 
@@ -181,18 +209,32 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @Transactional
     public void confirmReview(Long recordId, ReviewConfirmDTO dto, Long adminId) {
+        // 1) 读 + 校验在事务外完成：避免长时间持有任何行锁
         TrackReviewRecord record = reviewRecordMapper.selectById(recordId);
         if (record == null) {
             throw new BusinessException(ResultCode.REVIEW_NOT_FOUND);
         }
-        // 允许对 status=1 (待自动处理) 或 status=3 (待人工确认) 的记录进行人工确认：
-        // 高置信度记录在等定时任务自动处理期间，管理员可提前确认立即上架/下架
-        if (record.getStatus() != 1 && record.getStatus() != 3) {
-            throw new BusinessException(ResultCode.REVIEW_NOT_PENDING);
-        }
+        // 允许对任何状态的记录进行人工确认（admin override）：
+        // - status=0 (AI审核中)：管理员可强制覆盖 AI 审核结果
+        // - status=1 (高置信度待自动处理)：管理员可提前确认立即上架/下架
+        // - status=2 (已自动处理)：管理员可重新确认以覆盖自动处理结果
+        // - status=3 (低置信度待人工确认)：正常的人工确认流程
+        // - status=4 (人工已确认)：管理员可更新之前的决定
+        // - status=5 (失败/异常)：管理员可手动确认以覆盖失败结果
+        // 防止 AI 审核覆盖管理员决定：triggerReview 中已加条件更新（仅当 status=0 时才更新）
 
+        // 2) 仅把"两个 UPDATE"放进极短事务：行锁持有窗口从"整个方法执行时间"压缩到几毫秒，
+        //    消除与异步 AI 审核的事务互相等待触发 lock_wait_timeout 的链路
+        transactionTemplate.executeWithoutResult(status -> doConfirmInTx(record, dto, adminId));
+    }
+
+    /**
+     * 极短事务内的真实写入：review 记录置为 status=4 并写管理员信息，再更新 Track.status。
+     * 事务边界只覆盖这两个写操作 + 必要的 SELECT(用于查 Track)，
+     * 不包含任何外部 IO / LLM 调用 / 日志刷盘，锁窗口在毫秒级。
+     */
+    private void doConfirmInTx(TrackReviewRecord record, ReviewConfirmDTO dto, Long adminId) {
         // 写入人工确认信息
         record.setAdminId(adminId);
         record.setAdminVerdict(dto.getAdminVerdict());
