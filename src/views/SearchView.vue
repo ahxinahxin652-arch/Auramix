@@ -153,7 +153,7 @@ onMounted(() => {
             <div v-for="track in results.tracks" :key="track.id" class="track-item" @dblclick="playTrack(track)">
               <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
               <div class="track-info">
-                <div class="track-title">{{ track.title }}</div>
+                <div class="track-title" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
                 <div class="track-artist">
                   <span v-for="(art, idx) in track.artists" :key="art.id">
                     <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -216,7 +216,7 @@ onMounted(() => {
         <div v-for="track in results.tracks" :key="track.id" class="track-item" @dblclick="playTrack(track)">
           <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
           <div class="track-info">
-            <div class="track-title">{{ track.title }}</div>
+            <div class="track-title" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
             <div class="track-artist">
               <span v-for="(art, idx) in track.artists" :key="art.id">
                 <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -266,6 +266,7 @@ onMounted(() => {
 
 <style scoped>
 .search-view {
+  overflow-y: overlay;
   padding: 24px;
   height: 100%;
   overflow-y: auto;
@@ -336,12 +337,12 @@ onMounted(() => {
 }
 
 .track-cover {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  margin-right: 16px;
-  object-fit: cover;
-}
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    margin-right: 10px;
+    object-fit: cover;
+  }
 
 .track-info {
   flex: 1;
@@ -351,10 +352,16 @@ onMounted(() => {
 }
 
 .track-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #fff;
-}
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 2px;
+    cursor: pointer;
+  }
+  .track-title:hover {
+    text-decoration: underline;
+  }
 
 .artist-link {
   cursor: pointer;
@@ -367,10 +374,10 @@ onMounted(() => {
 }
 
 .track-artist {
-  font-size: 14px;
-  color: #a7a7a7;
-  margin-top: 4px;
-}
+    font-size: 14px;
+    color: #a7a7a7;
+    line-height: 1.2;
+  }
 
 .add-to-playlist-btn {
   background: transparent;
@@ -438,6 +445,21 @@ onMounted(() => {
 .card-label {
   font-size: 14px;
   color: #a7a7a7;
+}
+
+.search-view::-webkit-scrollbar {
+  width: 10px;
+  background: transparent;
+}
+.search-view::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 5px;
+}
+.search-view::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+.search-view::-webkit-scrollbar-track {
+  background: transparent;
 }
 </style>
 

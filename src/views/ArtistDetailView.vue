@@ -275,7 +275,7 @@ const formatPlayCount = (num) => {
             <!-- Column 2: Cover image thumbnail -->
             <div class="col-cover-cell">
               <div class="track-thumbnail">
-                <img v-if="track.cover" :src="track.cover" class="track-thumbnail-img" alt="" />
+                <img v-if="track.coverUrl || track.cover" :src="track.coverUrl || track.cover" class="track-thumbnail-img" alt="" />
                 <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M9 18V5l12-2v13"/>
                   <circle cx="6" cy="18" r="3"/>
