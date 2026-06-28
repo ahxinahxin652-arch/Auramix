@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
 import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from '../components/AddPlaylistIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -450,12 +451,7 @@ async function handleSaveEdit() {
                 @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
                 title="添加到歌单"
               >
-                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
+                <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(track.id)" />
               </button>
               {{ formatDuration(track.duration) }}
             </span>

@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
 import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from '../components/AddPlaylistIcon.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -57,27 +58,15 @@ const MIN_IMG_SIZE = 600
 const MAX_IMG_SIZE = 3000
 const COMPRESS_SIZE = 1000
 
-const handleGlobalSearch = (e) => {
-  const query = e.detail?.query || ''
-  searchQuery.value = query
-  if (query) {
-    showSearch.value = true
-  }
-}
+
 
 onMounted(async () => {
   await loadTracks()
-  if (window.globalSearchQuery && window.globalSearchQuery.value) {
-    searchQuery.value = window.globalSearchQuery.value
-    showSearch.value = true
-  }
-  window.addEventListener('global-search', handleGlobalSearch)
   document.addEventListener('click', onWarehouseDocClick)
   window.addEventListener('playlist-updated', onPlaylistUpdated)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('global-search', handleGlobalSearch)
   document.removeEventListener('click', onWarehouseDocClick)
   window.removeEventListener('playlist-updated', onPlaylistUpdated)
 })
@@ -751,21 +740,18 @@ function parseArtists(track) {
               <span class="album-link">{{ track.album || '未知专辑' }}</span>
             </div>
             <div class="track-date" @click="playTrack(track, index)">{{ formatDate(track.createdAt) }}</div>
-            <div class="track-duration" @click="playTrack(track, index)">{{ track.duration ? formatTime(track.duration) : '' }}</div>
-            <div class="track-actions">
+            <div class="track-duration" @click="playTrack(track, index)">
               <button 
                 class="add-to-playlist-btn" 
                 :class="{ 'is-saved': globalLibraryStore.isSavedToAnyPlaylist(track.id) }"
                 @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
                 title="添加到歌单"
               >
-                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
+                <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(track.id)" />
               </button>
+              {{ track.duration ? formatTime(track.duration) : '' }}
+            </div>
+            <div class="track-actions">
               <el-dropdown v-if="warehouseInfo.isOwner !== false" trigger="click" @command="(cmd) => handleTrackAction(cmd, track, $event)" popper-class="warehouse-dropdown">
                 <button class="track-menu-btn" @click.stop>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

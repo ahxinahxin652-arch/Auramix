@@ -447,7 +447,7 @@
 }
 
 .th-info {
-    flex: 1;
+    flex: 1.5;
     min-width: 0;
 }
 
@@ -463,7 +463,7 @@
     color: var(--text);
     opacity: 0.6;
     flex-shrink: 0;
-    width: 56px;
+    width: 80px;
     text-align: right;
 }
 
@@ -711,8 +711,11 @@
     color: var(--text);
     opacity: 0.6;
     flex-shrink: 0;
-    width: 56px;
-    text-align: right;
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 /* ========== 加载 / 空状态 ========== */

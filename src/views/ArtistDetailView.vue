@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { usePlayerStore } from '../stores/player.js'
 import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from '../components/AddPlaylistIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -297,9 +298,6 @@ const formatPlayCount = (num) => {
 
             <!-- Column 5: Status indicator -->
             <div class="col-status-cell">
-              <svg v-if="isTrackActive(track.id)" class="status-checkmark" width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#1db954"/>
-              </svg>
             </div>
 
             <!-- Column 6: Duration -->
@@ -310,12 +308,7 @@ const formatPlayCount = (num) => {
                 @click.stop="globalLibraryStore.openSelector(track.id, $event.clientX, $event.clientY)" 
                 title="添加到歌单"
               >
-                <svg v-if="globalLibraryStore.isSavedToAnyPlaylist(track.id)" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-                  <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
-                </svg>
-                <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
+                <AddPlaylistIcon :isSaved="globalLibraryStore.isSavedToAnyPlaylist(track.id)" />
               </button>
               {{ formatDuration(track.duration) }}
             </div>
