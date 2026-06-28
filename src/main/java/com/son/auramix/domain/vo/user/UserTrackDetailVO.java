@@ -4,12 +4,16 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class UserTrackSearchVO {
+public class UserTrackDetailVO {
     private Long id;
     private String title;
-    private Integer duration;
-    private String coverUrl;
     private Long albumId;
     private String albumTitle;
+    private String coverUrl;
+    private Integer duration;
     private List<ArtistInfoVO> artists;
+    private String lyricsUrl;
+    private String format;
+    private Long size;
+    private String audioUrl;
 }

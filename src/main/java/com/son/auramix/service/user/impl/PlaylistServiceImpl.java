@@ -13,6 +13,7 @@ import com.son.auramix.domain.entity.*;
 import com.son.auramix.domain.vo.user.PlaylistDetailVO;
 import com.son.auramix.domain.vo.user.PlaylistSearchItemVO;
 import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
+import com.son.auramix.domain.vo.user.ArtistInfoVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
@@ -49,14 +50,14 @@ public class PlaylistServiceImpl implements PlaylistService {
     private final ArtistMapper artistMapper;
     private final UserMapper userMapper;
 
-    /** OSS 服务（当 OSS 未配置时可能为 null） */
+    /** OSS 服务（当 OSS 未配置时可能�?null�?*/
     @Autowired(required = false)
     private OssService ossService;
 
     // ============================ 已有方法 ============================
 
     /**
-     * 从 SecurityContextHolder 获取当前登录用户 ID
+     * �?SecurityContextHolder 获取当前登录用户 ID
      */
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -67,7 +68,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     }
 
     /**
-     * 从 SecurityContextHolder 获取当前登录用户 ID，未登录返回 null
+     * �?SecurityContextHolder 获取当前登录用户 ID，未登录返回 null
      */
     private Long getCurrentUserIdOrNull() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -97,7 +98,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         Long ownerId = getCurrentUserId();
         Playlist playlist = getOwnedPlaylist(ownerId, playlistId);
 
-        // 级联删除歌单-歌曲关联和关注记录
+        // 级联删除歌单-歌曲关联和关注记�?
         playlistTrackMapper.delete(
                 new LambdaQueryWrapper<PlaylistTrack>().eq(PlaylistTrack::getPlaylistId, playlistId));
         playlistFollowerMapper.delete(
@@ -222,12 +223,12 @@ public class PlaylistServiceImpl implements PlaylistService {
                 throw new BusinessException(ResultCode.INTERNAL_ERROR, "封面上传失败: " + e.getMessage());
             }
         } else if (req.getCoverUrl() != null) {
-            // 如果通过 coverUrl 字段直接设置（JSON 兼容）
+            // 如果通过 coverUrl 字段直接设置（JSON 兼容�?
             playlist.setCoverUrl(req.getCoverUrl());
         }
 
         playlistMapper.updateById(playlist);
-        log.info("[PlaylistService] 保存歌单(含封面) playlistId={}, ownerId={}", playlistId, ownerId);
+        log.info("[PlaylistService] 保存歌单(含封�? playlistId={}, ownerId={}", playlistId, ownerId);
 
         return toResponse(playlist);
     }
@@ -307,10 +308,10 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         Long currentUserId = getCurrentUserIdOrNull();
 
-        // 私密歌单仅创建者可查
+        // 私密歌单仅创建者可见
         if (Boolean.FALSE.equals(playlist.getIsPublic())) {
             if (currentUserId == null || !currentUserId.equals(playlist.getOwnerId())) {
-                throw new BusinessException(ResultCode.FORBIDDEN, "无权查看该歌单");
+                throw new BusinessException(ResultCode.FORBIDDEN, "无权查看该歌曲");
             }
         }
 
@@ -357,12 +358,12 @@ public class PlaylistServiceImpl implements PlaylistService {
             List<Track> tracks = trackMapper.selectBatchIds(trackIds);
             Map<Long, Track> trackMap = tracks.stream().collect(Collectors.toMap(Track::getId, t -> t));
 
-            // 批量查专辑
+            // 批量查专�?
             List<Long> albumIds = tracks.stream().map(Track::getAlbumId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
             Map<Long, Album> albumMap = (albumIds.isEmpty() ? new ArrayList<Album>() : albumMapper.selectBatchIds(albumIds))
                     .stream().collect(Collectors.toMap(Album::getId, a -> a));
 
-            // 批量查歌手
+            // 批量查歌�?
             List<TrackArtist> trackArtists = trackArtistMapper.selectList(
                     new LambdaQueryWrapper<TrackArtist>().in(TrackArtist::getTrackId, trackIds));
             List<Long> artistIds = trackArtists.stream().map(TrackArtist::getArtistId).distinct().collect(Collectors.toList());
@@ -385,17 +386,25 @@ public class PlaylistServiceImpl implements PlaylistService {
                     if (album != null) {
                         item.setCoverUrl(album.getCoverUrl());
                         item.setAlbumTitle(album.getTitle());
+                    item.setAlbumId(album.getId());
                     }
 
                     List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(pt.getTrackId(), new ArrayList<>());
-                    List<String> artistNames = tas.stream()
+                    List<ArtistInfoVO> artists = tas.stream()
                             .map(ta -> {
                                 Artist a = artistMap.get(ta.getArtistId());
-                                return a != null ? a.getName() : null;
+                                if (a != null) {
+                                    ArtistInfoVO info = new ArtistInfoVO();
+                                    info.setId(a.getId());
+                                    info.setName(a.getName());
+                                    info.setRole(ta.getRole());
+                                    return info;
+                                }
+                                return null;
                             })
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList());
-                    item.setArtistNames(artistNames);
+                    item.setArtists(artists);
                 }
                 return item;
             }).collect(Collectors.toList());
@@ -426,7 +435,7 @@ public class PlaylistServiceImpl implements PlaylistService {
             throw new BusinessException(ResultCode.BAD_REQUEST, "不能关注自己的歌单");
         }
 
-        // 幂等：已关注则跳过
+        // 幂等：已关注则跳�?
         Long exists = playlistFollowerMapper.selectCount(
                 new LambdaQueryWrapper<PlaylistFollower>()
                         .eq(PlaylistFollower::getPlaylistId, playlistId)
@@ -447,7 +456,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     @Transactional
     public void unfollowPlaylist(Long playlistId) {
         Long userId = getCurrentUserId();
-        // 幂等：未关注也直接返回成功
+        // 幂等：未关注也直接返回成�?
         playlistFollowerMapper.delete(
                 new LambdaQueryWrapper<PlaylistFollower>()
                         .eq(PlaylistFollower::getPlaylistId, playlistId)
@@ -461,7 +470,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
 
-        // 查询当前用户所有关注记录（按 followed_at DESC）
+        // 查询当前用户所有关注记录（�?followed_at DESC�?
         List<PlaylistFollower> allFollowed = playlistFollowerMapper.selectList(
                 new LambdaQueryWrapper<PlaylistFollower>()
                         .eq(PlaylistFollower::getUserId, userId)
@@ -483,7 +492,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         Map<Long, Playlist> publicMap = publicPlaylists.stream()
                 .collect(Collectors.toMap(Playlist::getId, p -> p));
 
-        // 按 followed_at 顺序过滤出公开歌单
+        // �?followed_at 顺序过滤出公开歌单
         List<Long> publicFollowedIds = allFollowed.stream()
                 .map(PlaylistFollower::getPlaylistId)
                 .filter(publicMap::containsKey)
@@ -498,7 +507,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         int toIndex = Math.min(fromIndex + size, publicFollowedIds.size());
         List<Long> pageIds = new ArrayList<>(publicFollowedIds.subList(fromIndex, toIndex));
 
-        // 批量查询 ownerName、trackCount、followerCount（只查当前页的 IDs）
+        // 批量查询 ownerName、trackCount、followerCount（只查当前页�?IDs�?
         List<Playlist> pagePlaylists = pageIds.stream()
                 .map(publicMap::get)
                 .collect(Collectors.toList());
@@ -535,7 +544,7 @@ public class PlaylistServiceImpl implements PlaylistService {
             throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
         }
         if (!ownerId.equals(playlist.getOwnerId())) {
-            throw new BusinessException(ResultCode.FORBIDDEN, "无权操作该歌单");
+            throw new BusinessException(ResultCode.FORBIDDEN, "无权操作该歌曲");
         }
         return playlist;
     }
@@ -554,7 +563,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     }
 
     /**
-     * 批量查询用户名
+     * 批量查询用户�?
      */
     private Map<Long, String> batchQueryOwnerNames(List<Long> ownerIds) {
         if (ownerIds == null || ownerIds.isEmpty()) return new HashMap<>();
@@ -563,7 +572,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     }
 
     /**
-     * 批量查询歌单的歌曲数量（聚合查询）
+     * 批量查询歌单的歌曲数量（聚合查询�?
      */
     private Map<Long, Integer> batchQueryTrackCounts(List<Long> playlistIds) {
         if (playlistIds == null || playlistIds.isEmpty()) return new HashMap<>();
@@ -582,7 +591,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     }
 
     /**
-     * 批量查询歌单的关注者数量（聚合查询）
+     * 批量查询歌单的关注者数量（聚合查询�?
      */
     private Map<Long, Integer> batchQueryFollowerCounts(List<Long> playlistIds) {
         if (playlistIds == null || playlistIds.isEmpty()) return new HashMap<>();

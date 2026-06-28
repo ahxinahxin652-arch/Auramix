@@ -81,17 +81,18 @@ public class UserSearchServiceImpl implements UserSearchService {
             }
 
             List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(t.getId(), new ArrayList<>());
-            List<String> aNames = new ArrayList<>();
-            List<Long> aIds = new ArrayList<>();
+            List<ArtistInfoVO> artists = new ArrayList<>();
             for (TrackArtist ta : tas) {
                 Artist a = artistMap.get(ta.getArtistId());
                 if (a != null) {
-                    aNames.add(a.getName());
-                    aIds.add(a.getId());
+                    ArtistInfoVO info = new ArtistInfoVO();
+                    info.setId(a.getId());
+                    info.setName(a.getName());
+                    info.setRole(ta.getRole());
+                    artists.add(info);
                 }
             }
-            vo.setArtistNames(aNames);
-            vo.setArtistIds(aIds);
+            vo.setArtists(artists);
             
             return vo;
         }).collect(Collectors.toList());
