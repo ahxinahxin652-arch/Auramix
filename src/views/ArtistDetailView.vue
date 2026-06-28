@@ -108,7 +108,7 @@ const isArtistPlaying = computed(() => {
 const playArtistTracks = () => {
   if (displayTracks.value.length === 0) return
   const firstTrack = displayTracks.value[0]
-  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: /artist/ }
+  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: `/artist/${artistInfo.value.id}` }
   const playEvent = new CustomEvent('play-track', {
     detail: {
       track: firstTrack,
@@ -133,7 +133,7 @@ const togglePlayArtist = () => {
 
 // 播放单首歌曲
 const playIndividualTrack = (track, index) => {
-  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: /artist/ }
+  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: `/artist/${artistInfo.value.id}` }
   if (isTrackActive(track.id)) {
     const toggleEvent = new CustomEvent('toggle-play')
     window.dispatchEvent(toggleEvent)

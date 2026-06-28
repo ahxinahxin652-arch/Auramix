@@ -1,13 +1,19 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useLibraryStore } from '../stores/library'
+import { usePlayerStore } from '../stores/player.js'
 import AddPlaylistIcon from '../components/AddPlaylistIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
 const globalLibraryStore = useLibraryStore()
+const player = usePlayerStore()
+
+function isTrackActive(track) {
+  return player.currentTrack && player.currentTrack.id === track.id && player.playbackSource?.type === 'search'
+}
 
 const query = ref(route.query.q || '')
 const currentTab = ref('all') // all, tracks, artists, playlists, albums
@@ -110,7 +116,7 @@ async function playTrack(track) {
   }
   const index = playlist.findIndex(t => String(t.id) === String(track.id))
   
-  const source = { type: 'search', id: track.id, name: track.title, route: /album/ }
+  const source = { type: 'search', id: track.id, name: track.title, route: `/album/${track.albumId}` }
   window.dispatchEvent(new CustomEvent('play-track', {
     detail: { track, playlist, index: index >= 0 ? index : 0, source }
   }))
@@ -165,10 +171,10 @@ onMounted(() => {
         <div v-if="results.tracks.length" class="result-section">
           <h2>Songs</h2>
           <div class="track-list">
-            <div v-for="track in results.tracks" :key="track.id" class="track-item" @dblclick="playTrack(track)">
+            <div v-for="track in results.tracks" :key="track.id" class="track-item" :class="{ active: isTrackActive(track) }" @dblclick="playTrack(track)">
               <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
               <div class="track-info">
-                <div class="track-title" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
+                <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
                 <div class="track-artist">
                   <span v-for="(art, idx) in track.artists" :key="art.id">
                     <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -228,10 +234,10 @@ onMounted(() => {
 
       <!-- SPECIFIC VIEWS -->
       <div v-if="currentTab === 'tracks'" class="track-list full-list">
-        <div v-for="track in results.tracks" :key="track.id" class="track-item" @dblclick="playTrack(track)">
+        <div v-for="track in results.tracks" :key="track.id" class="track-item" :class="{ active: isTrackActive(track) }" @dblclick="playTrack(track)">
           <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
           <div class="track-info">
-            <div class="track-title" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
+            <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
             <div class="track-artist">
               <span v-for="(art, idx) in track.artists" :key="art.id">
                 <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -477,6 +483,12 @@ onMounted(() => {
 }
 .search-view::-webkit-scrollbar-track {
   background: transparent;
+}
+.track-item.active {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.active-text {
+  color: #1db954 !important;
 }
 </style>
 

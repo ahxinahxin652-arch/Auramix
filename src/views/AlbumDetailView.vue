@@ -114,12 +114,14 @@ function formatDuration(seconds) {
 
 const isAlbumPlaying = computed(() => {
   if (!player.currentTrack || !player.isPlaying) return false
-  return player.playbackSource?.type === 'album' && String(player.playbackSource?.id) === String(albumInfo.value.id)
+  if (player.playbackSource?.type === 'album' && String(player.playbackSource?.id) === String(albumInfo.value.id)) return true
+  if (player.playbackSource?.type === 'search' && String(player.currentTrack.albumId) === String(albumInfo.value.id)) return true
+  return false
 })
 
 function playAlbumTracks() {
   if (tracks.value.length === 0) return
-  const source = { type: 'album', id: albumInfo.value.id, name: albumInfo.value.title, route: /album/ }
+  const source = { type: 'album', id: albumInfo.value.id, name: albumInfo.value.title, route: `/album/${albumInfo.value.id}` }
   player.setPlaylist(tracks.value, 0)
   window.dispatchEvent(new CustomEvent('play-track', {
     detail: {
@@ -141,7 +143,7 @@ function togglePlayAlbum() {
 }
 
 function playIndividualTrack(track, index) {
-  const source = { type: 'album', id: albumInfo.value.id, name: albumInfo.value.title, route: /album/ }
+  const source = { type: 'album', id: albumInfo.value.id, name: albumInfo.value.title, route: `/album/${albumInfo.value.id}` }
   if (isTrackActive(track.id)) {
     window.dispatchEvent(new CustomEvent('toggle-play'))
   } else {
@@ -158,7 +160,10 @@ function playIndividualTrack(track, index) {
 }
 
 function isTrackActive(trackId) {
-  return player.currentTrack && player.currentTrack.id === trackId && player.playbackSource?.type === 'album' && String(player.playbackSource?.id) === String(albumInfo.value.id)
+  if (!player.currentTrack || player.currentTrack.id !== trackId) return false
+  if (player.playbackSource?.type === 'album' && String(player.playbackSource?.id) === String(albumInfo.value.id)) return true
+  if (player.playbackSource?.type === 'search') return true
+  return false
 }
 
 function isTrackPlaying(trackId) {

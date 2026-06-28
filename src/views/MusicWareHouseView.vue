@@ -183,7 +183,7 @@ function formatDate(dateStr) {
 }
 
 function playTrack(track, index) {
-  const source = { type: 'playlist', id: libraryId.value, name: warehouseInfo.value.name, route: /warehouse/ }
+  const source = { type: 'playlist', id: libraryId.value, name: warehouseInfo.value.name, route: `/warehouse/${libraryId.value}` }
   if (isCurrentTrack(track)) {
     window.dispatchEvent(new CustomEvent('toggle-play'))
   } else {
@@ -271,7 +271,7 @@ function onWarehouseDocClick() {
 }
 
 function isCurrentTrack(track) {
-  return player.currentTrack && player.currentTrack.path === track.path && player.playbackSource?.type === 'playlist' && player.playbackSource?.id === libraryId.value
+  return player.currentTrack && String(player.currentTrack.id) === String(track.id) && player.playbackSource?.type === 'playlist' && String(player.playbackSource?.id) === String(libraryId.value)
 }
 
 async function handleFileDrop(e) {
