@@ -83,13 +83,12 @@ class AbstractDimensionAgentTest {
         ChatClient chatClient = mock(ChatClient.class);
         TestAgent agent = new TestAgent(chatClient);
 
-        ChatClient.RequestSpec requestSpec = mock(ChatClient.RequestSpec.class);
-        ChatClient.CallSpec callSpec = mock(ChatClient.CallSpec.class);
-        ChatClient.ResponseSpec responseSpec = mock(ChatClient.ResponseSpec.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(callSpec);
-        when(callSpec.call()).thenReturn(responseSpec);
-        when(responseSpec.content()).thenReturn("{\"verdict\":\"PASS\",\"confidence\":90,\"reason\":null}");
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.content()).thenReturn("{\"verdict\":\"PASS\",\"confidence\":90,\"reason\":null}");
 
         AgentResult result = agent.review(sampleCtx());
 
@@ -104,13 +103,12 @@ class AbstractDimensionAgentTest {
         ChatClient chatClient = mock(ChatClient.class);
         TestAgent agent = new TestAgent(chatClient);
 
-        ChatClient.RequestSpec requestSpec = mock(ChatClient.RequestSpec.class);
-        ChatClient.CallSpec callSpec = mock(ChatClient.CallSpec.class);
-        ChatClient.ResponseSpec responseSpec = mock(ChatClient.ResponseSpec.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(callSpec);
-        when(callSpec.call()).thenReturn(responseSpec);
-        when(responseSpec.content()).thenReturn("这不是 JSON");
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.content()).thenReturn("这不是 JSON");
 
         AgentResult result = agent.review(sampleCtx());
 
@@ -124,13 +122,12 @@ class AbstractDimensionAgentTest {
         ChatClient chatClient = mock(ChatClient.class);
         TestAgent agent = new TestAgent(chatClient);
 
-        ChatClient.RequestSpec requestSpec = mock(ChatClient.RequestSpec.class);
-        ChatClient.CallSpec callSpec = mock(ChatClient.CallSpec.class);
-        ChatClient.ResponseSpec responseSpec = mock(ChatClient.ResponseSpec.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        ChatClient.CallResponseSpec callSpec = mock(ChatClient.CallResponseSpec.class);
         when(chatClient.prompt()).thenReturn(requestSpec);
-        when(requestSpec.user(any(String.class))).thenReturn(callSpec);
-        when(callSpec.call()).thenReturn(responseSpec);
-        when(responseSpec.content()).thenReturn("```json\n{\"verdict\":\"FAIL\",\"confidence\":50,\"reason\":\"违规\"}\n```");
+        when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(callSpec);
+        when(callSpec.content()).thenReturn("```json\n{\"verdict\":\"FAIL\",\"confidence\":50,\"reason\":\"违规\"}\n```");
 
         AgentResult result = agent.review(sampleCtx());
 

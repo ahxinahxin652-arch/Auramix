@@ -53,13 +53,12 @@ class ReviewServiceImplIntegrationTest {
 
     @Test
     void listPending_dimensionDetailsIsFormatted() {
-        // 直接构造 service，手动注入 Formatter
+        // 直接构造 service，把真实 Formatter 注入构造函数
         AgentResultsFormatter formatter = new AgentResultsFormatter(objectMapper);
         ReviewServiceImpl service = new ReviewServiceImpl(
             trackMapper, albumMapper, artistMapper, trackArtistMapper,
-            reviewRecordMapper, lyricsFetcher, orchestrator, txManager
+            reviewRecordMapper, lyricsFetcher, orchestrator, formatter, txManager
         );
-        ReflectionTestUtils.setField(service, "agentResultsFormatter", formatter);
         ReflectionTestUtils.invokeMethod(service, "initTransactionTemplate");
 
         // 给 reviewRecordMapper.selectPage 准备分页数据
@@ -77,14 +76,21 @@ class ReviewServiceImplIntegrationTest {
 
         Page<TrackReviewRecord> page = new Page<>(1, 10);
         page.setRecords(List.of(record));
-        when(reviewRecordMapper.selectPage(any(Page.class), any())).thenReturn(page);
+        // selectPage 是 in-out 语义：传入的 page 会被填上 records 后返回；
+        // 实际生产里 MyBatis-Plus 内部会写回 page，mock 也得模拟这个行为，
+        // 否则 service 端拿到的本地 page 仍是空的。
+        when(reviewRecordMapper.selectPage(any(Page.class), any())).thenAnswer(invocation -> {
+            Page<TrackReviewRecord> arg = invocation.getArgument(0);
+            arg.setRecords(page.getRecords());
+            return arg;
+        });
 
         // when
         PageResult<?> result = service.listPending(1, 10);
 
         // then
-        assertThat(result.getList()).hasSize(1);
-        Object vo = result.getList().get(0);
+        assertThat(result.getRecords()).hasSize(1);
+        Object vo = result.getRecords().get(0);
         String details = (String) ReflectionTestUtils.getField(vo, "dimensionDetails");
         assertThat(details).isEqualTo("A审核通过：置信度90");
     }

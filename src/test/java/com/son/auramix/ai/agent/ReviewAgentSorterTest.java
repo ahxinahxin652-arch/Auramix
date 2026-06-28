@@ -35,11 +35,13 @@ class ReviewAgentSorterTest {
         @Override public String getCriteria() { return ""; }
     }
 
+    private final ReviewAgentSorter sorter = new ReviewAgentSorter();
+
     @Test
     void sortByOrder_ascendingByAnnotationValue() {
         List<DimensionAgent> input = List.of(new AgentC(), new AgentA(), new AgentB());
 
-        List<DimensionAgent> sorted = ReviewAgentSorter.sortByOrder(input);
+        List<DimensionAgent> sorted = sorter.sort(input);
 
         assertThat(sorted).extracting(DimensionAgent::getName)
             .containsExactly("A", "B", "C");
@@ -56,7 +58,7 @@ class ReviewAgentSorterTest {
         }
         List<DimensionAgent> input = List.of(new AgentC(), new AgentA(), new AgentD(), new AgentB());
 
-        List<DimensionAgent> sorted = ReviewAgentSorter.sortByOrder(input);
+        List<DimensionAgent> sorted = sorter.sort(input);
 
         // A 和 D 都是 @Order(10)，输入顺序为 A → D
         assertThat(sorted).extracting(DimensionAgent::getName)

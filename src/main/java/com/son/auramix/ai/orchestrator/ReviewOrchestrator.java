@@ -40,14 +40,33 @@ public class ReviewOrchestrator {
         // 0) 防御性排序：Spring 已按 @Order 排序，但显式调用 sorter 保持行为一致
         List<DimensionAgent> sortedAgents = sorter.sort(dimensionAgents);
 
-        // 1) 4 维度并行：单个 agent 异常被 AbstractDimensionAgent.review 内部 try-catch 兜底
+        // 1) 4 维度并行：AbstractDimensionAgent.review 内部已有 try-catch 兜底，
+        //    但 mock 出来的 DimensionAgent / 边缘 NPE 等场景可能在 review() 阶段直接抛；
+        //    这里再加一层保护：单个 agent 异常不会让整条流水线崩，
+        //    转成 verdict=FAIL / confidence=0 的占位结果继续走。
         List<CompletableFuture<AgentResult>> futures = sortedAgents.stream()
             .map(agent -> CompletableFuture.supplyAsync(
                 () -> {
-                    AgentResult r = agent.review(ctx);
-                    log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
-                        ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
-                    return r;
+                    try {
+                        AgentResult r = agent.review(ctx);
+                        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
+                            ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
+                        return r;
+                    } catch (Exception e) {
+                        String name;
+                        try {
+                            name = agent.getName();
+                        } catch (Exception ignored) {
+                            name = agent.getClass().getSimpleName();
+                        }
+                        log.error("[AI审核] trackId={} agent={} review 异常，转 FAIL 占位", ctx.getTrackId(), name, e);
+                        return AgentResult.builder()
+                            .agentName(name)
+                            .verdict("FAIL")
+                            .confidence(0)
+                            .reason("agent调用异常: " + e.getClass().getSimpleName() + " - " + e.getMessage())
+                            .build();
+                    }
                 },
                 reviewTaskExecutor))
             .toList();

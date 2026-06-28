@@ -46,12 +46,10 @@ class ReviewOrchestratorTest {
     @Test
     void execute_preservesAgentOrderInResult() {
         // given 3 个 mock agent，按注入顺序返回不同 verdict
-        when(agentA.getName()).thenReturn("A");
+        // 注意：orchestrator 不再调 agent.getName()，只用 AgentResult.agentName，所以不要 stub getName()
         when(agentA.review(any())).thenReturn(AgentResult.builder().agentName("A").verdict("PASS").confidence(80).reason(null).build());
-        when(agentB.getName()).thenReturn("B");
         when(agentB.review(any())).thenReturn(AgentResult.builder().agentName("B").verdict("FAIL").confidence(50).reason("r").build());
         DimensionAgent agentC = org.mockito.Mockito.mock(DimensionAgent.class);
-        when(agentC.getName()).thenReturn("C");
         when(agentC.review(any())).thenReturn(AgentResult.builder().agentName("C").verdict("PASS").confidence(70).reason(null).build());
 
         ReviewOrchestrator orch = buildOrchestrator(List.of(agentA, agentB, agentC));
@@ -69,9 +67,7 @@ class ReviewOrchestratorTest {
 
     @Test
     void execute_aggregatesJsonWithDimensionSummary() throws Exception {
-        when(agentA.getName()).thenReturn("A");
         when(agentA.review(any())).thenReturn(AgentResult.builder().agentName("A").verdict("PASS").confidence(90).reason(null).build());
-        when(agentB.getName()).thenReturn("B");
         when(agentB.review(any())).thenReturn(AgentResult.builder().agentName("B").verdict("FAIL").confidence(40).reason("违规").build());
         when(judgeAgent.judge(any(), any())).thenReturn(
             AgentResult.builder().agentName("ReviewJudge").verdict("FAIL").confidence(40).reason("B: 违规").build()
@@ -92,10 +88,8 @@ class ReviewOrchestratorTest {
 
     @Test
     void execute_singleAgentFailureDoesNotBreakOthers() {
-        when(agentA.getName()).thenReturn("A");
         when(agentA.review(any())).thenReturn(AgentResult.builder().agentName("A").verdict("PASS").confidence(80).reason(null).build());
-        when(agentB.getName()).thenReturn("B");
-        // agentB 抛异常，AbstractDimensionAgent 的 try-catch 会包成 FAIL；但这里我们 mock 接口直接抛
+        // agentB 抛异常，orchestrator 应当捕获并转成 FAIL 占位，不让整条流水线崩
         when(agentB.review(any())).thenThrow(new RuntimeException("LLM 异常"));
         when(judgeAgent.judge(any(), any())).thenReturn(
             AgentResult.builder().agentName("ReviewJudge").verdict("FAIL").confidence(0).reason("B 异常").build()
@@ -104,10 +98,10 @@ class ReviewOrchestratorTest {
         ReviewOrchestrator orch = buildOrchestrator(List.of(agentA, agentB));
         ReviewOrchestrator.PipelineResult result = orch.execute(ctx());
 
-        // agentA 仍能正常返回；agentB 因异常导致 CompletableFuture 异常——这里我们要验证整体能容错
-        // 简单实现：单个 agent 抛异常会让 CompletableFuture 失败；这取决于 orchestrator 内部是否捕获
-        // 验证：要么 result.getDimensionResults() 含 B 的 FAIL 占位，要么整体抛错但 A 的执行已完成
-        // 这里只验证 A 至少有结果（其他细节见 spec §5 错误处理）
-        assertThat(result.getDimensionResults()).isNotNull();
+        // A 正常返回，B 转成 FAIL 占位
+        assertThat(result.getDimensionResults()).hasSize(2);
+        assertThat(result.getDimensionResults().get(0).getVerdict()).isEqualTo("PASS");
+        assertThat(result.getDimensionResults().get(1).getVerdict()).isEqualTo("FAIL");
+        assertThat(result.getDimensionResults().get(1).getReason()).contains("agent调用异常");
     }
 }
