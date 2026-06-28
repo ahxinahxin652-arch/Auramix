@@ -16,6 +16,12 @@ const followedArtists = ref({})
 const artistWrapRef = ref(null)
 const canScrollArtist = ref(false)
 
+function goToSource(route) {
+  if (route) {
+    router.push(route)
+  }
+}
+
 function closeSidebar() {
   sidebarStore.setOpen(false)
   localStorageStore.setRightBarShow(false)
@@ -292,7 +298,7 @@ const handleCardArtistClick = (art) => {
     <!-- 头部：标题 + 关闭按钮 -->
     <div class="sidebar-header">
       <div class="header-left-part">
-        <span class="sidebar-title">{{ player.currentTrack?.warehouse || '正在播放' }}</span>
+        <span class="sidebar-title">正在播放<template v-if="player.playbackSource"> - <span class="source-link" @click="goToSource(player.playbackSource.route)">{{ player.playbackSource.name }}</span></template></span>
       </div>
       <button class="btn-sidebar-close" @click="closeSidebar" title="关闭">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -502,5 +508,14 @@ const handleCardArtistClick = (art) => {
 .btn-sidebar-close {
   order: -1;
   margin-right: 8px;
+}
+.source-link {
+  cursor: pointer;
+  color: #fff;
+  transition: color 0.2s;
+}
+.source-link:hover {
+  text-decoration: underline;
+  color: #1db954;
 }
 </style>

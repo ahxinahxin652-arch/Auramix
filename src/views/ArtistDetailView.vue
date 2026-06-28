@@ -101,18 +101,20 @@ const monthlyListeners = computed(() => {
 // 当前歌手是否有歌正在播放
 const isArtistPlaying = computed(() => {
   if (!player.currentTrack || !player.isPlaying) return false
-  return displayTracks.value.some(t => t.id === player.currentTrack.id)
+  return player.playbackSource?.type === 'artist' && String(player.playbackSource?.id) === String(artistInfo.value.id)
 })
 
 // 播放整首歌手歌曲
 const playArtistTracks = () => {
   if (displayTracks.value.length === 0) return
   const firstTrack = displayTracks.value[0]
+  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: /artist/ }
   const playEvent = new CustomEvent('play-track', {
     detail: {
       track: firstTrack,
       playlist: displayTracks.value,
-      index: 0
+      index: 0,
+      source
     }
   })
   window.dispatchEvent(playEvent)
@@ -131,7 +133,8 @@ const togglePlayArtist = () => {
 
 // 播放单首歌曲
 const playIndividualTrack = (track, index) => {
-  if (player.currentTrack && player.currentTrack.id === track.id) {
+  const source = { type: 'artist', id: artistInfo.value.id, name: artistInfo.value.name, route: /artist/ }
+  if (isTrackActive(track.id)) {
     const toggleEvent = new CustomEvent('toggle-play')
     window.dispatchEvent(toggleEvent)
   } else {
@@ -139,7 +142,8 @@ const playIndividualTrack = (track, index) => {
       detail: {
         track,
         playlist: displayTracks.value,
-        index
+        index,
+        source
       }
     })
     window.dispatchEvent(playEvent)
@@ -147,7 +151,7 @@ const playIndividualTrack = (track, index) => {
 }
 
 const isTrackActive = (trackId) => {
-  return player.currentTrack && player.currentTrack.id === trackId
+  return player.currentTrack && player.currentTrack.id === trackId && player.playbackSource?.type === 'artist' && String(player.playbackSource?.id) === String(artistInfo.value.id)
 }
 
 const isTrackPlaying = (trackId) => {

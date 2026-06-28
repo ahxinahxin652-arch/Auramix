@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
@@ -144,10 +144,10 @@ function toggleMainLyrics() {
   }
 }
 
-// ========== 监听外部播放事件 ==========
+// ========== 外部事件 ==========
 function handlePlayTrackEvent(e) {
-  const { track, playlist, index } = e.detail
-  playTrack(track, playlist, index)
+  const { track, playlist, index, source } = e.detail
+  playTrack(track, playlist, index, source)
 }
 
 // ========== 监听曲目删除事件 ==========
@@ -195,10 +195,10 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-// 播放指定曲目
-async function playTrack(track, playlist = [], index = -1) {
+// 播放曲目
+async function playTrack(track, playlist = [], index = -1, source = null) {
   stopCurrent()
-  player.setTrack(track, playlist, index)
+  player.setTrack(track, playlist, index, source)
 
   // 通过 track ID 从数据库解析最新的文件路径（防止改名后路径失效）
   let currentTrack = track

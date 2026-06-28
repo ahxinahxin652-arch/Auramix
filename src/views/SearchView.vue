@@ -96,9 +96,24 @@ function handleScroll(e) {
   }
 }
 
-function playTrack(track) {
-  // Logic to play track
-  ElMessage.success('Play track ' + track.title)
+async function playTrack(track) {
+  let playlist = [track]
+  if (track.albumId) {
+    try {
+      const result = await window.electronAPI.getAlbumDetailRemote(track.albumId)
+      if (result.success && result.data && result.data.album && result.data.album.tracks) {
+        playlist = result.data.album.tracks
+      }
+    } catch (e) {
+      console.error('Failed to fetch album tracks for search play', e)
+    }
+  }
+  const index = playlist.findIndex(t => String(t.id) === String(track.id))
+  
+  const source = { type: 'search', id: track.id, name: track.title, route: /album/ }
+  window.dispatchEvent(new CustomEvent('play-track', {
+    detail: { track, playlist, index: index >= 0 ? index : 0, source }
+  }))
 }
 
 function goArtist(id) {
@@ -345,18 +360,19 @@ onMounted(() => {
   }
 
 .track-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
 
 .track-title {
     font-size: 16px;
     font-weight: 500;
     color: #fff;
-    line-height: 1.2;
-    margin-bottom: 2px;
+    line-height: 1;
+    margin: 0;
     cursor: pointer;
   }
   .track-title:hover {
@@ -376,7 +392,8 @@ onMounted(() => {
 .track-artist {
     font-size: 14px;
     color: #a7a7a7;
-    line-height: 1.2;
+    line-height: 1;
+    margin: 0;
   }
 
 .add-to-playlist-btn {

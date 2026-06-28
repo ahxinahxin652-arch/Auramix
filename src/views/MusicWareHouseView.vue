@@ -183,12 +183,13 @@ function formatDate(dateStr) {
 }
 
 function playTrack(track, index) {
+  const source = { type: 'playlist', id: libraryId.value, name: warehouseInfo.value.name, route: /warehouse/ }
   if (isCurrentTrack(track)) {
     window.dispatchEvent(new CustomEvent('toggle-play'))
   } else {
     player.setPlaylist(filteredTracks.value, index)
     window.dispatchEvent(new CustomEvent('play-track', {
-      detail: { track, playlist: filteredTracks.value, index }
+      detail: { track, playlist: filteredTracks.value, index, source }
     }))
   }
 }
@@ -270,7 +271,7 @@ function onWarehouseDocClick() {
 }
 
 function isCurrentTrack(track) {
-  return player.currentTrack && player.currentTrack.path === track.path
+  return player.currentTrack && player.currentTrack.path === track.path && player.playbackSource?.type === 'playlist' && player.playbackSource?.id === libraryId.value
 }
 
 async function handleFileDrop(e) {
