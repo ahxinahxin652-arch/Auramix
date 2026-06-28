@@ -647,13 +647,11 @@ onUnmounted(() => {
   border: none;
   color: var(--text);
   cursor: pointer;
-  margin-left: 16px;
   opacity: 0.7;
   transition: opacity 0.2s, color 0.2s, transform 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 8px;
 }
 .foot-left:hover .add-to-playlist-btn {
   opacity: 1;

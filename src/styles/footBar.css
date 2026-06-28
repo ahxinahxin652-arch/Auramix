@@ -332,7 +332,6 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 2px;
 }
 
 .vol-btn {
@@ -356,8 +355,8 @@
 
 .volume-slider {
     flex: 1;
-    min-width: 20px;
-    max-width: 30px;
+    min-width: 30px;
+    max-width: 140px;
     height: 4px;
     -webkit-appearance: none;
     background: var(--surface-3);
