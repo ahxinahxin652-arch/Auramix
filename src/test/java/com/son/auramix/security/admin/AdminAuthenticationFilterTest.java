@@ -35,7 +35,7 @@ class AdminAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter =  new AdminAuthenticationFilter(tokenStore);
+        filter = new AdminAuthenticationFilter(tokenStore);
         SecurityContextHolder.clearContext();
     }
 
