@@ -414,4 +414,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   selectMusicFiles,
   // 文件读取
   readFileAsBlob,
+  fetchText: (url) => ipcRenderer.invoke('fetch-text', url),
 })

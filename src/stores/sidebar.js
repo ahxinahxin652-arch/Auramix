@@ -14,6 +14,9 @@ export const useSidebarStore = defineStore('sidebar', () => {
   // 侧栏是否正在执行动画（切换中）
   const isAnimating = ref(false)
   
+  // 记录上一个侧栏的状态，用于关闭 play-queue 时恢复
+  const previousState = ref({ isOpen: false, contentType: '', data: null })
+  
   // 侧栏宽度
   const width = ref(280)
   // 侧栏宽度相对窗口宽度的比例
@@ -28,6 +31,13 @@ export const useSidebarStore = defineStore('sidebar', () => {
    */
   function open(type, payload = null) {
     if (isAnimating.value) return
+
+    if (type === 'play-queue' && contentType.value !== 'play-queue') {
+      previousState.value = { isOpen: isOpen.value, contentType: contentType.value, data: data.value }
+    } else if (type !== 'play-queue') {
+      previousState.value = { isOpen: true, contentType: type, data: payload }
+    }
+
     contentType.value = type
     data.value = payload
     isOpen.value = true
@@ -38,7 +48,13 @@ export const useSidebarStore = defineStore('sidebar', () => {
    */
   function close() {
     if (isAnimating.value) return
-    isOpen.value = false
+    if (contentType.value === 'play-queue') {
+      isOpen.value = previousState.value.isOpen
+      contentType.value = previousState.value.contentType || ''
+      data.value = previousState.value.data
+    } else {
+      isOpen.value = false
+    }
   }
 
   /**

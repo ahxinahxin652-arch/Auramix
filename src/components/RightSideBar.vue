@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/player.js'
 import { useLocalStorageStore } from '../stores/localStorage.js'
 import { useSidebarStore } from '../stores/sidebar.js'
+import PlayQueueSidebar from './PlayQueueSidebar.vue'
 
 const player = usePlayerStore()
 const localStorageStore = useLocalStorageStore()
@@ -23,8 +24,10 @@ function goToSource(route) {
 }
 
 function closeSidebar() {
-  sidebarStore.setOpen(false)
-  localStorageStore.setRightBarShow(false)
+  sidebarStore.close()
+  if (!sidebarStore.isOpen) {
+    localStorageStore.setRightBarShow(false)
+  }
 }
 
 function openSidebar() {
@@ -307,8 +310,12 @@ const handleCardArtistClick = (art) => {
     <!-- 拖拽缩放把手 -->
     <div class="sidebar-resizer" v-show="sidebarStore.isOpen" @mousedown.prevent="onDragStart"></div>
 
-    <!-- 头部：标题 + 关闭按钮 -->
-    <div class="sidebar-header">
+    <template v-if="sidebarStore.contentType === 'play-queue'">
+      <PlayQueueSidebar @close="closeSidebar" />
+    </template>
+    <template v-else>
+      <!-- 头部：标题 + 关闭按钮 -->
+      <div class="sidebar-header">
       <div class="header-left-part">
         <span class="sidebar-title">正在播放<template v-if="player.playbackSource"> - <span class="source-link" @click="goToSource(player.playbackSource.route)">{{ player.playbackSource.name }}</span></template></span>
       </div>
@@ -439,6 +446,7 @@ const handleCardArtistClick = (art) => {
         <p>当前未播放任何曲目</p>
       </div>
     </div>
+    </template>
   </div>
 
   <!-- Credits Modal (Teleport to Body) -->
