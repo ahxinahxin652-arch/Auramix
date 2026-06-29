@@ -87,18 +87,14 @@ module.exports = function(mainWindow) {
         }
 
         // 写入关注的歌手
-        if (syncData.followedArtistIds && syncData.followedArtistIds.length > 0) {
-          for (const aid of syncData.followedArtistIds) {
-            const artistId = BigInt(aid)
-            const artistExists = await tx.artist.findUnique({ where: { id: artistId } })
-            if (!artistExists) {
-              await tx.artist.create({
-                data: {
-                  id: artistId,
-                  name: "Sync Artist " + artistId
-                }
-              })
-            }
+        if (syncData.followedArtists && syncData.followedArtists.length > 0) {
+          for (const artist of syncData.followedArtists) {
+            const artistId = BigInt(artist.id)
+            await tx.artist.upsert({
+              where: { id: artistId },
+              update: { name: artist.name, coverImg: artist.coverImg },
+              create: { id: artistId, name: artist.name, coverImg: artist.coverImg }
+            })
             await tx.artistFollower.create({
               data: {
                 userId: localUserId,
@@ -141,9 +137,14 @@ module.exports = function(mainWindow) {
       const db = getDb()
       const localUserId = 1n
       const follows = await db.artistFollower.findMany({
-        where: { userId: localUserId }
+        where: { userId: localUserId },
+        include: { artist: true }
       })
-      res.json({ success: true, data: follows.map(f => f.artistId.toString()) })
+      res.json({ success: true, data: follows.map(f => ({
+        id: f.artist.id.toString(),
+        name: f.artist.name,
+        coverImg: f.artist.coverImg
+      })) })
     } catch (err) {
       res.json({ success: false, error: err.message })
     }

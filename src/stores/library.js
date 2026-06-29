@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 export const useLibraryStore = defineStore('library', {
   state: () => ({
     playlists: [], // { id, name, coverUrl, trackIds: [] }
-    followedArtistIds: [],
+    followedArtists: [],
     syncing: false,
     initialized: false,
     selectorVisible: false,
@@ -20,7 +20,7 @@ export const useLibraryStore = defineStore('library', {
     },
     isFollowingArtist: (state) => {
       return (artistId) => {
-        return state.followedArtistIds.includes(String(artistId))
+        return state.followedArtists.some(a => String(a.id) === String(artistId))
       }
     }
   },
@@ -36,7 +36,7 @@ export const useLibraryStore = defineStore('library', {
             window.electronAPI.getLocalFollowedArtists()
           ])
           if (plRes.success) this.playlists = plRes.data
-          if (faRes.success) this.followedArtistIds = faRes.data
+          if (faRes.success) this.followedArtists = faRes.data
         }
 
         // 后台与云端对齐同步
@@ -44,8 +44,7 @@ export const useLibraryStore = defineStore('library', {
           const syncRes = await window.electronAPI.syncLocalLibrary()
           if (syncRes.success && syncRes.data) {
             this.playlists = syncRes.data.playlists || []
-            // 这里将 number 的 array 转换为 string array，以保证一致性
-            this.followedArtistIds = (syncRes.data.followedArtistIds || []).map(String)
+            this.followedArtists = syncRes.data.followedArtists || []
             this.playlists.forEach(p => {
               if (p.trackIds) p.trackIds = p.trackIds.map(String)
             })
@@ -93,22 +92,26 @@ export const useLibraryStore = defineStore('library', {
         detail: { playlistId: pidStr, trackId: tidStr, hasTrack: !hasTrack } 
       }))
     },
-    async toggleFollowArtist(artistId) {
+    async toggleFollowArtist(artistObj) {
+      const artistId = typeof artistObj === 'object' ? artistObj.id : artistObj
       const aidStr = String(artistId)
-      const isFollowing = this.followedArtistIds.includes(aidStr)
+      const isFollowing = this.followedArtists.some(a => String(a.id) === aidStr)
 
       // 乐观更新
       if (isFollowing) {
-        this.followedArtistIds = this.followedArtistIds.filter(id => id !== aidStr)
+        this.followedArtists = this.followedArtists.filter(a => String(a.id) !== aidStr)
         if (window.electronAPI?.unfollowLocalArtist) {
           window.electronAPI.unfollowLocalArtist(artistId)
         }
       } else {
-        this.followedArtistIds.push(aidStr)
+        const newArtist = typeof artistObj === 'object' ? artistObj : { id: aidStr, name: 'Unknown Artist', coverImg: '' }
+        this.followedArtists.push(newArtist)
         if (window.electronAPI?.followLocalArtist) {
           window.electronAPI.followLocalArtist(artistId)
         }
       }
+      // 通知外部组件（比如 musicLibrary）也可以刷新
+      window.dispatchEvent(new CustomEvent('artist-follow-toggled', { detail: { artistId: aidStr } }))
     }
   }
 })

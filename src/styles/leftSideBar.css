@@ -381,3 +381,40 @@ body.left-sidebar-resizing * {
 .context-menu-item svg {
     flex-shrink: 0;
 }
+
+/* ========== 标签栏 ========== */
+.sidebar-filters {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 10px;
+}
+
+.filter-chip {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-h);
+    border: none;
+    border-radius: 16px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.filter-chip:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.filter-chip.active {
+    background: var(--text-h);
+    color: var(--bg);
+}
+
+/* ========== 歌手列表圆角头像 ========== */
+.artist-avatar {
+    border-radius: 50%;
+}
+
+.artist-avatar-placeholder {
+    border-radius: 50%;
+}

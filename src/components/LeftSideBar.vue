@@ -4,11 +4,19 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useLeftSidebarStore } from '../stores/leftSidebar.js'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
+import { useLibraryStore } from '../stores/library.js'
+import { useUserStore } from '../stores/user.js'
 
 const router = useRouter()
 const route = useRoute()
 const leftSidebarStore = useLeftSidebarStore()
 const library = useMusicLibraryStore()
+const globalLibraryStore = useLibraryStore()
+const userStore = useUserStore()
+
+// ---- 侧边栏 Tab 切换 ----
+const currentTab = ref('Playlists') // 'Playlists' | 'Artists'
+
 
 // ---- 拖拽状态 ----
 const dragStartX = ref(0)
@@ -337,8 +345,15 @@ function getCoverUrl(playlist) {
 }
 
 function getOwnerName(playlist) {
-  return playlist.ownerName || playlist.owner || '未知作者'
+  if (playlist.ownerName || playlist.owner) return playlist.ownerName || playlist.owner
+  if (userStore.profile && userStore.profile.displayName) return userStore.profile.displayName
+  return '未知作者'
 }
+
+function handleArtistClick(artist) {
+  router.push(`/artist/${artist.id}`)
+}
+
 </script>
 
 <template>
@@ -381,7 +396,13 @@ function getOwnerName(playlist) {
       </button>
     </div>
 
-    <!-- === 歌单列表 === -->
+    <!-- === 过滤标签 === -->
+    <div v-if="isExpanded" class="sidebar-filters">
+      <button class="filter-chip" :class="{ active: currentTab === 'Playlists' }" @click="currentTab = 'Playlists'">Playlists</button>
+      <button class="filter-chip" :class="{ active: currentTab === 'Artists' }" @click="currentTab = 'Artists'">Artists</button>
+    </div>
+
+    <!-- === 列表区 === -->
     <div class="sidebar-playlists">
       <!-- 缩略模式 -->
       <template v-if="isCollapsed">
@@ -417,41 +438,73 @@ function getOwnerName(playlist) {
         </div>
       </template>
 
-      <!-- 展开模式 -->
       <template v-if="isExpanded">
-        <div
-          v-for="pl in library.warehouses"
-          :key="pl.id"
-          class="playlist-item-expanded"
-          @click="handlePlaylistClick(pl)"
-          @contextmenu="onPlaylistContextMenu(pl, $event)"
-        >
-          <img
-            v-if="getCoverUrl(pl)"
-            :src="getCoverUrl(pl)"
-            class="playlist-cover-expanded"
-            alt=""
-          />
-          <div v-else class="playlist-cover-expanded-placeholder">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <!-- 歌单列表 -->
+        <template v-if="currentTab === 'Playlists'">
+          <div
+            v-for="pl in library.warehouses"
+            :key="pl.id"
+            class="playlist-item-expanded"
+            @click="handlePlaylistClick(pl)"
+            @contextmenu="onPlaylistContextMenu(pl, $event)"
+          >
+            <img
+              v-if="getCoverUrl(pl)"
+              :src="getCoverUrl(pl)"
+              class="playlist-cover-expanded"
+              alt=""
+            />
+            <div v-else class="playlist-cover-expanded-placeholder">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 18V5l12-2v13"/>
+                <circle cx="6" cy="18" r="3"/>
+                <circle cx="18" cy="16" r="3"/>
+              </svg>
+            </div>
+            <div class="playlist-info">
+              <span class="playlist-name">{{ pl.name }}</span>
+              <span class="playlist-owner">{{ getOwnerName(pl) }}</span>
+            </div>
+          </div>
+          <div v-if="library.warehouses.length === 0" class="sidebar-empty-expanded">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
               <path d="M9 18V5l12-2v13"/>
               <circle cx="6" cy="18" r="3"/>
               <circle cx="18" cy="16" r="3"/>
             </svg>
+            <p>暂无歌单<br>点击 + 创建你的第一个歌单</p>
           </div>
-          <div class="playlist-info">
-            <span class="playlist-name">{{ pl.name }}</span>
-            <span class="playlist-owner">{{ getOwnerName(pl) }}</span>
+        </template>
+
+        <!-- 歌手列表 -->
+        <template v-if="currentTab === 'Artists'">
+          <div
+            v-for="artist in globalLibraryStore.followedArtists"
+            :key="artist.id"
+            class="playlist-item-expanded"
+            @click="handleArtistClick(artist)"
+          >
+            <img
+              v-if="artist.coverImg"
+              :src="artist.coverImg"
+              class="playlist-cover-expanded artist-avatar"
+              alt=""
+            />
+            <div v-else class="playlist-cover-expanded-placeholder artist-avatar-placeholder">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="playlist-info">
+              <span class="playlist-name">{{ artist.name }}</span>
+              <span class="playlist-owner">Artist</span>
+            </div>
           </div>
-        </div>
-        <div v-if="library.warehouses.length === 0" class="sidebar-empty-expanded">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-            <path d="M9 18V5l12-2v13"/>
-            <circle cx="6" cy="18" r="3"/>
-            <circle cx="18" cy="16" r="3"/>
-          </svg>
-          <p>暂无歌单<br>点击 + 创建你的第一个歌单</p>
-        </div>
+          <div v-if="globalLibraryStore.followedArtists.length === 0" class="sidebar-empty-expanded">
+            <p>暂无关注的歌手</p>
+          </div>
+        </template>
       </template>
     </div>
 

@@ -237,7 +237,7 @@ const formatPlayCount = (num) => {
       <button 
         class="follow-btn-outline" 
         :class="{ active: globalLibraryStore.isFollowingArtist(artistInfo.id) }" 
-        @click="globalLibraryStore.toggleFollowArtist(artistInfo.id)"
+        @click="globalLibraryStore.toggleFollowArtist(artistInfo)"
       >
         {{ globalLibraryStore.isFollowingArtist(artistInfo.id) ? 'Following' : 'Follow' }}
       </button>
