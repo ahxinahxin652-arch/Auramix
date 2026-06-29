@@ -30,6 +30,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -48,6 +51,8 @@ class ReviewServiceImplIntegrationTest {
     @Mock private LyricsFetcher lyricsFetcher;
     @Mock private ReviewOrchestrator orchestrator;
     @Mock private PlatformTransactionManager txManager;
+    @Mock private com.son.auramix.ai.progress.ReviewProgressStore progressStore;
+    @Mock private com.son.auramix.ai.progress.ReviewProgressSseRegistry sseRegistry;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -57,7 +62,8 @@ class ReviewServiceImplIntegrationTest {
         AgentResultsFormatter formatter = new AgentResultsFormatter(objectMapper);
         ReviewServiceImpl service = new ReviewServiceImpl(
             trackMapper, albumMapper, artistMapper, trackArtistMapper,
-            reviewRecordMapper, lyricsFetcher, orchestrator, formatter, txManager
+            reviewRecordMapper, lyricsFetcher, orchestrator, formatter,
+            progressStore, sseRegistry, txManager
         );
         ReflectionTestUtils.invokeMethod(service, "initTransactionTemplate");
 
@@ -93,5 +99,93 @@ class ReviewServiceImplIntegrationTest {
         Object vo = result.getRecords().get(0);
         String details = (String) ReflectionTestUtils.getField(vo, "dimensionDetails");
         assertThat(details).isEqualTo("A审核通过：置信度90");
+    }
+
+    @Test
+    void triggerReview_callsFinishedAndCompletesSseOnSuccess() {
+        // 构造最小依赖让 triggerReview 走完整流程
+        AgentResultsFormatter formatter = new AgentResultsFormatter(objectMapper);
+        ReviewServiceImpl service = new ReviewServiceImpl(
+            trackMapper, albumMapper, artistMapper, trackArtistMapper,
+            reviewRecordMapper, lyricsFetcher, orchestrator, formatter,
+            progressStore, sseRegistry, txManager
+        );
+        ReflectionTestUtils.invokeMethod(service, "initTransactionTemplate");
+
+        Track track = new Track();
+        track.setId(100L);
+        track.setStatus(0);
+        track.setTitle("测试");
+        track.setLyricsUrl(null);
+        when(trackMapper.selectById(100L)).thenReturn(track);
+        when(trackArtistMapper.selectList(any())).thenReturn(java.util.Collections.emptyList());
+        when(lyricsFetcher.fetch(any())).thenReturn(null);
+        when(lyricsFetcher.hasValidLyrics(any())).thenReturn(false);
+
+        // mock orchestrator.execute(ctx, recordId) 返回一个 PipelineResult
+        AgentResult finalResult = AgentResult.builder()
+            .agentName("ReviewJudge").verdict("PASS").confidence(90).reason(null).build();
+        ReviewOrchestrator.PipelineResult pipeline = new ReviewOrchestrator.PipelineResult(
+            java.util.Collections.emptyList(), finalResult, "{}");
+        when(orchestrator.execute(any(), any())).thenReturn(pipeline);
+
+        // mock reviewRecordMapper.insert 模拟回填 id
+        when(reviewRecordMapper.insert(any(TrackReviewRecord.class))).thenAnswer(inv -> {
+            TrackReviewRecord r = inv.getArgument(0);
+            r.setId(555L);
+            return 1;
+        });
+        // update 返回 1（条件更新成功）
+        when(reviewRecordMapper.update(any(), any())).thenReturn(1);
+
+        // when
+        service.triggerReview(100L);
+
+        // then：finished 被调用，SSE complete 被调用
+        verify(progressStore).finished(eq(555L), any(), any(), any());
+        verify(sseRegistry).send(eq(555L), any());
+        verify(sseRegistry).complete(555L);
+    }
+
+    @Test
+    void triggerReview_completesSseEvenWhenUpdateReturnsZero() {
+        AgentResultsFormatter formatter = new AgentResultsFormatter(objectMapper);
+        ReviewServiceImpl service = new ReviewServiceImpl(
+            trackMapper, albumMapper, artistMapper, trackArtistMapper,
+            reviewRecordMapper, lyricsFetcher, orchestrator, formatter,
+            progressStore, sseRegistry, txManager
+        );
+        ReflectionTestUtils.invokeMethod(service, "initTransactionTemplate");
+
+        Track track = new Track();
+        track.setId(100L);
+        track.setStatus(0);
+        track.setTitle("测试");
+        track.setLyricsUrl(null);
+        when(trackMapper.selectById(100L)).thenReturn(track);
+        when(trackArtistMapper.selectList(any())).thenReturn(java.util.Collections.emptyList());
+        when(lyricsFetcher.fetch(any())).thenReturn(null);
+        when(lyricsFetcher.hasValidLyrics(any())).thenReturn(false);
+
+        AgentResult finalResult = AgentResult.builder()
+            .agentName("ReviewJudge").verdict("PASS").confidence(90).reason(null).build();
+        ReviewOrchestrator.PipelineResult pipeline = new ReviewOrchestrator.PipelineResult(
+            java.util.Collections.emptyList(), finalResult, "{}");
+        when(orchestrator.execute(any(), any())).thenReturn(pipeline);
+
+        when(reviewRecordMapper.insert(any(TrackReviewRecord.class))).thenAnswer(inv -> {
+            TrackReviewRecord r = inv.getArgument(0);
+            r.setId(555L);
+            return 1;
+        });
+        // update 返回 0：表示记录已被人工确认，跳过更新
+        when(reviewRecordMapper.update(any(), any())).thenReturn(0);
+
+        service.triggerReview(100L);
+
+        // 即使 updated=0，SSE 也应被 complete 关闭，避免客户端挂死
+        verify(sseRegistry).complete(555L);
+        // 但不应调用 finished（没有最终落库状态可推）
+        verify(progressStore, never()).finished(any(), any(), any(), any());
     }
 }

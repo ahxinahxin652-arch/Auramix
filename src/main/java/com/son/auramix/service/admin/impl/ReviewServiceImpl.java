@@ -7,6 +7,9 @@ import com.son.auramix.ai.dto.AgentResult;
 import com.son.auramix.ai.dto.ReviewContext;
 import com.son.auramix.ai.lyrics.LyricsFetcher;
 import com.son.auramix.ai.orchestrator.ReviewOrchestrator;
+import com.son.auramix.ai.progress.ProgressEvent;
+import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
+import com.son.auramix.ai.progress.ReviewProgressStore;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
@@ -41,6 +44,8 @@ public class ReviewServiceImpl implements ReviewService {
     private final LyricsFetcher lyricsFetcher;
     private final ReviewOrchestrator orchestrator;
     private final AgentResultsFormatter agentResultsFormatter;
+    private final ReviewProgressStore progressStore;
+    private final ReviewProgressSseRegistry sseRegistry;
     /**
      * Spring 自动注入的事务管理器；用于构造 {@link #transactionTemplate}，
      * 把"读+校验"放到事务外、只把"两个 UPDATE"放进极短事务内，
@@ -158,10 +163,30 @@ public class ReviewServiceImpl implements ReviewService {
                             .eq(TrackReviewRecord::getStatus, 0));
             if (updated == 0) {
                 log.info("[AI审核] trackId={} 审核完成时发现记录已被人工确认，跳过更新以保留管理员决定", trackId);
+                // 即使管理员已确认，也要关闭 SSE 连接避免客户端挂死
+                try {
+                    sseRegistry.complete(record.getId());
+                } catch (Exception ex) {
+                    log.warn("[AI审核] trackId={} SSE complete 异常", trackId, ex);
+                }
                 return;
             }
             log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={} status={}",
                     trackId, record.getVerdict(), confidence, record.getStatus());
+
+            // 推 FINISHED 事件 + 关闭 SSE 连接
+            try {
+                progressStore.finished(record.getId(), record.getStatus(), record.getVerdict(), record.getConfidence());
+                sseRegistry.send(record.getId(), ProgressEvent.finished(record.getId(), trackId,
+                        record.getStatus(), record.getVerdict(), record.getConfidence()));
+            } catch (Exception ex) {
+                log.warn("[AI审核] trackId={} FINISHED 推送异常", trackId, ex);
+            }
+            try {
+                sseRegistry.complete(record.getId());
+            } catch (Exception ex) {
+                log.warn("[AI审核] trackId={} SSE complete 异常", trackId, ex);
+            }
 
         } catch (Exception e) {
             log.error("[AI审核] trackId={} 审核流程异常", trackId, e);
@@ -174,6 +199,12 @@ public class ReviewServiceImpl implements ReviewService {
                     log.info("[AI审核] trackId={} 已将审核记录标记为失败(status=5)", trackId);
                 } catch (Exception ex) {
                     log.error("[AI审核] trackId={} 标记失败状态时再次异常", trackId, ex);
+                }
+                // 异常分支也要关闭 SSE 连接
+                try {
+                    sseRegistry.complete(record.getId());
+                } catch (Exception ex) {
+                    log.warn("[AI审核] trackId={} 异常分支 SSE complete 失败", trackId, ex);
                 }
             }
         }
