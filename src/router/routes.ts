@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '管理员管理' },
       },
       {
+        path: 'genre',
+        name: 'GenreManage',
+        component: () => import('@/views/genre/Index.vue'),
+        meta: { requiresAuth: true, title: '流派管理' },
+      },
+      {
         path: 'song',
         name: 'SongManage',
         component: () => import('@/views/song/Index.vue'),

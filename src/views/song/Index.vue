@@ -18,6 +18,13 @@ import {
 import { searchAlbums, quickCreateAlbum, type AlbumSearchItem } from '@/api/admin/albumManage'
 import { searchArtists, type ArtistSearchItem } from '@/api/admin/artistManage'
 import { uploadFile } from '@/api/admin/oss'
+import {
+  getAllGenres,
+  getTrackGenres,
+  bindGenresToTrack,
+  unbindGenreFromTrack,
+  type Genre
+} from '@/api/admin/genreManage'
 
 // ---- 分页与数据 ----
 const list = ref<TrackListItem[]>([])
@@ -43,6 +50,15 @@ const activeTab = ref('basic')
 const isEdit = ref(false)
 const editingId = ref<string>('')
 const submitLoading = ref(false)
+
+// ---- Genre Drawer State ----
+const genreDrawerVisible = ref(false)
+const genreLoading = ref(false)
+const currentGenreTrackId = ref<string>('')
+const currentGenres = ref<Genre[]>([])
+const allGenres = ref<Genre[]>([])
+const selectedGenreIds = ref<string[]>([])
+const bindingGenres = ref(false)
 
 // ---- Form state ----
 const formRef = ref<FormInstance>()
@@ -635,6 +651,64 @@ function handleQuickAlbumSubmit() {
   })
 }
 
+// ---- Genre Management ----
+async function openGenreDrawer(row: TrackListItem) {
+  genreDrawerVisible.value = true
+  currentGenreTrackId.value = row.id
+  currentGenres.value = []
+  selectedGenreIds.value = []
+  genreLoading.value = true
+
+  try {
+    const [genresData, allData] = await Promise.all([
+      getTrackGenres(row.id),
+      getAllGenres()
+    ])
+    currentGenres.value = genresData
+    allGenres.value = allData
+  } catch (err) {
+    console.error('获取歌曲流派失败:', err)
+    ElMessage.error('获取流派信息失败')
+  } finally {
+    genreLoading.value = false
+  }
+}
+
+async function handleBindGenres() {
+  if (selectedGenreIds.value.length === 0) {
+    ElMessage.warning('请选择至少一个流派')
+    return
+  }
+  bindingGenres.value = true
+  try {
+    await bindGenresToTrack({
+      trackId: currentGenreTrackId.value,
+      genreIds: selectedGenreIds.value
+    })
+    ElMessage.success('绑定流派成功')
+    selectedGenreIds.value = []
+    // 重新拉取
+    currentGenres.value = await getTrackGenres(currentGenreTrackId.value)
+  } catch (err) {
+    console.error('绑定流派失败:', err)
+  } finally {
+    bindingGenres.value = false
+  }
+}
+
+async function handleUnbindGenre(genreId: string) {
+  try {
+    await unbindGenreFromTrack({
+      trackId: currentGenreTrackId.value,
+      genreId
+    })
+    ElMessage.success('解绑成功')
+    currentGenres.value = currentGenres.value.filter(g => g.id !== genreId)
+  } catch (err) {
+    console.error('解绑流派失败:', err)
+  }
+}
+
 onMounted(() => {
   loadData()
 })
@@ -810,8 +884,9 @@ onMounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="140" fixed="right" align="center">
+          <el-table-column label="操作" width="220" fixed="right" align="center">
             <template #default="{ row }">
+              <el-button link type="success" :icon="Collection" @click="openGenreDrawer(row as any)">流派</el-button>
               <el-button link type="primary" :icon="Edit" @click="openEditDrawer(row as any)">编辑</el-button>
               <el-button link type="danger" :icon="Delete" @click="handleDelete(row as any)">删除</el-button>
             </template>
@@ -1164,6 +1239,53 @@ onMounted(() => {
         </div>
       </template>
     </el-dialog>
+
+    <!-- 歌曲流派管理抽屉 -->
+    <el-drawer v-model="genreDrawerVisible" title="管理歌曲流派" size="400px" destroy-on-close>
+      <div v-loading="genreLoading" class="genre-drawer-content">
+        <div class="current-genres">
+          <h4>已绑定流派</h4>
+          <el-empty v-if="currentGenres.length === 0" description="暂无流派" :image-size="60" />
+          <div v-else class="genre-tags">
+            <el-tag
+              v-for="genre in currentGenres"
+              :key="genre.id"
+              closable
+              @close="handleUnbindGenre(genre.id)"
+              type="success"
+              class="genre-tag"
+            >
+              {{ genre.name }}
+            </el-tag>
+          </div>
+        </div>
+        
+        <el-divider />
+        
+        <div class="add-genre">
+          <h4>绑定新流派</h4>
+          <div class="add-genre-actions">
+            <el-select
+              v-model="selectedGenreIds"
+              multiple
+              placeholder="选择流派"
+              style="flex: 1;"
+            >
+              <el-option
+                v-for="genre in allGenres"
+                :key="genre.id"
+                :label="genre.name"
+                :value="genre.id"
+                :disabled="currentGenres.some(g => g.id === genre.id)"
+              />
+            </el-select>
+            <el-button type="primary" :loading="bindingGenres" @click="handleBindGenres">
+              添加
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
@@ -1440,5 +1562,27 @@ onMounted(() => {
   gap: $spacing-sm;
   padding: $spacing-md;
   border-top: 1px solid $border-base;
+}
+
+.genre-drawer-content {
+  padding: 0 16px;
+  h4 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    color: var(--el-text-color-primary);
+  }
+}
+.genre-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  .genre-tag {
+    font-size: 13px;
+    padding: 6px 12px;
+  }
+}
+.add-genre-actions {
+  display: flex;
+  gap: 8px;
 }
 </style>
