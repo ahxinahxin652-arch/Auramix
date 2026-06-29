@@ -9,6 +9,7 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
   const totalCount = ref(0)             // 远端歌单总数
   const currentPage = ref(1)            // 当前页码
   const pageSize = ref(100)             // 每页大小
+  const isLoading = ref(false)
 
   // ---- Actions ----
 
@@ -16,6 +17,8 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
    * 从远端 API (8080 / MySQL) 加载歌单列表
    */
   async function loadWarehouses() {
+    if (isLoading.value) return
+    isLoading.value = true
     try {
       const result = await window.electronAPI.getRemotePlaylists({
         pageNum: currentPage.value,
@@ -27,6 +30,8 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
       }
     } catch (err) {
       console.error('加载远端歌单列表失败:', err)
+    } finally {
+      isLoading.value = false
     }
   }
 
@@ -133,6 +138,7 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
     totalCount,
     currentPage,
     pageSize,
+    isLoading,
     loadWarehouses,
     createWarehouse,
     saveWarehouse,
