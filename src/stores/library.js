@@ -35,19 +35,7 @@ export const useLibraryStore = defineStore('library', {
       if (this.initialized || this.syncing) return
       this.syncing = true
       try {
-        // 先从本地 SQLite 获取缓存数据以实现秒开
-        if (window.electronAPI && window.electronAPI.getLocalPlaylists) {
-          const [plRes, faRes, subRes] = await Promise.all([
-            window.electronAPI.getLocalPlaylists(),
-            window.electronAPI.getLocalFollowedArtists(),
-            window.electronAPI.getLocalSubscribedPlaylists ? window.electronAPI.getLocalSubscribedPlaylists() : Promise.resolve({ success: false })
-          ])
-          if (plRes.success) this.playlists = plRes.data
-          if (faRes.success) this.followedArtists = faRes.data
-          if (subRes.success) this.subscribedPlaylists = subRes.data
-        }
-
-        // 后台与云端对齐同步
+        // Only run syncLocalLibrary, completely ignoring the redundant local proxy fetches
         if (window.electronAPI && window.electronAPI.syncLocalLibrary) {
           const syncRes = await window.electronAPI.syncLocalLibrary()
           if (syncRes.success && syncRes.data) {
