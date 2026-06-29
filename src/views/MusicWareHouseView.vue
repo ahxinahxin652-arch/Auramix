@@ -44,7 +44,7 @@ const isSubscribed = computed(() => {
 
 const computedIsOwner = computed(() => {
   if (warehouseInfo.value.isOwner !== undefined) return warehouseInfo.value.isOwner
-  return library.warehouses.some(p => String(p.id) === String(libraryId.value))
+  return globalLibraryStore.playlists.some(p => String(p.id) === String(libraryId.value))
 })
 
 async function handleToggleSubscribe() {
