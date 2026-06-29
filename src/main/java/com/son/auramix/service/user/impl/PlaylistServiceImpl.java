@@ -14,6 +14,7 @@ import com.son.auramix.domain.vo.user.PlaylistDetailVO;
 import com.son.auramix.domain.vo.user.PlaylistSearchItemVO;
 import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
 import com.son.auramix.domain.vo.user.ArtistInfoVO;
+import com.son.auramix.domain.vo.admin.GenreVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
@@ -49,6 +50,8 @@ public class PlaylistServiceImpl implements PlaylistService {
     private final TrackArtistMapper trackArtistMapper;
     private final ArtistMapper artistMapper;
     private final UserMapper userMapper;
+    private final TrackGenreMapper trackGenreMapper;
+    private final GenreMapper genreMapper;
 
     /** OSS 服务（当 OSS 未配置时可能�?null�?*/
     @Autowired(required = false)
@@ -372,6 +375,15 @@ public class PlaylistServiceImpl implements PlaylistService {
             Map<Long, List<TrackArtist>> trackArtistsByTrack = trackArtists.stream()
                     .collect(Collectors.groupingBy(TrackArtist::getTrackId));
 
+            // 批量查流派
+            List<TrackGenre> trackGenres = trackGenreMapper.selectList(
+                    new LambdaQueryWrapper<TrackGenre>().in(TrackGenre::getTrackId, trackIds));
+            List<Long> genreIds = trackGenres.stream().map(TrackGenre::getGenreId).distinct().collect(Collectors.toList());
+            Map<Long, Genre> genreMap = (genreIds.isEmpty() ? new ArrayList<Genre>() : genreMapper.selectBatchIds(genreIds))
+                    .stream().collect(Collectors.toMap(Genre::getId, g -> g));
+            Map<Long, List<TrackGenre>> trackGenresByTrack = trackGenres.stream()
+                    .collect(Collectors.groupingBy(TrackGenre::getTrackId));
+
             List<PlaylistTrackItemVO> trackItems = playlistTracks.stream().map(pt -> {
                 PlaylistTrackItemVO item = new PlaylistTrackItemVO();
                 item.setTrackId(pt.getTrackId());
@@ -405,6 +417,20 @@ public class PlaylistServiceImpl implements PlaylistService {
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList());
                     item.setArtists(artists);
+
+                    List<TrackGenre> tgs = trackGenresByTrack.getOrDefault(pt.getTrackId(), new ArrayList<>());
+                    List<GenreVO> genres = tgs.stream().map(tg -> {
+                        Genre g = genreMap.get(tg.getGenreId());
+                        if (g != null) {
+                            GenreVO gvo = new GenreVO();
+                            gvo.setId(g.getId());
+                            gvo.setName(g.getName());
+                            gvo.setCreatedAt(g.getCreatedAt());
+                            return gvo;
+                        }
+                        return null;
+                    }).filter(Objects::nonNull).collect(Collectors.toList());
+                    item.setGenres(genres);
                 }
                 return item;
             }).collect(Collectors.toList());

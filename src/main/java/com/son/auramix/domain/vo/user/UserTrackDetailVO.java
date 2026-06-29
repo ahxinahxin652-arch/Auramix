@@ -2,6 +2,7 @@ package com.son.auramix.domain.vo.user;
 
 import lombok.Data;
 import java.util.List;
+import com.son.auramix.domain.vo.admin.GenreVO;
 
 @Data
 public class UserTrackDetailVO {
@@ -12,6 +13,7 @@ public class UserTrackDetailVO {
     private String coverUrl;
     private Integer duration;
     private List<ArtistInfoVO> artists;
+    private List<GenreVO> genres;
     private String lyricsUrl;
     private String format;
     private Long size;

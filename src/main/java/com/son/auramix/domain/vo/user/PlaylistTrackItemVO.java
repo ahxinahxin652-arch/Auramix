@@ -1,9 +1,10 @@
 package com.son.auramix.domain.vo.user;
 
 import lombok.Data;
+import com.son.auramix.domain.vo.admin.GenreVO;
 
 /**
- * 歌单内歌曲条�?
+ * 歌单内歌曲条�?
  */
 @Data
 public class PlaylistTrackItemVO {
@@ -14,5 +15,6 @@ public class PlaylistTrackItemVO {
     private String albumTitle;
     private Long albumId;
     private java.util.List<ArtistInfoVO> artists;
+    private java.util.List<GenreVO> genres;
     private Integer sortOrder;
 }
