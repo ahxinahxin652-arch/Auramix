@@ -22,9 +22,13 @@ public class MybatisPlusMetaHandler implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
         LocalDateTime now = LocalDateTime.now();
+        this.strictInsertFill(metaObject, "playedAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, now);
-        this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
+        this.strictInsertFill(metaObject, "likedAt", LocalDateTime.class, now);
+        this.strictInsertFill(metaObject, "followedAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "addedAt", LocalDateTime.class, now);
+        // updated_at 在 INSERT 时也需要填充
+        this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
     }
 
     @Override

@@ -29,6 +29,7 @@ DROP TABLE IF EXISTS `tracks`;
 DROP TABLE IF EXISTS `albums`;
 DROP TABLE IF EXISTS `artists`;
 DROP TABLE IF EXISTS `users`;
+DROP TABLE IF EXISTS `user_behavior_logs`;
 
 -- ------------------------------------------------------------------------------
 -- 1. 用户表 (users)
@@ -305,3 +306,22 @@ CREATE TABLE `track_review_records` (
   KEY `track_review_records_status_idx` (`status`),
   KEY `track_review_records_verdict_idx` (`verdict`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='歌曲AI审核记录表';
+
+-- ------------------------------------------------------------------------------
+-- 用户行为日志表
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_behavior_logs` (
+  `id`           BIGINT       NOT NULL COMMENT 'Snowflake主键',
+  `user_id`      BIGINT       NOT NULL COMMENT '用户ID',
+  `action_type`  VARCHAR(32)  NOT NULL COMMENT '操作类型：play/like/share/download/follow',
+  `target_type`  TINYINT      NOT NULL COMMENT '目标类型：0=歌曲 1=专辑 2=歌手 3=歌单',
+  `target_id`    BIGINT       NOT NULL COMMENT '目标ID',
+  `metadata`     TEXT         NULL     COMMENT '附加信息JSON',
+  `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_behavior_user_id` (`user_id`),
+  KEY `idx_user_behavior_action_type` (`action_type`),
+  KEY `idx_user_behavior_target` (`target_type`, `target_id`),
+  KEY `idx_user_behavior_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户行为日志表';

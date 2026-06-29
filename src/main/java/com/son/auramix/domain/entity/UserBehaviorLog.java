@@ -12,11 +12,11 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 单曲 / 曲目表 tracks
+ * 用户行为日志表 user_behavior_logs
  */
 @Data
-@TableName("tracks")
-public class Track implements Serializable {
+@TableName("user_behavior_logs")
+public class UserBehaviorLog implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -24,28 +24,18 @@ public class Track implements Serializable {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
-    private Long albumId;
+    private Long userId;
 
-    private String title;
+    /** 操作类型：play/like/share/download/follow */
+    private String actionType;
 
-    /** 时长（毫秒） */
-    private Integer duration;
+    /** 目标类型：0=歌曲 1=专辑 2=歌手 3=歌单 */
+    private Integer targetType;
 
-    private String lyricsUrl;
+    private Long targetId;
 
-    /** 0=正常 -1=已下架 -2=暂无版权 */
-    private Integer status;
-
-    private Integer likedCount;
-
-    private Long playCount;
-
-    private Integer trackNumber;
-
-    private Integer discNumber;
-
-    /** 0=非会员 1=会员 */
-    private Integer member;
+    /** 附加信息 JSON */
+    private String metadata;
 
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
