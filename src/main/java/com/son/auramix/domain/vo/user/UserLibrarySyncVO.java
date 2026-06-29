@@ -7,4 +7,5 @@ import java.util.List;
 public class UserLibrarySyncVO {
     private List<UserPlaylistSyncVO> playlists;
     private List<UserArtistSyncVO> followedArtists;
+    private List<UserPlaylistSyncVO> subscribedPlaylists;
 }
