@@ -279,6 +279,17 @@ function setupWindowControls() {
     }
   })
 
+  // 跨域代理获取文本内容
+  ipcMain.handle('fetch-text', async (event, url) => {
+    try {
+      const response = await fetch(url)
+      const text = await response.text()
+      return { success: true, text }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  })
+
   // 读取文件为 ArrayBuffer
   ipcMain.on('read-file', (event, { key, filePath }) => {
     try {

@@ -378,3 +378,7 @@
 .track-name-wrap:hover .track-name {
     text-decoration: underline;
 }
+
+.ctrl-btn.active {
+    color: var(--accent);
+}

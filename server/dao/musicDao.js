@@ -379,6 +379,11 @@ async function resolveTrackById(trackId) {
                         artist: true
                     }
                 },
+                genres: {
+                    include: {
+                        genre: true
+                    }
+                },
                 audioResources: true,
             },
         })
@@ -412,6 +417,7 @@ async function resolveTrackById(trackId) {
                 format: formatStr,
                 size: resource.size,
                 artists: JSON.stringify(artistsList),
+                genres: track.genres ? track.genres.map(g => ({ id: String(g.genre.id), name: g.genre.name })) : [],
                 trackNumber: track.trackNumber,
                 discNumber: track.discNumber,
                 member: track.member,
@@ -445,6 +451,11 @@ async function getWarehouseTracksById(libraryId) {
                                 artists: {
                                     include: {
                                         artist: true
+                                    }
+                                },
+                                genres: {
+                                    include: {
+                                        genre: true
                                     }
                                 },
                                 audioResources: true
@@ -494,6 +505,7 @@ async function getWarehouseTracksById(libraryId) {
                     format: formatStr,
                     size: resource.size,
                     artists: JSON.stringify(artistsList),
+                    genres: track.genres ? track.genres.map(g => ({ id: String(g.genre.id), name: g.genre.name })) : [],
                     trackNumber: track.trackNumber,
                     discNumber: track.discNumber,
                     member: track.member,

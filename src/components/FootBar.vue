@@ -129,23 +129,73 @@ function handleToggleSidebar() {
   emit('toggle-right-sidebar')
 }
 
-function handleToggleLyrics() {
-  if (window.electronAPI && window.electronAPI.toggleLyricsWindow) {
-    window.electronAPI.toggleLyricsWindow()
+async function loadLyricsIfNeeded() {
+  if (player.currentLyrics) return
+  if (player.lyricsUrl) {
+    try {
+      let text = ''
+      if (player.lyricsUrl.startsWith('http://') || player.lyricsUrl.startsWith('https://')) {
+        const res = await window.electronAPI.fetchText(player.lyricsUrl)
+        if (res.success) {
+          text = res.text
+        } else {
+          throw new Error(res.error)
+        }
+      } else {
+        const res = await fetch(player.lyricsUrl)
+        if (res.ok) {
+          text = await res.text()
+        } else {
+          throw new Error(`HTTP error! status: ${res.status}`)
+        }
+      }
+
+      if (text) {
+        player.setCurrentLyrics(text)
+        currentLyrics = text
+        if (window.electronAPI && window.electronAPI.sendLyricsStatus) {
+          window.electronAPI.sendLyricsStatus({
+            lyrics: text,
+            currentTime: player.currentTime,
+            isNew: true
+          })
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load lyrics file', e)
+    }
   }
+}
+
+function handleToggleLyrics() {
+  loadLyricsIfNeeded().finally(() => {
+    if (window.electronAPI && window.electronAPI.toggleLyricsWindow) {
+      window.electronAPI.toggleLyricsWindow()
+    }
+  })
 }
 
 const isMainLyricsRoute = computed(() => route.path === '/lyrics')
 
 function toggleMainLyrics() {
-  if (isMainLyricsRoute.value) {
-    if (window.history.state && window.history.state.back) {
-      router.back()
+  loadLyricsIfNeeded().finally(() => {
+    if (isMainLyricsRoute.value) {
+      if (window.history.state && window.history.state.back) {
+        router.back()
+      } else {
+        router.push('/')
+      }
     } else {
-      router.push('/')
+      router.push('/lyrics')
     }
+  })
+}
+
+function togglePlayQueue() {
+  if (sidebarStore.isOpen && sidebarStore.contentType === 'play-queue') {
+    sidebarStore.close()
   } else {
-    router.push('/lyrics')
+    sidebarStore.open('play-queue')
   }
 }
 
@@ -229,22 +279,31 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     window.electronAPI.updateRecentPlayedById(currentTrack.warehouseId).catch(() => {})
   }
   
-  // 异步获取歌词信息并推送给悬浮窗
+  // 异步获取歌词信息
   currentLyrics = ''
   player.setCurrentLyrics('')
-  window.electronAPI.getFileMetadata(currentTrack.path).then(res => {
-    if (res.success && res.data) {
-      currentLyrics = res.data.lyrics || ''
-      player.setCurrentLyrics(currentLyrics)
+  player.setLyricsUrl('')
+  
+  const handleLyricsUrl = (url) => {
+    player.setLyricsUrl(url)
+    if (isMainLyricsRoute.value || isLyricsOpen.value) {
+      loadLyricsIfNeeded()
+    } else {
       if (window.electronAPI.sendLyricsStatus) {
-        window.electronAPI.sendLyricsStatus({
-          lyrics: currentLyrics,
-          currentTime: 0,
-          isNew: true
-        })
+        window.electronAPI.sendLyricsStatus({ lyrics: '', currentTime: 0, isNew: true })
       }
     }
-  }).catch(() => {})
+  }
+
+  if (currentTrack.lyrics) {
+    handleLyricsUrl(currentTrack.lyrics)
+  } else {
+    window.electronAPI.getFileMetadata(currentTrack.path).then(res => {
+      if (res.success && res.data) {
+        handleLyricsUrl(res.data.lyrics || '')
+      }
+    }).catch(() => {})
+  }
 
   // 通过 Electron IPC 读取文件 Blob，绕过 file:// 限制
   if (currentTrack.path.startsWith('http://') || currentTrack.path.startsWith('https://')) {
@@ -599,6 +658,22 @@ onUnmounted(() => {
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      </button>
+
+      <button
+        class="ctrl-btn queue-btn"
+        :class="{ active: sidebarStore.isOpen && sidebarStore.contentType === 'play-queue' }"
+        @click="togglePlayQueue"
+        title="播放队列"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="8" y1="6" x2="21" y2="6"/>
+          <line x1="8" y1="12" x2="21" y2="12"/>
+          <line x1="8" y1="18" x2="21" y2="18"/>
+          <line x1="3" y1="6" x2="3.01" y2="6"/>
+          <line x1="3" y1="12" x2="3.01" y2="12"/>
+          <line x1="3" y1="18" x2="3.01" y2="18"/>
         </svg>
       </button>
 
