@@ -3,7 +3,7 @@ package com.son.auramix.domain.vo.user;
 import lombok.Data;
 
 /**
- * 歌单内歌曲条�?
+ * 歌单内歌曲条目
  */
 @Data
 public class PlaylistTrackItemVO {

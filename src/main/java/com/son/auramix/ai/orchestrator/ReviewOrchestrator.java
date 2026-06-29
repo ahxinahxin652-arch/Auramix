@@ -11,6 +11,7 @@ import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
 import com.son.auramix.ai.progress.ReviewProgressStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -30,7 +31,8 @@ public class ReviewOrchestrator {
     private final List<DimensionAgent> dimensionAgents;
     private final ReviewJudgeAgent reviewJudgeAgent;
     private final AgentResultsAggregator aggregator;
-    /** 复用 AsyncConfig 中的 reviewTaskExecutor Bean（注入为 Executor 类型） */
+    /** 复用 AsyncConfig 中的 reviewTaskExecutor Bean */
+    @Qualifier("reviewTaskExecutor")
     private final Executor reviewTaskExecutor;
     private final ReviewAgentSorter sorter;
     private final ReviewProgressStore progressStore;
