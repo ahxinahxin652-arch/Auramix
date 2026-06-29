@@ -27,17 +27,17 @@ public class UserBehaviorLogWriteServiceImpl implements UserBehaviorLogWriteServ
     @Override
     @Async("logWriteExecutor")
     public void createAsync(UserBehaviorLogCreateDTO req, Long userId) {
-        String taskKey = String.format("[UserBehaviorLog] userId=%d behaviorType=%d trackId=%d",
-                userId, req.getBehaviorType(), req.getTrackId());
+        String taskKey = String.format("[UserBehaviorLog] userId=%d actionType=%s targetId=%d",
+                userId, req.getActionType(), req.getTargetId());
         executeWithRetry(taskKey, () -> {
             UserBehaviorLog logEntity = new UserBehaviorLog();
             logEntity.setUserId(userId);
-            logEntity.setTrackId(req.getTrackId());
-            logEntity.setBehaviorType(req.getBehaviorType());
-            logEntity.setContext(req.getContext());
-            logEntity.setBehaviorDuration(req.getBehaviorDuration());
+            logEntity.setActionType(req.getActionType());
+            logEntity.setTargetType(req.getTargetType());
+            logEntity.setTargetId(req.getTargetId());
+            logEntity.setMetadata(req.getMetadata());
             userBehaviorLogMapper.insert(logEntity);
-            log.info("{} id={} duration={}s", taskKey, logEntity.getId(), req.getBehaviorDuration());
+            log.info("{} id={} targetType={}", taskKey, logEntity.getId(), req.getTargetType());
         });
     }
 

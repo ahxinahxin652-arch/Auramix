@@ -50,7 +50,6 @@ public class UserBehaviorLogServiceImpl implements UserBehaviorLogService {
 
         userBehaviorLogMapper.insert(log);
 
-
         return toVO(log);
     }
 
