@@ -6,21 +6,26 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
- * 异步线程池配置
+ * 异步任务线程池配置
  */
-@Configuration
 @EnableAsync
+@Configuration
 public class AsyncConfig {
 
-    @Bean("reviewTaskExecutor")
-    public Executor reviewTaskExecutor() {
+    @Bean(name = "logWriteExecutor")
+    public Executor logWriteExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(50);
-        executor.setThreadNamePrefix("review-");
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(2000);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("log-write-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }
