@@ -37,6 +37,25 @@ function closeSearch() {
   searchQuery.value = ''
 }
 
+// ---- 关注歌单逻辑 ----
+const isSubscribed = computed(() => {
+  return globalLibraryStore.isSubscribedPlaylist(libraryId.value)
+})
+
+const computedIsOwner = computed(() => {
+  if (warehouseInfo.value.isOwner !== undefined) return warehouseInfo.value.isOwner
+  return library.warehouses.some(p => String(p.id) === String(libraryId.value))
+})
+
+async function handleToggleSubscribe() {
+  if (!warehouseInfo.value) return
+  await globalLibraryStore.toggleSubscribePlaylist({
+    id: libraryId.value,
+    name: warehouseInfo.value.name,
+    coverUrl: warehouseInfo.value.coverUrl || warehouseInfo.value.coverPath || ''
+  })
+}
+
 // ---- 编辑歌曲弹窗状态 ----
 const showEditTrackDialog = ref(false)
 const editTrackTitle = ref('')
@@ -537,7 +556,7 @@ function parseArtists(track) {
       <div class="hero-top-bar">
       </div>
       <div class="hero-content">
-        <div class="hero-cover" @click="warehouseInfo.isOwner !== false ? openEditDialog() : null" :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }" :title="warehouseInfo.isOwner !== false ? '点击编辑封面' : ''">
+        <div class="hero-cover" @click="computedIsOwner !== false ? openEditDialog() : null" :style="{ cursor: computedIsOwner !== false ? 'pointer' : 'default' }" :title="computedIsOwner !== false ? '点击编辑封面' : ''">
           <img
             v-if="warehouseInfo.coverUrl || warehouseInfo.coverPath"
             :src="warehouseInfo.coverUrl || warehouseInfo.coverPath"
@@ -553,13 +572,13 @@ function parseArtists(track) {
           </div>
         </div>
         <div class="hero-info">
-          <h1 class="hero-title" @click="warehouseInfo.isOwner !== false ? openEditDialog() : null" :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }" :title="warehouseInfo.isOwner !== false ? '点击编辑' : ''">{{ warehouseInfo.name }}</h1>
+          <h1 class="hero-title" @click="computedIsOwner !== false ? openEditDialog() : null" :style="{ cursor: computedIsOwner !== false ? 'pointer' : 'default' }" :title="computedIsOwner !== false ? '点击编辑' : ''">{{ warehouseInfo.name }}</h1>
           <p
             v-if="warehouseInfo.description"
             class="hero-description"
-            @click="warehouseInfo.isOwner !== false ? openEditDialog() : null"
-            :style="{ cursor: warehouseInfo.isOwner !== false ? 'pointer' : 'default' }"
-            :title="warehouseInfo.isOwner !== false ? '点击编辑' : ''"
+            @click="computedIsOwner !== false ? openEditDialog() : null"
+            :style="{ cursor: computedIsOwner !== false ? 'pointer' : 'default' }"
+            :title="computedIsOwner !== false ? '点击编辑' : ''"
           >{{ warehouseInfo.description }}</p>
           <div class="hero-meta">
             <span class="meta-item">{{ tracks.length }} 首曲目</span>
@@ -594,6 +613,20 @@ function parseArtists(track) {
           </svg>
         </button>
         <button
+          v-if="computedIsOwner === false"
+          class="action-btn subscribe-btn"
+          :class="{ active: isSubscribed }"
+          @click="handleToggleSubscribe"
+          :title="isSubscribed ? 'Remove from Your Library' : 'Save to Your Library'"
+        >
+          <svg v-if="isSubscribed" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" color="var(--primary-color)">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          <svg v-else width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+        <button
           class="action-btn"
           @click="handleDownload"
           title="下载"
@@ -605,7 +638,7 @@ function parseArtists(track) {
           </svg>
         </button>
         <button
-          v-if="warehouseInfo.isOwner !== false"
+          v-if="computedIsOwner !== false"
           class="action-btn"
           @click="openWarehouseMenu"
           title="更多选项"

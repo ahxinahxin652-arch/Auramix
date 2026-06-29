@@ -4,6 +4,7 @@ export const useLibraryStore = defineStore('library', {
   state: () => ({
     playlists: [], // { id, name, coverUrl, trackIds: [] }
     followedArtists: [],
+    subscribedPlaylists: [],
     syncing: false,
     initialized: false,
     selectorVisible: false,
@@ -22,6 +23,11 @@ export const useLibraryStore = defineStore('library', {
       return (artistId) => {
         return state.followedArtists.some(a => String(a.id) === String(artistId))
       }
+    },
+    isSubscribedPlaylist: (state) => {
+      return (playlistId) => {
+        return state.subscribedPlaylists.some(p => String(p.id) === String(playlistId))
+      }
     }
   },
   actions: {
@@ -31,12 +37,14 @@ export const useLibraryStore = defineStore('library', {
       try {
         // 先从本地 SQLite 获取缓存数据以实现秒开
         if (window.electronAPI && window.electronAPI.getLocalPlaylists) {
-          const [plRes, faRes] = await Promise.all([
+          const [plRes, faRes, subRes] = await Promise.all([
             window.electronAPI.getLocalPlaylists(),
-            window.electronAPI.getLocalFollowedArtists()
+            window.electronAPI.getLocalFollowedArtists(),
+            window.electronAPI.getLocalSubscribedPlaylists ? window.electronAPI.getLocalSubscribedPlaylists() : Promise.resolve({ success: false })
           ])
           if (plRes.success) this.playlists = plRes.data
           if (faRes.success) this.followedArtists = faRes.data
+          if (subRes.success) this.subscribedPlaylists = subRes.data
         }
 
         // 后台与云端对齐同步
@@ -45,7 +53,11 @@ export const useLibraryStore = defineStore('library', {
           if (syncRes.success && syncRes.data) {
             this.playlists = syncRes.data.playlists || []
             this.followedArtists = syncRes.data.followedArtists || []
+            this.subscribedPlaylists = syncRes.data.subscribedPlaylists || []
             this.playlists.forEach(p => {
+              if (p.trackIds) p.trackIds = p.trackIds.map(String)
+            })
+            this.subscribedPlaylists.forEach(p => {
               if (p.trackIds) p.trackIds = p.trackIds.map(String)
             })
           }
@@ -112,6 +124,26 @@ export const useLibraryStore = defineStore('library', {
       }
       // 通知外部组件（比如 musicLibrary）也可以刷新
       window.dispatchEvent(new CustomEvent('artist-follow-toggled', { detail: { artistId: aidStr } }))
+    },
+    async toggleSubscribePlaylist(playlistObj) {
+      const playlistId = typeof playlistObj === 'object' ? playlistObj.id : playlistObj
+      const pidStr = String(playlistId)
+      const isSubscribed = this.subscribedPlaylists.some(p => String(p.id) === pidStr)
+
+      // 乐观更新
+      if (isSubscribed) {
+        this.subscribedPlaylists = this.subscribedPlaylists.filter(p => String(p.id) !== pidStr)
+        if (window.electronAPI?.unsubscribeLocalPlaylist) {
+          window.electronAPI.unsubscribeLocalPlaylist(playlistId)
+        }
+      } else {
+        const newPlaylist = typeof playlistObj === 'object' ? playlistObj : { id: pidStr, name: 'Unknown Playlist', coverUrl: '', trackIds: [] }
+        this.subscribedPlaylists.push(newPlaylist)
+        if (window.electronAPI?.subscribeLocalPlaylist) {
+          window.electronAPI.subscribeLocalPlaylist(playlistId)
+        }
+      }
+      window.dispatchEvent(new CustomEvent('playlist-subscribe-toggled', { detail: { playlistId: pidStr } }))
     }
   }
 })

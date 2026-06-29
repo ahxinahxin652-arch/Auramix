@@ -36,7 +36,11 @@ module.exports = function(mainWindow) {
           where: { userId: localUserId }
         })
 
-        // 写入歌单
+        await tx.playlistFollower.deleteMany({
+          where: { userId: localUserId }
+        })
+
+        // 写入歌单 (自己创建的)
         for (const p of syncData.playlists) {
           const playlistId = BigInt(p.id)
           await tx.playlist.create({
@@ -86,6 +90,34 @@ module.exports = function(mainWindow) {
           }
         }
 
+        // 写入订阅的歌单
+        if (syncData.subscribedPlaylists && syncData.subscribedPlaylists.length > 0) {
+          // 确保 dummy user 2n 存在，用于存放非自己的歌单
+          await tx.user.upsert({
+            where: { id: 2n },
+            update: {},
+            create: { id: 2n, email: "dummy_sub@auramix.com", passwordHash: "", displayName: "Other User" }
+          })
+          
+          for (const p of syncData.subscribedPlaylists) {
+            const playlistId = BigInt(p.id)
+            await tx.playlist.upsert({
+              where: { id: playlistId },
+              update: { name: p.name, coverUrl: p.coverUrl },
+              create: { id: playlistId, ownerId: 2n, name: p.name, coverUrl: p.coverUrl, isPublic: 1 }
+            })
+
+            await tx.playlistFollower.create({
+              data: {
+                userId: localUserId,
+                playlistId
+              }
+            })
+
+            // 如果有必要也可以缓存歌曲，这里简化处理
+          }
+        }
+
         // 写入关注的歌手
         if (syncData.followedArtists && syncData.followedArtists.length > 0) {
           for (const artist of syncData.followedArtists) {
@@ -116,7 +148,9 @@ module.exports = function(mainWindow) {
   router.get('/playlists', async (req, res) => {
     try {
       const db = getDb()
+      const localUserId = 1n
       const playlists = await db.playlist.findMany({
+        where: { ownerId: localUserId },
         include: { tracks: true }
       })
       const result = playlists.map(p => ({
@@ -131,7 +165,28 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 3. 本地获取关注歌手
+  // 3. 本地获取订阅的歌单
+  router.get('/playlists/subscribed', async (req, res) => {
+    try {
+      const db = getDb()
+      const localUserId = 1n
+      const follows = await db.playlistFollower.findMany({
+        where: { userId: localUserId },
+        include: { playlist: { include: { tracks: true } } }
+      })
+      res.json({ success: true, data: follows.map(f => ({
+        id: f.playlist.id.toString(),
+        name: f.playlist.name,
+        coverUrl: f.playlist.coverUrl,
+        trackIds: f.playlist.tracks.map(t => t.trackId.toString()),
+        isSubscribed: true // 标识位
+      })) })
+    } catch (err) {
+      res.json({ success: false, error: err.message })
+    }
+  })
+
+  // 4. 本地获取关注歌手
   router.get('/artists/followed', async (req, res) => {
     try {
       const db = getDb()
@@ -150,7 +205,7 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 4. 添加歌曲到本地歌单并转发到云端
+  // 5. 添加歌曲到本地歌单并转发到云端
   router.post('/playlists/:id/tracks', async (req, res) => {
     try {
       const playlistId = BigInt(req.params.id)
@@ -194,7 +249,7 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 5. 从本地歌单移除歌曲并转发到云端
+  // 6. 从本地歌单移除歌曲并转发到云端
   router.delete('/playlists/:id/tracks/:trackId', async (req, res) => {
     try {
       const playlistId = BigInt(req.params.id)
@@ -221,7 +276,67 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 6. 关注歌手（本地+云端）
+  // 7. 关注歌单（本地+云端）
+  router.post('/playlists/:id/subscribe', async (req, res) => {
+    try {
+      const playlistId = BigInt(req.params.id)
+      const localUserId = 1n
+      const db = getDb()
+
+      // 获取云端歌单详情并存入本地 (这里假设客户端会通过某种方式传递或者之后同步，这里直接用占位)
+      // 若是已有歌单，则不需要。
+      const playlistExists = await db.playlist.findUnique({ where: { id: playlistId } })
+      if (!playlistExists) {
+        await db.user.upsert({
+          where: { id: 2n },
+          update: {},
+          create: { id: 2n, email: "dummy_sub@auramix.com", passwordHash: "", displayName: "Other User" }
+        })
+        await db.playlist.create({ data: { id: playlistId, ownerId: 2n, name: "Subscribed Playlist", isPublic: 1 } })
+      }
+
+      await db.playlistFollower.upsert({
+        where: { playlistId_userId: { playlistId, userId: localUserId } },
+        update: {},
+        create: { playlistId, userId: localUserId }
+      })
+
+      const token = req.headers['x-user-token']
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(err => console.error('Cloud API error:', err))
+
+      res.json({ success: true })
+    } catch (err) {
+      res.json({ success: false, error: err.message })
+    }
+  })
+
+  // 8. 取消关注歌单
+  router.delete('/playlists/:id/unsubscribe', async (req, res) => {
+    try {
+      const playlistId = BigInt(req.params.id)
+      const localUserId = 1n
+      const db = getDb()
+
+      await db.playlistFollower.deleteMany({
+        where: { playlistId, userId: localUserId }
+      })
+
+      const token = req.headers['x-user-token']
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      }).catch(err => console.error('Cloud API error:', err))
+
+      res.json({ success: true })
+    } catch (err) {
+      res.json({ success: false, error: err.message })
+    }
+  })
+
+  // 9. 关注歌手（本地+云端）
   router.post('/artists/:id/follow', async (req, res) => {
     try {
       const artistId = BigInt(req.params.id)
@@ -251,7 +366,7 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 7. 取消关注歌手
+  // 10. 取消关注歌手
   router.delete('/artists/:id/unfollow', async (req, res) => {
     try {
       const artistId = BigInt(req.params.id)

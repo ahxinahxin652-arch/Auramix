@@ -140,6 +140,18 @@ function unfollowLocalArtist(artistId) {
   return apiFetch(`/api/library/artists/${encodeURIComponent(artistId)}/unfollow`, { method: 'DELETE' })
 }
 
+function getLocalSubscribedPlaylists() {
+  return apiFetch('/api/library/playlists/subscribed')
+}
+
+function subscribeLocalPlaylist(playlistId) {
+  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/subscribe`, { method: 'POST' })
+}
+
+function unsubscribeLocalPlaylist(playlistId) {
+  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/unsubscribe`, { method: 'DELETE' })
+}
+
 // ========== 远端歌单（音乐库）管理 API（代理到 Java 后端 8080 端口） ==========
 // 这些操作直接读写远端 MySQL 数据库，替代本地 SQLite 的歌单 CRUD
 
@@ -384,6 +396,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeTrackFromLocalPlaylist,
   followLocalArtist,
   unfollowLocalArtist,
+  getLocalSubscribedPlaylists,
+  subscribeLocalPlaylist,
+  unsubscribeLocalPlaylist,
   // 格式转换
   scanFiles,
   startConvert,

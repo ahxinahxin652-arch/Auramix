@@ -15,7 +15,7 @@ const globalLibraryStore = useLibraryStore()
 const userStore = useUserStore()
 
 // ---- 侧边栏 Tab 切换 ----
-const currentTab = ref('Playlists') // 'Playlists' | 'Artists'
+const currentTab = ref('All') // 'All' | 'Playlists' | 'Artists'
 
 
 // ---- 拖拽状态 ----
@@ -28,6 +28,14 @@ const isExpanded = computed(() => leftSidebarStore.mode === 'expanded')
 const sidebarStyle = computed(() => ({
   width: leftSidebarStore.width + 'px',
 }))
+
+const allSidebarItems = computed(() => {
+  return [
+    ...(library.warehouses || []).map(p => ({ ...p, isOwner: true })),
+    ...(globalLibraryStore.subscribedPlaylists || []).map(p => ({ ...p, isOwner: false })),
+    ...(globalLibraryStore.followedArtists || []).map(a => ({ ...a, isArtist: true }))
+  ]
+})
 
 // ---- 悬浮 tooltip（缩略模式）----
 // position: fixed 突破 overflow: hidden 裁剪
@@ -345,13 +353,22 @@ function getCoverUrl(playlist) {
 }
 
 function getOwnerName(playlist) {
+  if (playlist.isOwner === false) return 'Others'
   if (playlist.ownerName || playlist.owner) return playlist.ownerName || playlist.owner
   if (userStore.profile && userStore.profile.displayName) return userStore.profile.displayName
-  return '未知作者'
+  return 'Others'
 }
 
 function handleArtistClick(artist) {
   router.push(`/artist/${artist.id}`)
+}
+
+function handleSidebarItemClick(item) {
+  if (item.isArtist) {
+    handleArtistClick(item)
+  } else {
+    handlePlaylistClick(item)
+  }
 }
 
 </script>
@@ -385,7 +402,7 @@ function handleArtistClick(artist) {
       </button>
 
       <!-- 展开模式下的标题 -->
-      <span v-if="isExpanded" class="sidebar-title-text">你的歌单</span>
+      <span v-if="isExpanded" class="sidebar-title-text">Your Library</span>
 
       <!-- 添加按钮 -->
       <button class="sidebar-add-btn" @click="handleAdd" title="新建歌单">
@@ -398,8 +415,14 @@ function handleArtistClick(artist) {
 
     <!-- === 过滤标签 === -->
     <div v-if="isExpanded" class="sidebar-filters">
-      <button class="filter-chip" :class="{ active: currentTab === 'Playlists' }" @click="currentTab = 'Playlists'">Playlists</button>
-      <button class="filter-chip" :class="{ active: currentTab === 'Artists' }" @click="currentTab = 'Artists'">Artists</button>
+      <button v-if="currentTab !== 'All'" class="filter-chip cancel" @click="currentTab = 'All'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <button v-show="currentTab === 'All' || currentTab === 'Playlists'" class="filter-chip" :class="{ active: currentTab === 'Playlists' }" @click="currentTab = 'Playlists'">Playlists</button>
+      <button v-show="currentTab === 'All' || currentTab === 'Artists'" class="filter-chip" :class="{ active: currentTab === 'Artists' }" @click="currentTab = 'Artists'">Artists</button>
     </div>
 
     <!-- === 列表区 === -->
@@ -407,29 +430,34 @@ function handleArtistClick(artist) {
       <!-- 缩略模式 -->
       <template v-if="isCollapsed">
         <div
-          v-for="pl in library.warehouses"
-          :key="pl.id"
+          v-for="item in allSidebarItems"
+          :key="(item.isArtist ? 'artist_' : 'pl_') + item.id"
           class="playlist-item-collapsed"
-          @click="handlePlaylistClick(pl)"
-          @contextmenu="onPlaylistContextMenu(pl, $event)"
-          @mouseenter="onCoverMouseEnter(pl, $event)"
+          @click="handleSidebarItemClick(item)"
+          @contextmenu="!item.isArtist && onPlaylistContextMenu(item, $event)"
+          @mouseenter="onCoverMouseEnter(item, $event)"
           @mouseleave="onCoverMouseLeave"
         >
           <img
-            v-if="getCoverUrl(pl)"
-            :src="getCoverUrl(pl)"
+            v-if="item.isArtist ? item.coverImg : getCoverUrl(item)"
+            :src="item.isArtist ? item.coverImg : getCoverUrl(item)"
             class="playlist-cover-collapsed"
+            :class="{ 'artist-avatar': item.isArtist }"
             alt=""
           />
-          <div v-else class="playlist-cover-placeholder">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <div v-else class="playlist-cover-placeholder" :class="{ 'artist-avatar-placeholder': item.isArtist }">
+            <svg v-if="!item.isArtist" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M9 18V5l12-2v13"/>
               <circle cx="6" cy="18" r="3"/>
               <circle cx="18" cy="16" r="3"/>
             </svg>
+            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </div>
         </div>
-        <div v-if="library.warehouses.length === 0" class="sidebar-empty-collapsed">
+        <div v-if="allSidebarItems.length === 0" class="sidebar-empty-collapsed">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
             <path d="M9 18V5l12-2v13"/>
             <circle cx="6" cy="18" r="3"/>
@@ -440,9 +468,9 @@ function handleArtistClick(artist) {
 
       <template v-if="isExpanded">
         <!-- 歌单列表 -->
-        <template v-if="currentTab === 'Playlists'">
+        <template v-if="currentTab === 'All' || currentTab === 'Playlists'">
           <div
-            v-for="pl in library.warehouses"
+            v-for="pl in allSidebarItems.filter(item => !item.isArtist)"
             :key="pl.id"
             class="playlist-item-expanded"
             @click="handlePlaylistClick(pl)"
@@ -466,7 +494,7 @@ function handleArtistClick(artist) {
               <span class="playlist-owner">{{ getOwnerName(pl) }}</span>
             </div>
           </div>
-          <div v-if="library.warehouses.length === 0" class="sidebar-empty-expanded">
+          <div v-if="allSidebarItems.filter(item => !item.isArtist).length === 0 && currentTab === 'Playlists'" class="sidebar-empty-expanded">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
               <path d="M9 18V5l12-2v13"/>
               <circle cx="6" cy="18" r="3"/>
@@ -477,7 +505,7 @@ function handleArtistClick(artist) {
         </template>
 
         <!-- 歌手列表 -->
-        <template v-if="currentTab === 'Artists'">
+        <template v-if="currentTab === 'All' || currentTab === 'Artists'">
           <div
             v-for="artist in globalLibraryStore.followedArtists"
             :key="artist.id"
@@ -501,7 +529,7 @@ function handleArtistClick(artist) {
               <span class="playlist-owner">Artist</span>
             </div>
           </div>
-          <div v-if="globalLibraryStore.followedArtists.length === 0" class="sidebar-empty-expanded">
+          <div v-if="globalLibraryStore.followedArtists.length === 0 && currentTab === 'Artists'" class="sidebar-empty-expanded">
             <p>暂无关注的歌手</p>
           </div>
         </template>

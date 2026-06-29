@@ -509,7 +509,12 @@ async function getWarehouseTracksById(libraryId) {
             warehouseName: playlist.name,
             tracks: validTracks,
             libraryId: playlist.id,
-            warehouse: {name: playlist.name, description: playlist.description || '', coverPath: playlist.coverUrl || ''}
+            warehouse: {
+                name: playlist.name, 
+                description: playlist.description || '', 
+                coverPath: playlist.coverUrl || '',
+                isOwner: playlist.ownerId === 1n
+            }
         }
     } catch (err) {
         return {success: false, error: err.message}
