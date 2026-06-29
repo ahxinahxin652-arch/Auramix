@@ -6,6 +6,9 @@ import com.son.auramix.ai.agent.ReviewJudgeAgent;
 import com.son.auramix.ai.aggregator.AgentResultsAggregator;
 import com.son.auramix.ai.dto.AgentResult;
 import com.son.auramix.ai.dto.ReviewContext;
+import com.son.auramix.ai.progress.ProgressEvent;
+import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
+import com.son.auramix.ai.progress.ReviewProgressStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -30,15 +33,26 @@ public class ReviewOrchestrator {
     /** 复用 AsyncConfig 中的 reviewTaskExecutor Bean（注入为 Executor 类型） */
     private final Executor reviewTaskExecutor;
     private final ReviewAgentSorter sorter;
+    private final ReviewProgressStore progressStore;
+    private final ReviewProgressSseRegistry sseRegistry;
 
     /**
      * 执行审核流水线，返回完整结果（维度结果 + 最终裁决 + agent_results JSON）。
      */
-    public PipelineResult execute(ReviewContext ctx) {
+    public PipelineResult execute(ReviewContext ctx, Long recordId) {
         log.info("[AI审核] trackId={} 流水线开始（4维度并行）", ctx.getTrackId());
 
         // 0) 防御性排序：Spring 已按 @Order 排序，但显式调用 sorter 保持行为一致
         List<DimensionAgent> sortedAgents = sorter.sort(dimensionAgents);
+
+        // 0.1) 初始化进度骨架 + 推 STARTED 事件
+        try {
+            progressStore.initProgress(recordId, ctx.getTrackId(), ctx.getTrackTitle(), sortedAgents);
+            sseRegistry.send(recordId, ProgressEvent.started(recordId, ctx.getTrackId(),
+                ctx.getTrackTitle(), sortedAgents));
+        } catch (Exception e) {
+            log.warn("[AI审核] trackId={} initProgress/STARTED 异常，继续执行", ctx.getTrackId(), e);
+        }
 
         // 1) 4 维度并行：AbstractDimensionAgent.review 内部已有 try-catch 兜底，
         //    但 mock 出来的 DimensionAgent / 边缘 NPE 等场景可能在 review() 阶段直接抛；
@@ -47,11 +61,11 @@ public class ReviewOrchestrator {
         List<CompletableFuture<AgentResult>> futures = sortedAgents.stream()
             .map(agent -> CompletableFuture.supplyAsync(
                 () -> {
+                    AgentResult r;
                     try {
-                        AgentResult r = agent.review(ctx);
+                        r = agent.review(ctx);
                         log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
                             ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
-                        return r;
                     } catch (Exception e) {
                         String name;
                         try {
@@ -60,13 +74,21 @@ public class ReviewOrchestrator {
                             name = agent.getClass().getSimpleName();
                         }
                         log.error("[AI审核] trackId={} agent={} review 异常，转 FAIL 占位", ctx.getTrackId(), name, e);
-                        return AgentResult.builder()
+                        r = AgentResult.builder()
                             .agentName(name)
                             .verdict("FAIL")
                             .confidence(0)
                             .reason("agent调用异常: " + e.getClass().getSimpleName() + " - " + e.getMessage())
                             .build();
                     }
+                    // 无论成功/异常，都推送 DIMENSION_DONE
+                    try {
+                        progressStore.dimensionDone(recordId, r);
+                        sseRegistry.send(recordId, ProgressEvent.dimensionDone(recordId, ctx.getTrackId(), r));
+                    } catch (Exception ex) {
+                        log.warn("[AI审核] trackId={} dimensionDone 推送异常，继续", ctx.getTrackId(), ex);
+                    }
+                    return r;
                 },
                 reviewTaskExecutor))
             .toList();
@@ -80,6 +102,14 @@ public class ReviewOrchestrator {
         AgentResult finalResult = reviewJudgeAgent.judge(ctx, dims);
         log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={}",
             ctx.getTrackId(), finalResult.getVerdict(), finalResult.getConfidence());
+
+        // 3.1) 推 JUDGE_DONE 事件
+        try {
+            progressStore.judgeDone(recordId, finalResult);
+            sseRegistry.send(recordId, ProgressEvent.judgeDone(recordId, ctx.getTrackId(), finalResult));
+        } catch (Exception e) {
+            log.warn("[AI审核] trackId={} judgeDone 推送异常，继续", ctx.getTrackId(), e);
+        }
 
         // 4) 委派 Aggregator 拼 agent_results JSON
         String agentResultsJson;

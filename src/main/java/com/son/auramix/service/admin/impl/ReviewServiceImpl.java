@@ -125,7 +125,7 @@ public class ReviewServiceImpl implements ReviewService {
                     .build();
 
             // 执行审核流水线
-            ReviewOrchestrator.PipelineResult pipeline = orchestrator.execute(ctx);
+            ReviewOrchestrator.PipelineResult pipeline = orchestrator.execute(ctx, record.getId());
             List<AgentResult> dimensionResults = pipeline.getDimensionResults();
             AgentResult finalResult = pipeline.getFinalResult();
 
