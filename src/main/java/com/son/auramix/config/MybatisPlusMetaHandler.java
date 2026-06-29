@@ -25,6 +25,7 @@ public class MybatisPlusMetaHandler implements MetaObjectHandler {
         this.strictInsertFill(metaObject, "createdAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "updatedAt", LocalDateTime.class, now);
         this.strictInsertFill(metaObject, "addedAt", LocalDateTime.class, now);
+        this.strictInsertFill(metaObject, "followedAt", LocalDateTime.class, now);
     }
 
     @Override

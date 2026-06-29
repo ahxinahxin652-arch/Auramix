@@ -7,6 +7,7 @@ import com.son.auramix.domain.entity.PlaylistTrack;
 import com.son.auramix.domain.vo.user.UserLibrarySyncVO;
 import com.son.auramix.domain.vo.user.UserPlaylistSyncVO;
 import com.son.auramix.mapper.ArtistFollowerMapper;
+import com.son.auramix.mapper.ArtistMapper;
 import com.son.auramix.mapper.PlaylistMapper;
 import com.son.auramix.mapper.PlaylistTrackMapper;
 import com.son.auramix.service.user.UserLibraryService;
@@ -26,6 +27,7 @@ public class UserLibraryServiceImpl implements UserLibraryService {
     private final PlaylistMapper playlistMapper;
     private final PlaylistTrackMapper playlistTrackMapper;
     private final ArtistFollowerMapper artistFollowerMapper;
+    private final ArtistMapper artistMapper;
 
     @Override
     public UserLibrarySyncVO getLibrarySyncData(Long userId) {
@@ -57,7 +59,19 @@ public class UserLibraryServiceImpl implements UserLibraryService {
         List<ArtistFollower> followers = artistFollowerMapper.selectList(
                 new LambdaQueryWrapper<ArtistFollower>().eq(ArtistFollower::getUserId, userId)
         );
-        syncVO.setFollowedArtistIds(followers.stream().map(ArtistFollower::getArtistId).collect(Collectors.toList()));
+        List<Long> artistIds = followers.stream().map(ArtistFollower::getArtistId).collect(Collectors.toList());
+        List<com.son.auramix.domain.vo.user.UserArtistSyncVO> artistSyncs = new ArrayList<>();
+        if (!artistIds.isEmpty()) {
+            List<com.son.auramix.domain.entity.Artist> artists = artistMapper.selectBatchIds(artistIds);
+            for (com.son.auramix.domain.entity.Artist a : artists) {
+                com.son.auramix.domain.vo.user.UserArtistSyncVO aVo = new com.son.auramix.domain.vo.user.UserArtistSyncVO();
+                aVo.setId(a.getId());
+                aVo.setName(a.getName());
+                aVo.setCoverImg(a.getCoverImg());
+                artistSyncs.add(aVo);
+            }
+        }
+        syncVO.setFollowedArtists(artistSyncs);
         
         log.info("[UserLibraryService] 同步用户媒体库数据, userId={}, playlists={}, artists={}", userId, myPlaylists.size(), followers.size());
         return syncVO;
