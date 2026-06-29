@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
 import { useLibraryStore } from '../stores/library'
@@ -16,6 +16,7 @@ const player = usePlayerStore()
 const sidebarStore = useSidebarStore()
 const globalLibraryStore = useLibraryStore()
 const router = useRouter()
+const route = useRoute()
 
 const parsedArtists = computed(() => {
   const track = player.currentTrack
@@ -134,11 +135,15 @@ function handleToggleLyrics() {
   }
 }
 
-const isMainLyricsRoute = computed(() => router.currentRoute.value.path === '/lyrics')
+const isMainLyricsRoute = computed(() => route.path === '/lyrics')
 
 function toggleMainLyrics() {
   if (isMainLyricsRoute.value) {
-    router.push('/')
+    if (window.history.state && window.history.state.back) {
+      router.back()
+    } else {
+      router.push('/')
+    }
   } else {
     router.push('/lyrics')
   }
@@ -594,22 +599,6 @@ onUnmounted(() => {
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-      </button>
-
-      <button
-        class="ctrl-btn sidebar-toggle-btn"
-        :class="{
-          active: sidebarStore.isOpen,
-          disabled: sidebarStore.isAnimating,
-        }"
-        :disabled="sidebarStore.isAnimating"
-        @click="handleToggleSidebar"
-        :title="sidebarStore.isOpen ? '隐藏详情' : '显示详情'"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-          <line x1="9" y1="3" x2="9" y2="21"/>
         </svg>
       </button>
 

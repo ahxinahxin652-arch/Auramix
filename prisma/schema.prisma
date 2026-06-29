@@ -38,7 +38,7 @@ model User {
 // 2. 歌手/艺人表
 model Artist {
   id        BigInt   @id @map("id")
-  name      String   @unique @map("name")
+  name      String   @map("name")
   coverImg  String?  @map("cover_img")
   bio       String?  @map("bio")
   createdAt DateTime @default(now()) @map("created_at")
@@ -78,7 +78,7 @@ model Track {
   status      Int      @default(0) @map("status")
   likedCount  Int      @default(0) @map("liked_count")
   playCount   BigInt   @default(0) @map("play_count")
-  trackNumber Int      @map("track_number")
+  trackNumber Int      @default(1) @map("track_number")
   discNumber  Int      @default(1) @map("disc_number")
   member      Int      @default(0) @map("member")
   createdAt   DateTime @default(now()) @map("created_at")

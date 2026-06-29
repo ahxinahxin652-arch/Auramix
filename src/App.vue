@@ -425,23 +425,14 @@ function onSidebarAfterLeave() {
         <router-view />
       </main>
 
-      <!-- 右侧侧栏：滑出式 Spotify 风格面板 -->
-      <Transition
-        name="sidebar-slide"
-        @before-enter="onSidebarBeforeEnter"
-        @after-enter="onSidebarAfterEnter"
-        @before-leave="onSidebarBeforeLeave"
-        @after-leave="onSidebarAfterLeave"
+      <!-- 右侧侧栏：滑出式 Spotify 风格面板，闭合时缩小为抽屉样式 -->
+      <aside
+        class="right-sidebar-wrapper"
+        :class="{ collapsed: !sidebarStore.isOpen }"
+        :style="{ width: sidebarStore.isOpen ? sidebarStore.width + 'px' : '40px', maxWidth: 'none' }"
       >
-        <aside
-          class="right-sidebar-wrapper"
-          v-show="sidebarStore.isOpen"
-          :style="{ width: sidebarStore.width + 'px', maxWidth: 'none' }"
-          @click.stop
-        >
-          <RightSideBar />
-        </aside>
-      </Transition>
+        <RightSideBar />
+      </aside>
     </div>
 
     <!-- ===== 底部播放条 ===== -->

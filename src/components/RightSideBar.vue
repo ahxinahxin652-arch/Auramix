@@ -27,6 +27,11 @@ function closeSidebar() {
   localStorageStore.setRightBarShow(false)
 }
 
+function openSidebar() {
+  sidebarStore.setOpen(true)
+  localStorageStore.setRightBarShow(true)
+}
+
 // ---- 拖拽状态 ----
 const dragStartX = ref(0)
 const dragStartWidth = ref(0)
@@ -291,9 +296,16 @@ const handleCardArtistClick = (art) => {
 </script>
 
 <template>
-  <div class="right-sidebar">
+  <div class="right-sidebar" :class="{ 'is-collapsed': !sidebarStore.isOpen }" :style="{ width: sidebarStore.isOpen ? '100%' : sidebarStore.width + 'px' }">
+    <!-- Collapsed handle overlay -->
+    <div v-show="!sidebarStore.isOpen" class="sidebar-collapsed-overlay" @click="openSidebar" title="显示详情">
+      <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </div>
+
     <!-- 拖拽缩放把手 -->
-    <div class="sidebar-resizer" @mousedown.prevent="onDragStart"></div>
+    <div class="sidebar-resizer" v-show="sidebarStore.isOpen" @mousedown.prevent="onDragStart"></div>
 
     <!-- 头部：标题 + 关闭按钮 -->
     <div class="sidebar-header">
@@ -517,5 +529,48 @@ const handleCardArtistClick = (art) => {
 .source-link:hover {
   text-decoration: underline;
   color: #1db954;
+}
+
+.right-sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.right-sidebar.is-collapsed {
+  pointer-events: none; /* disable interactions on the hidden expanded content */
+}
+
+.sidebar-collapsed-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 50;
+  cursor: pointer;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.4); /* Darken slightly to make icon pop */
+  transition: background 0.2s;
+}
+
+.sidebar-collapsed-overlay:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.sidebar-collapsed-overlay .expand-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px; /* Center within the 24px collapsed width */
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  color: #ffffff;
+  transition: transform 0.2s;
+}
+
+.sidebar-collapsed-overlay:hover .expand-icon {
+  transform: translate(-50%, -50%) scale(1.1);
 }
 </style>

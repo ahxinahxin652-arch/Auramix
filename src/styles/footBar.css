@@ -344,7 +344,8 @@
 }
 
 .sidebar-toggle-btn.active,
-.lyrics-btn.active {
+.lyrics-btn.active,
+.main-lyrics-btn.active {
     color: var(--accent);
 }
 

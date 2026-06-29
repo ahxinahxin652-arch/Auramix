@@ -127,6 +127,7 @@ exports.Prisma.UserScalarFieldEnum = {
   avatarUrl: 'avatarUrl',
   country: 'country',
   product: 'product',
+  status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -161,6 +162,7 @@ exports.Prisma.TrackScalarFieldEnum = {
   playCount: 'playCount',
   trackNumber: 'trackNumber',
   discNumber: 'discNumber',
+  member: 'member',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

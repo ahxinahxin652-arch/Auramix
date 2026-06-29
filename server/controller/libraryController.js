@@ -40,6 +40,13 @@ module.exports = function(mainWindow) {
           where: { userId: localUserId }
         })
 
+        // 确保本地主用户 1n 存在
+        await tx.user.upsert({
+          where: { id: localUserId },
+          update: {},
+          create: { id: localUserId, email: "local@auramix.com", passwordHash: "", displayName: "Local User" }
+        })
+
         // 写入歌单 (自己创建的)
         for (const p of syncData.playlists) {
           const playlistId = BigInt(p.id)
@@ -122,6 +129,7 @@ module.exports = function(mainWindow) {
         if (syncData.followedArtists && syncData.followedArtists.length > 0) {
           for (const artist of syncData.followedArtists) {
             const artistId = BigInt(artist.id)
+
             await tx.artist.upsert({
               where: { id: artistId },
               update: { name: artist.name, coverImg: artist.coverImg },

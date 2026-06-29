@@ -33,6 +33,7 @@ body {
     overflow: hidden;
     display: flex;
     min-height: 0;
+    position: relative;
 }
 
 /* ========== 路由视图（可滚动）========== */
@@ -489,22 +490,19 @@ body {
     pointer-events: auto;
 }
 
-/*
- * 动画方案：width 驱动 flex 重新分配主区域空间
- *   使用固定 duration 保证宽度平滑过渡，避免主内容区域宽度骤变
- *   导致 auto-fill 网格列重新计算时出现抽搐
- */
-.sidebar-slide-enter-active,
-.sidebar-slide-leave-active {
-    transition: width 0s cubic-bezier(0.4, 0, 0.2, 1);
+.right-sidebar-wrapper.collapsed {
+    cursor: pointer;
+    background-color: var(--surface); /* match sidebar bg so it looks like a drawer */
+    border-left: 1px solid var(--border);
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.sidebar-slide-enter-from,
-.sidebar-slide-leave-to {
-    width: 0;
+.right-sidebar-wrapper.collapsed:hover {
+    width: 64px !important; /* 悬停展开一部分 */
+    background-color: var(--surface-2);
 }
 
-/* ========== User Avatar & Login Layout ========== */
+/* User Avatar & Login Layout */
 .user-avatar-img {
     width: 28px;
     height: 28px;

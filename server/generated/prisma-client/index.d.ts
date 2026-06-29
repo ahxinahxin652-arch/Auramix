@@ -2563,11 +2563,13 @@ export namespace Prisma {
   export type UserAvgAggregateOutputType = {
     id: number | null
     product: number | null
+    status: number | null
   }
 
   export type UserSumAggregateOutputType = {
     id: bigint | null
     product: number | null
+    status: number | null
   }
 
   export type UserMinAggregateOutputType = {
@@ -2578,6 +2580,7 @@ export namespace Prisma {
     avatarUrl: string | null
     country: string | null
     product: number | null
+    status: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2590,6 +2593,7 @@ export namespace Prisma {
     avatarUrl: string | null
     country: string | null
     product: number | null
+    status: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -2602,6 +2606,7 @@ export namespace Prisma {
     avatarUrl: number
     country: number
     product: number
+    status: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -2611,11 +2616,13 @@ export namespace Prisma {
   export type UserAvgAggregateInputType = {
     id?: true
     product?: true
+    status?: true
   }
 
   export type UserSumAggregateInputType = {
     id?: true
     product?: true
+    status?: true
   }
 
   export type UserMinAggregateInputType = {
@@ -2626,6 +2633,7 @@ export namespace Prisma {
     avatarUrl?: true
     country?: true
     product?: true
+    status?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2638,6 +2646,7 @@ export namespace Prisma {
     avatarUrl?: true
     country?: true
     product?: true
+    status?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -2650,6 +2659,7 @@ export namespace Prisma {
     avatarUrl?: true
     country?: true
     product?: true
+    status?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -2749,6 +2759,7 @@ export namespace Prisma {
     avatarUrl: string | null
     country: string
     product: number
+    status: number
     createdAt: Date
     updatedAt: Date
     _count: UserCountAggregateOutputType | null
@@ -2780,6 +2791,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     country?: boolean
     product?: boolean
+    status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     playlists?: boolean | User$playlistsArgs<ExtArgs>
@@ -2799,6 +2811,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     country?: boolean
     product?: boolean
+    status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["user"]>
@@ -2811,6 +2824,7 @@ export namespace Prisma {
     avatarUrl?: boolean
     country?: boolean
     product?: boolean
+    status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
@@ -2844,6 +2858,7 @@ export namespace Prisma {
       avatarUrl: string | null
       country: string
       product: number
+      status: number
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["user"]>
@@ -3252,6 +3267,7 @@ export namespace Prisma {
     readonly avatarUrl: FieldRef<"User", 'String'>
     readonly country: FieldRef<"User", 'String'>
     readonly product: FieldRef<"User", 'Int'>
+    readonly status: FieldRef<"User", 'Int'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
   }
@@ -5817,6 +5833,7 @@ export namespace Prisma {
     playCount: number | null
     trackNumber: number | null
     discNumber: number | null
+    member: number | null
   }
 
   export type TrackSumAggregateOutputType = {
@@ -5828,6 +5845,7 @@ export namespace Prisma {
     playCount: bigint | null
     trackNumber: number | null
     discNumber: number | null
+    member: number | null
   }
 
   export type TrackMinAggregateOutputType = {
@@ -5841,6 +5859,7 @@ export namespace Prisma {
     playCount: bigint | null
     trackNumber: number | null
     discNumber: number | null
+    member: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -5856,6 +5875,7 @@ export namespace Prisma {
     playCount: bigint | null
     trackNumber: number | null
     discNumber: number | null
+    member: number | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -5871,6 +5891,7 @@ export namespace Prisma {
     playCount: number
     trackNumber: number
     discNumber: number
+    member: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -5886,6 +5907,7 @@ export namespace Prisma {
     playCount?: true
     trackNumber?: true
     discNumber?: true
+    member?: true
   }
 
   export type TrackSumAggregateInputType = {
@@ -5897,6 +5919,7 @@ export namespace Prisma {
     playCount?: true
     trackNumber?: true
     discNumber?: true
+    member?: true
   }
 
   export type TrackMinAggregateInputType = {
@@ -5910,6 +5933,7 @@ export namespace Prisma {
     playCount?: true
     trackNumber?: true
     discNumber?: true
+    member?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -5925,6 +5949,7 @@ export namespace Prisma {
     playCount?: true
     trackNumber?: true
     discNumber?: true
+    member?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -5940,6 +5965,7 @@ export namespace Prisma {
     playCount?: true
     trackNumber?: true
     discNumber?: true
+    member?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -6042,6 +6068,7 @@ export namespace Prisma {
     playCount: bigint
     trackNumber: number
     discNumber: number
+    member: number
     createdAt: Date
     updatedAt: Date
     _count: TrackCountAggregateOutputType | null
@@ -6076,6 +6103,7 @@ export namespace Prisma {
     playCount?: boolean
     trackNumber?: boolean
     discNumber?: boolean
+    member?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     album?: boolean | AlbumDefaultArgs<ExtArgs>
@@ -6100,6 +6128,7 @@ export namespace Prisma {
     playCount?: boolean
     trackNumber?: boolean
     discNumber?: boolean
+    member?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     album?: boolean | AlbumDefaultArgs<ExtArgs>
@@ -6116,6 +6145,7 @@ export namespace Prisma {
     playCount?: boolean
     trackNumber?: boolean
     discNumber?: boolean
+    member?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
@@ -6158,6 +6188,7 @@ export namespace Prisma {
       playCount: bigint
       trackNumber: number
       discNumber: number
+      member: number
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["track"]>
@@ -6571,6 +6602,7 @@ export namespace Prisma {
     readonly playCount: FieldRef<"Track", 'BigInt'>
     readonly trackNumber: FieldRef<"Track", 'Int'>
     readonly discNumber: FieldRef<"Track", 'Int'>
+    readonly member: FieldRef<"Track", 'Int'>
     readonly createdAt: FieldRef<"Track", 'DateTime'>
     readonly updatedAt: FieldRef<"Track", 'DateTime'>
   }
@@ -19750,6 +19782,7 @@ export namespace Prisma {
     avatarUrl: 'avatarUrl',
     country: 'country',
     product: 'product',
+    status: 'status',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -19793,6 +19826,7 @@ export namespace Prisma {
     playCount: 'playCount',
     trackNumber: 'trackNumber',
     discNumber: 'discNumber',
+    member: 'member',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -20006,6 +20040,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableFilter<"User"> | string | null
     country?: StringFilter<"User"> | string
     product?: IntFilter<"User"> | number
+    status?: IntFilter<"User"> | number
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     playlists?: PlaylistListRelationFilter
@@ -20024,6 +20059,7 @@ export namespace Prisma {
     avatarUrl?: SortOrderInput | SortOrder
     country?: SortOrder
     product?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     playlists?: PlaylistOrderByRelationAggregateInput
@@ -20045,6 +20081,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableFilter<"User"> | string | null
     country?: StringFilter<"User"> | string
     product?: IntFilter<"User"> | number
+    status?: IntFilter<"User"> | number
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     playlists?: PlaylistListRelationFilter
@@ -20063,6 +20100,7 @@ export namespace Prisma {
     avatarUrl?: SortOrderInput | SortOrder
     country?: SortOrder
     product?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: UserCountOrderByAggregateInput
@@ -20083,6 +20121,7 @@ export namespace Prisma {
     avatarUrl?: StringNullableWithAggregatesFilter<"User"> | string | null
     country?: StringWithAggregatesFilter<"User"> | string
     product?: IntWithAggregatesFilter<"User"> | number
+    status?: IntWithAggregatesFilter<"User"> | number
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
   }
@@ -20116,10 +20155,10 @@ export namespace Prisma {
 
   export type ArtistWhereUniqueInput = Prisma.AtLeast<{
     id?: bigint | number
-    name?: string
     AND?: ArtistWhereInput | ArtistWhereInput[]
     OR?: ArtistWhereInput[]
     NOT?: ArtistWhereInput | ArtistWhereInput[]
+    name?: StringFilter<"Artist"> | string
     coverImg?: StringNullableFilter<"Artist"> | string | null
     bio?: StringNullableFilter<"Artist"> | string | null
     createdAt?: DateTimeFilter<"Artist"> | Date | string
@@ -20127,7 +20166,7 @@ export namespace Prisma {
     tracks?: TrackArtistListRelationFilter
     albums?: AlbumArtistListRelationFilter
     artistFollowers?: ArtistFollowerListRelationFilter
-  }, "id" | "name">
+  }, "id">
 
   export type ArtistOrderByWithAggregationInput = {
     id?: SortOrder
@@ -20242,6 +20281,7 @@ export namespace Prisma {
     playCount?: BigIntFilter<"Track"> | bigint | number
     trackNumber?: IntFilter<"Track"> | number
     discNumber?: IntFilter<"Track"> | number
+    member?: IntFilter<"Track"> | number
     createdAt?: DateTimeFilter<"Track"> | Date | string
     updatedAt?: DateTimeFilter<"Track"> | Date | string
     album?: XOR<AlbumRelationFilter, AlbumWhereInput>
@@ -20265,6 +20305,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     album?: AlbumOrderByWithRelationInput
@@ -20291,6 +20332,7 @@ export namespace Prisma {
     playCount?: BigIntFilter<"Track"> | bigint | number
     trackNumber?: IntFilter<"Track"> | number
     discNumber?: IntFilter<"Track"> | number
+    member?: IntFilter<"Track"> | number
     createdAt?: DateTimeFilter<"Track"> | Date | string
     updatedAt?: DateTimeFilter<"Track"> | Date | string
     album?: XOR<AlbumRelationFilter, AlbumWhereInput>
@@ -20314,6 +20356,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: TrackCountOrderByAggregateInput
@@ -20337,6 +20380,7 @@ export namespace Prisma {
     playCount?: BigIntWithAggregatesFilter<"Track"> | bigint | number
     trackNumber?: IntWithAggregatesFilter<"Track"> | number
     discNumber?: IntWithAggregatesFilter<"Track"> | number
+    member?: IntWithAggregatesFilter<"Track"> | number
     createdAt?: DateTimeWithAggregatesFilter<"Track"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Track"> | Date | string
   }
@@ -21096,6 +21140,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -21114,6 +21159,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -21132,6 +21178,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -21150,6 +21197,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -21168,6 +21216,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -21180,6 +21229,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -21192,6 +21242,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -21361,8 +21412,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -21384,8 +21436,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -21407,6 +21460,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -21430,6 +21484,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -21450,8 +21505,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -21466,6 +21522,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -21481,6 +21538,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -22291,6 +22349,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     country?: SortOrder
     product?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22298,6 +22357,7 @@ export namespace Prisma {
   export type UserAvgOrderByAggregateInput = {
     id?: SortOrder
     product?: SortOrder
+    status?: SortOrder
   }
 
   export type UserMaxOrderByAggregateInput = {
@@ -22308,6 +22368,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     country?: SortOrder
     product?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22320,6 +22381,7 @@ export namespace Prisma {
     avatarUrl?: SortOrder
     country?: SortOrder
     product?: SortOrder
+    status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22327,6 +22389,7 @@ export namespace Prisma {
   export type UserSumOrderByAggregateInput = {
     id?: SortOrder
     product?: SortOrder
+    status?: SortOrder
   }
 
   export type BigIntWithAggregatesFilter<$PrismaModel = never> = {
@@ -22570,6 +22633,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22583,6 +22647,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
   }
 
   export type TrackMaxOrderByAggregateInput = {
@@ -22596,6 +22661,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22611,6 +22677,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -22624,6 +22691,7 @@ export namespace Prisma {
     playCount?: SortOrder
     trackNumber?: SortOrder
     discNumber?: SortOrder
+    member?: SortOrder
   }
 
   export type TrackRelationFilter = {
@@ -25107,8 +25175,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistCreateNestedManyWithoutTrackInput
@@ -25128,8 +25197,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -25216,6 +25286,7 @@ export namespace Prisma {
     playCount?: BigIntFilter<"Track"> | bigint | number
     trackNumber?: IntFilter<"Track"> | number
     discNumber?: IntFilter<"Track"> | number
+    member?: IntFilter<"Track"> | number
     createdAt?: DateTimeFilter<"Track"> | Date | string
     updatedAt?: DateTimeFilter<"Track"> | Date | string
   }
@@ -25647,8 +25718,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -25669,8 +25741,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     audioResources?: TrackAudioResourceUncheckedCreateNestedManyWithoutTrackInput
@@ -25734,6 +25807,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -25756,6 +25830,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     audioResources?: TrackAudioResourceUncheckedUpdateManyWithoutTrackNestedInput
@@ -25931,8 +26006,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -25953,8 +26029,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -25991,6 +26068,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -26013,6 +26091,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -26031,8 +26110,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -26053,8 +26133,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -26091,6 +26172,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -26113,6 +26195,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -26164,8 +26247,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -26186,8 +26270,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -26241,6 +26326,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -26263,6 +26349,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -26304,6 +26391,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlistFollowers?: PlaylistFollowerCreateNestedManyWithoutUserInput
@@ -26321,6 +26409,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlistFollowers?: PlaylistFollowerUncheckedCreateNestedManyWithoutUserInput
@@ -26394,6 +26483,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlistFollowers?: PlaylistFollowerUpdateManyWithoutUserNestedInput
@@ -26411,6 +26501,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlistFollowers?: PlaylistFollowerUncheckedUpdateManyWithoutUserNestedInput
@@ -26489,8 +26580,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -26511,8 +26603,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -26584,6 +26677,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -26606,6 +26700,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -26653,6 +26748,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -26670,6 +26766,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -26738,6 +26835,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -26755,6 +26853,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -26799,6 +26898,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -26816,6 +26916,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -26882,6 +26983,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -26899,6 +27001,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -26916,6 +27019,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -26933,6 +27037,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -26955,8 +27060,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -26977,8 +27083,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -27013,6 +27120,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -27030,6 +27138,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -27060,6 +27169,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -27082,6 +27192,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -27129,6 +27240,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -27146,6 +27258,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -27214,6 +27327,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -27231,6 +27345,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -27248,6 +27363,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistCreateNestedManyWithoutOwnerInput
@@ -27265,6 +27381,7 @@ export namespace Prisma {
     avatarUrl?: string | null
     country?: string
     product?: number
+    status?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     playlists?: PlaylistUncheckedCreateNestedManyWithoutOwnerInput
@@ -27287,8 +27404,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     album: AlbumCreateNestedOneWithoutTracksInput
@@ -27309,8 +27427,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
     artists?: TrackArtistUncheckedCreateNestedManyWithoutTrackInput
@@ -27345,6 +27464,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUpdateManyWithoutOwnerNestedInput
@@ -27362,6 +27482,7 @@ export namespace Prisma {
     avatarUrl?: NullableStringFieldUpdateOperationsInput | string | null
     country?: StringFieldUpdateOperationsInput | string
     product?: IntFieldUpdateOperationsInput | number
+    status?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     playlists?: PlaylistUncheckedUpdateManyWithoutOwnerNestedInput
@@ -27392,6 +27513,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     album?: AlbumUpdateOneRequiredWithoutTracksNestedInput
@@ -27414,6 +27536,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -27644,8 +27767,9 @@ export namespace Prisma {
     status?: number
     likedCount?: number
     playCount?: bigint | number
-    trackNumber: number
+    trackNumber?: number
     discNumber?: number
+    member?: number
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -27669,6 +27793,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUpdateManyWithoutTrackNestedInput
@@ -27690,6 +27815,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     artists?: TrackArtistUncheckedUpdateManyWithoutTrackNestedInput
@@ -27711,6 +27837,7 @@ export namespace Prisma {
     playCount?: BigIntFieldUpdateOperationsInput | bigint | number
     trackNumber?: IntFieldUpdateOperationsInput | number
     discNumber?: IntFieldUpdateOperationsInput | number
+    member?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
