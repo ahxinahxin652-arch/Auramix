@@ -40,12 +40,7 @@ module.exports = function(mainWindow) {
           where: { userId: localUserId }
         })
 
-        // 确保本地主用户 1n 存在
-        await tx.user.upsert({
-          where: { id: localUserId },
-          update: {},
-          create: { id: localUserId, email: "local@auramix.com", passwordHash: "", displayName: "Local User" }
-        })
+        await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (1, "local@auramix.com", "", "Local User")')
 
         // 写入歌单 (自己创建的)
         for (const p of syncData.playlists) {
@@ -99,19 +94,14 @@ module.exports = function(mainWindow) {
 
         // 写入订阅的歌单
         if (syncData.subscribedPlaylists && syncData.subscribedPlaylists.length > 0) {
-          // 确保 dummy user 2n 存在，用于存放非自己的歌单
-          await tx.user.upsert({
-            where: { id: 2n },
-            update: {},
-            create: { id: 2n, email: "dummy_sub@auramix.com", passwordHash: "", displayName: "Other User" }
-          })
+          await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (2, "dummy_sub@auramix.com", "", "Other User")')
           
           for (const p of syncData.subscribedPlaylists) {
             const playlistId = BigInt(p.id)
             await tx.playlist.upsert({
               where: { id: playlistId },
-              update: { name: p.name, coverUrl: p.coverUrl },
-              create: { id: playlistId, ownerId: 2n, name: p.name, coverUrl: p.coverUrl, isPublic: 1 }
+              update: {}, // 不缓存具体的歌单名称和封面
+              create: { id: playlistId, ownerId: 2n, name: "Subscribed", isPublic: 1 }
             })
 
             await tx.playlistFollower.create({
@@ -132,8 +122,8 @@ module.exports = function(mainWindow) {
 
             await tx.artist.upsert({
               where: { id: artistId },
-              update: { name: artist.name, coverImg: artist.coverImg },
-              create: { id: artistId, name: artist.name, coverImg: artist.coverImg }
+              update: {}, // 不缓存歌手具体数据
+              create: { id: artistId, name: "Unknown Artist " + artistId }
             })
             await tx.artistFollower.create({
               data: {
@@ -152,20 +142,61 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 2. 本地获取歌单列表
+  // 2. 获取歌单列表（代理远端，并缓存关联关系）
   router.get('/playlists', async (req, res) => {
     try {
+      const token = req.headers['x-user-token']
+      const response = await fetch('http://localhost:8080/api/user/playlists', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.code !== 200) return res.json({ success: false, error: data.msg || '获取失败' })
+
+      const playlists = data.data?.records || data.data?.list || []
       const db = getDb()
       const localUserId = 1n
-      const playlists = await db.playlist.findMany({
-        where: { ownerId: localUserId },
-        include: { tracks: true }
+
+      await db.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (1, "local@auramix.com", "", "Local User")')
+
+        await tx.playlistTrack.deleteMany({ where: { playlist: { ownerId: localUserId } } })
+        await tx.playlist.deleteMany({ where: { ownerId: localUserId } })
+
+        for (const p of playlists) {
+          const playlistId = BigInt(p.id)
+          await tx.playlist.create({
+            data: { id: playlistId, ownerId: localUserId, name: p.name || 'Untitled', coverUrl: p.coverUrl, isPublic: 1 }
+          })
+
+          if (p.trackIds && p.trackIds.length > 0) {
+            let sortOrder = 0
+            for (const tid of p.trackIds) {
+              const trackId = BigInt(tid)
+              const trackExists = await tx.track.findUnique({ where: { id: trackId } })
+              if (!trackExists) {
+                const albumId = BigInt(Date.now()) + trackId
+                await tx.album.upsert({
+                  where: { id: albumId },
+                  update: {},
+                  create: { id: albumId, title: "Unknown", releaseDate: new Date() }
+                })
+                await tx.track.create({
+                  data: { id: trackId, albumId, title: "Sync Track", duration: 0, trackNumber: 1 }
+                })
+              }
+              await tx.playlistTrack.create({
+                data: { playlistId, trackId, sortOrder: sortOrder++ }
+              })
+            }
+          }
+        }
       })
+
+      // 把响应格式统一处理，带上字符串id
       const result = playlists.map(p => ({
+        ...p,
         id: p.id.toString(),
-        name: p.name,
-        coverUrl: p.coverUrl,
-        trackIds: p.tracks.map(t => t.trackId.toString())
+        trackIds: p.trackIds ? p.trackIds.map(String) : []
       }))
       res.json({ success: true, data: result })
     } catch (err) {
@@ -173,41 +204,90 @@ module.exports = function(mainWindow) {
     }
   })
 
-  // 3. 本地获取订阅的歌单
+  // 3. 获取订阅的歌单（代理远端，并缓存关联关系）
   router.get('/playlists/subscribed', async (req, res) => {
     try {
+      const token = req.headers['x-user-token']
+      const response = await fetch('http://localhost:8080/api/user/playlists/followed', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.code !== 200) return res.json({ success: false, error: data.msg || '获取失败' })
+
+      const playlists = data.data?.records || data.data?.list || []
       const db = getDb()
       const localUserId = 1n
-      const follows = await db.playlistFollower.findMany({
-        where: { userId: localUserId },
-        include: { playlist: { include: { tracks: true } } }
+
+      await db.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (1, "local@auramix.com", "", "Local User")')
+        await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (2, "dummy_sub@auramix.com", "", "Other User")')
+
+
+
+        await tx.playlistFollower.deleteMany({ where: { userId: localUserId } })
+
+        for (const p of playlists) {
+          const playlistId = BigInt(p.id)
+          await tx.playlist.upsert({
+            where: { id: playlistId },
+            update: {}, // 不缓存具体数据，只保持存在
+            create: { id: playlistId, ownerId: 2n, name: "Subscribed", isPublic: 1 }
+          })
+          await tx.playlistFollower.create({
+            data: { userId: localUserId, playlistId }
+          })
+        }
       })
-      res.json({ success: true, data: follows.map(f => ({
-        id: f.playlist.id.toString(),
-        name: f.playlist.name,
-        coverUrl: f.playlist.coverUrl,
-        trackIds: f.playlist.tracks.map(t => t.trackId.toString()),
-        isSubscribed: true // 标识位
-      })) })
+
+      const result = playlists.map(p => ({
+        ...p,
+        id: p.id.toString(),
+        trackIds: p.trackIds ? p.trackIds.map(String) : [],
+        isSubscribed: true
+      }))
+      res.json({ success: true, data: result })
     } catch (err) {
       res.json({ success: false, error: err.message })
     }
   })
 
-  // 4. 本地获取关注歌手
+  // 4. 获取关注歌手（代理远端，并缓存关联关系）
   router.get('/artists/followed', async (req, res) => {
     try {
+      const token = req.headers['x-user-token']
+      const response = await fetch('http://localhost:8080/api/user/artists/followed', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const data = await response.json()
+      if (data.code !== 200) return res.json({ success: false, error: data.msg || '获取失败' })
+
+      const artists = data.data?.records || data.data?.list || []
       const db = getDb()
       const localUserId = 1n
-      const follows = await db.artistFollower.findMany({
-        where: { userId: localUserId },
-        include: { artist: true }
+
+      await db.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (1, "local@auramix.com", "", "Local User")')
+
+        await tx.artistFollower.deleteMany({ where: { userId: localUserId } })
+
+        for (const a of artists) {
+          const artistId = BigInt(a.id)
+          await tx.artist.upsert({
+            where: { id: artistId },
+            update: {}, // 不缓存具体数据，只保持存
+            create: { id: artistId, name: "Unknown Artist " + artistId }
+          })
+          await tx.artistFollower.create({
+            data: { userId: localUserId, artistId }
+          })
+        }
       })
-      res.json({ success: true, data: follows.map(f => ({
-        id: f.artist.id.toString(),
-        name: f.artist.name,
-        coverImg: f.artist.coverImg
-      })) })
+
+      const result = artists.map(a => ({
+        ...a,
+        id: a.id.toString()
+      }))
+      res.json({ success: true, data: result })
     } catch (err) {
       res.json({ success: false, error: err.message })
     }
@@ -295,11 +375,7 @@ module.exports = function(mainWindow) {
       // 若是已有歌单，则不需要。
       const playlistExists = await db.playlist.findUnique({ where: { id: playlistId } })
       if (!playlistExists) {
-        await db.user.upsert({
-          where: { id: 2n },
-          update: {},
-          create: { id: 2n, email: "dummy_sub@auramix.com", passwordHash: "", displayName: "Other User" }
-        })
+
         await db.playlist.create({ data: { id: playlistId, ownerId: 2n, name: "Subscribed Playlist", isPublic: 1 } })
       }
 

@@ -405,18 +405,8 @@ async function seedDatabase(db) {
     console.log('[DB Seed] Seeding database with initial artists, albums, and tracks...')
 
     // Create default admin user
-    await db.user.upsert({
-      where: { email: 'user@auramix.com' },
-      update: {},
-      create: {
-        id: 1n,
-        email: 'user@auramix.com',
-        passwordHash: 'no-password-needed',
-        displayName: 'Auramix User',
-        product: 1, // VIP (premium)
-        country: 'CN'
-      }
-    })
+    // Create default admin user using raw SQL to bypass Prisma schema mismatch for 'status' column
+    await db.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name, product, country) VALUES (1, "user@auramix.com", "no-password-needed", "Auramix User", 1, "CN")')
 
     // 1. Scan and Seed Local Tracks
     const musicWarehouseRoot = getMusicWarehouseRoot()
