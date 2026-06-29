@@ -33,7 +33,7 @@ public class Track implements Serializable {
 
     private String lyricsUrl;
 
-    /** 0=正常 -1=已下架 -2=暂无版权 */
+    /** 0=正常播放 1=已下架 2=暂无版权 3=待审核 */
     private Integer status;
 
     private Integer likedCount;
