@@ -116,13 +116,6 @@ function syncLocalLibrary() {
   return apiFetch('/api/library/sync', { method: 'POST' })
 }
 
-function getLocalPlaylists() {
-  return apiFetch('/api/library/playlists')
-}
-
-function getLocalFollowedArtists() {
-  return apiFetch('/api/library/artists/followed')
-}
 
 function addTrackToLocalPlaylist(playlistId, trackId) {
   return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/tracks`, { method: 'POST', body: { trackId } })
@@ -138,10 +131,6 @@ function followLocalArtist(artistId) {
 
 function unfollowLocalArtist(artistId) {
   return apiFetch(`/api/library/artists/${encodeURIComponent(artistId)}/unfollow`, { method: 'DELETE' })
-}
-
-function getLocalSubscribedPlaylists() {
-  return apiFetch('/api/library/playlists/subscribed')
 }
 
 function subscribeLocalPlaylist(playlistId) {
@@ -390,13 +379,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateAlbum,
   // 媒体库同步 API
   syncLocalLibrary,
-  getLocalPlaylists,
-  getLocalFollowedArtists,
   addTrackToLocalPlaylist,
   removeTrackFromLocalPlaylist,
   followLocalArtist,
   unfollowLocalArtist,
-  getLocalSubscribedPlaylists,
   subscribeLocalPlaylist,
   unsubscribeLocalPlaylist,
   // 格式转换
