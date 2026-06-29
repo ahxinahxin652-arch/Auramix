@@ -178,6 +178,7 @@ public class UserArtistServiceImpl implements UserArtistService {
         ArtistFollower follower = new ArtistFollower();
         follower.setArtistId(artistId);
         follower.setUserId(userId);
+        follower.setFollowedAt(java.time.LocalDateTime.now());
         artistFollowerMapper.insert(follower);
     }
 

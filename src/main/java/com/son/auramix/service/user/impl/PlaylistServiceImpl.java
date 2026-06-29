@@ -473,6 +473,7 @@ public class PlaylistServiceImpl implements PlaylistService {
         PlaylistFollower follower = new PlaylistFollower();
         follower.setPlaylistId(playlistId);
         follower.setUserId(userId);
+        follower.setFollowedAt(java.time.LocalDateTime.now());
         playlistFollowerMapper.insert(follower);
 
         log.info("[PlaylistService] 关注歌单 playlistId={}, userId={}", playlistId, userId);
