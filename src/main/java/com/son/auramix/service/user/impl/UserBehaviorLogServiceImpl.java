@@ -50,8 +50,6 @@ public class UserBehaviorLogServiceImpl implements UserBehaviorLogService {
 
         userBehaviorLogMapper.insert(log);
 
-        log.info("[UserBehaviorLog] 记录行为 userId={}, actionType={}, targetType={}, targetId={}, id={}",
-                userId, req.getActionType(), req.getTargetType(), req.getTargetId(), log.getId());
 
         return toVO(log);
     }
