@@ -261,14 +261,21 @@ async function autoMigrate() {
     await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_playlist_id_idx" ON "playlist_followers"("playlist_id")`)
     await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "playlist_followers_user_id_idx" ON "playlist_followers"("user_id")`)
 
-    // 14. 创建 artist_followers 中间表
+    // 14. 创建 artist_followers 中间表 (不再建立对 artists 表的外键约束)
+    try {
+      const fkList = await db.$queryRawUnsafe(`PRAGMA foreign_key_list("artist_followers")`)
+      if (Array.isArray(fkList) && fkList.some(fk => fk.table === 'artists')) {
+        await db.$executeRawUnsafe(`DROP TABLE "artist_followers"`)
+        console.log('[DB] Dropped artist_followers table to remove foreign key constraint.')
+      }
+    } catch (e) { /* ignore */ }
+
     await db.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS "artist_followers" (
         "artist_id" BIGINT NOT NULL,
         "user_id" BIGINT NOT NULL,
         "followed_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY ("artist_id", "user_id"),
-        CONSTRAINT "artist_followers_artist_id_fkey" FOREIGN KEY ("artist_id") REFERENCES "artists" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
         CONSTRAINT "artist_followers_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
       )
     `)

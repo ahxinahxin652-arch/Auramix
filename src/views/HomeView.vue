@@ -29,7 +29,7 @@ const editCoverHover = ref(false)
 const coverInputRef = ref(null)
 
 onMounted(() => {
-  library.loadWarehouses()
+  // library.loadWarehouses() // Removed startup redundant load
   document.addEventListener('click', handleClickOutside)
 })
 onUnmounted(() => {
@@ -195,7 +195,7 @@ async function handleSaveEdit() {
   if (result.success) {
     showEditDialog.value = false
     ElMessage.success('保存成功')
-    await library.loadWarehouses()
+    // await library.loadWarehouses() // Removed redundant load
   } else {
     ElMessage.error(result.error || '保存失败')
   }
@@ -225,7 +225,7 @@ async function handleImportFiles(warehouseId, files) {
   const filePaths = files.map(f => f.path)
   const result = await window.electronAPI.importFilesToWarehouseById(warehouseId, filePaths)
   if (result.success) {
-    library.loadWarehouses()
+    // library.loadWarehouses() // Removed redundant load
   }
 }
 </script>

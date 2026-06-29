@@ -21,6 +21,7 @@ model User {
   avatarUrl    String?  @map("avatar_url")
   country      String   @default("CN") @map("country")
   product      Int      @default(0) @map("product")
+  status       Int      @default(0) @map("status")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -37,15 +38,14 @@ model User {
 // 2. 歌手/艺人表
 model Artist {
   id        BigInt   @id @map("id")
-  name      String   @unique @map("name")
+  name      String   @map("name")
   coverImg  String?  @map("cover_img")
   bio       String?  @map("bio")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tracks          TrackArtist[]
-  albums          AlbumArtist[]
-  artistFollowers ArtistFollower[]
+  tracks TrackArtist[]
+  albums AlbumArtist[]
 
   @@map("artists")
 }
@@ -77,8 +77,9 @@ model Track {
   status      Int      @default(0) @map("status")
   likedCount  Int      @default(0) @map("liked_count")
   playCount   BigInt   @default(0) @map("play_count")
-  trackNumber Int      @map("track_number")
+  trackNumber Int      @default(1) @map("track_number")
   discNumber  Int      @default(1) @map("disc_number")
+  member      Int      @default(0) @map("member")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
@@ -241,8 +242,7 @@ model ArtistFollower {
   userId     BigInt   @map("user_id")
   followedAt DateTime @default(now()) @map("followed_at")
 
-  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([artistId, userId])
   @@index([artistId])

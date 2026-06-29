@@ -128,7 +128,6 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
 
   function setSortBy(newSort) {
     sortBy.value = newSort
-    loadWarehouses()
   }
 
   return {

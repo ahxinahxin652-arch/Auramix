@@ -73,65 +73,106 @@ export const useLibraryStore = defineStore('library', {
       if (!playlist) return
 
       const hasTrack = playlist.trackIds && playlist.trackIds.includes(tidStr)
+      if (!playlist.trackIds) playlist.trackIds = []
+      const oldTrackIds = [...playlist.trackIds]
       
       // 乐观更新
-      if (!playlist.trackIds) playlist.trackIds = []
       if (hasTrack) {
         playlist.trackIds = playlist.trackIds.filter(id => id !== tidStr)
-        if (window.electronAPI?.removeTrackFromLocalPlaylist) {
-          window.electronAPI.removeTrackFromLocalPlaylist(playlistId, trackId)
-        }
       } else {
         playlist.trackIds.push(tidStr)
-        if (window.electronAPI?.addTrackToLocalPlaylist) {
-          window.electronAPI.addTrackToLocalPlaylist(playlistId, trackId)
-        }
       }
 
       window.dispatchEvent(new CustomEvent('playlist-track-toggled', { 
         detail: { playlistId: pidStr, trackId: tidStr, hasTrack: !hasTrack } 
       }))
+
+      try {
+        let res
+        if (hasTrack) {
+          if (window.electronAPI?.removeTrackFromLocalPlaylist) {
+            res = await window.electronAPI.removeTrackFromLocalPlaylist(playlistId, trackId)
+          }
+        } else {
+          if (window.electronAPI?.addTrackToLocalPlaylist) {
+            res = await window.electronAPI.addTrackToLocalPlaylist(playlistId, trackId)
+          }
+        }
+        if (res && !res.success) throw new Error(res.error || 'Failed')
+      } catch (err) {
+        playlist.trackIds = oldTrackIds
+        window.dispatchEvent(new CustomEvent('playlist-track-toggled', { 
+          detail: { playlistId: pidStr, trackId: tidStr, hasTrack: hasTrack } 
+        }))
+        console.error('Failed to toggle track in playlist', err)
+      }
     },
     async toggleFollowArtist(artistObj) {
       const artistId = typeof artistObj === 'object' ? artistObj.id : artistObj
       const aidStr = String(artistId)
       const isFollowing = this.followedArtists.some(a => String(a.id) === aidStr)
+      const oldFollowedArtists = [...this.followedArtists]
 
       // 乐观更新
       if (isFollowing) {
         this.followedArtists = this.followedArtists.filter(a => String(a.id) !== aidStr)
-        if (window.electronAPI?.unfollowLocalArtist) {
-          window.electronAPI.unfollowLocalArtist(artistId)
-        }
       } else {
         const newArtist = typeof artistObj === 'object' ? artistObj : { id: aidStr, name: 'Unknown Artist', coverImg: '' }
         this.followedArtists.push(newArtist)
-        if (window.electronAPI?.followLocalArtist) {
-          window.electronAPI.followLocalArtist(artistId)
-        }
       }
       // 通知外部组件（比如 musicLibrary）也可以刷新
       window.dispatchEvent(new CustomEvent('artist-follow-toggled', { detail: { artistId: aidStr } }))
+
+      try {
+        let res
+        if (isFollowing) {
+          if (window.electronAPI?.unfollowLocalArtist) {
+            res = await window.electronAPI.unfollowLocalArtist(artistId)
+          }
+        } else {
+          if (window.electronAPI?.followLocalArtist) {
+            res = await window.electronAPI.followLocalArtist(artistId)
+          }
+        }
+        if (res && !res.success) throw new Error(res.error || 'Failed')
+      } catch (err) {
+        this.followedArtists = oldFollowedArtists
+        window.dispatchEvent(new CustomEvent('artist-follow-toggled', { detail: { artistId: aidStr } }))
+        console.error('Failed to toggle follow artist', err)
+      }
     },
     async toggleSubscribePlaylist(playlistObj) {
       const playlistId = typeof playlistObj === 'object' ? playlistObj.id : playlistObj
       const pidStr = String(playlistId)
       const isSubscribed = this.subscribedPlaylists.some(p => String(p.id) === pidStr)
+      const oldSubscribedPlaylists = [...this.subscribedPlaylists]
 
       // 乐观更新
       if (isSubscribed) {
         this.subscribedPlaylists = this.subscribedPlaylists.filter(p => String(p.id) !== pidStr)
-        if (window.electronAPI?.unsubscribeLocalPlaylist) {
-          window.electronAPI.unsubscribeLocalPlaylist(playlistId)
-        }
       } else {
         const newPlaylist = typeof playlistObj === 'object' ? playlistObj : { id: pidStr, name: 'Unknown Playlist', coverUrl: '', trackIds: [] }
         this.subscribedPlaylists.push(newPlaylist)
-        if (window.electronAPI?.subscribeLocalPlaylist) {
-          window.electronAPI.subscribeLocalPlaylist(playlistId)
-        }
       }
       window.dispatchEvent(new CustomEvent('playlist-subscribe-toggled', { detail: { playlistId: pidStr } }))
+
+      try {
+        let res
+        if (isSubscribed) {
+          if (window.electronAPI?.unsubscribeLocalPlaylist) {
+            res = await window.electronAPI.unsubscribeLocalPlaylist(playlistId)
+          }
+        } else {
+          if (window.electronAPI?.subscribeLocalPlaylist) {
+            res = await window.electronAPI.subscribeLocalPlaylist(playlistId)
+          }
+        }
+        if (res && !res.success) throw new Error(res.error || 'Failed')
+      } catch (err) {
+        this.subscribedPlaylists = oldSubscribedPlaylists
+        window.dispatchEvent(new CustomEvent('playlist-subscribe-toggled', { detail: { playlistId: pidStr } }))
+        console.error('Failed to toggle subscribe playlist', err)
+      }
     }
   }
 })

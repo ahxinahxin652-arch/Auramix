@@ -31,7 +31,7 @@ const sidebarStyle = computed(() => ({
 
 const allSidebarItems = computed(() => {
   return [
-    ...(library.warehouses || []).map(p => ({ ...p, isOwner: true })),
+    ...(globalLibraryStore.playlists || []).map(p => ({ ...p, isOwner: true })),
     ...(globalLibraryStore.subscribedPlaylists || []).map(p => ({ ...p, isOwner: false })),
     ...(globalLibraryStore.followedArtists || []).map(a => ({ ...a, isArtist: true }))
   ]
@@ -217,7 +217,7 @@ async function handleSaveEdit() {
   if (result.success) {
     showEditDialog.value = false
     ElMessage.success('保存成功')
-    await library.loadWarehouses()
+    // await library.loadWarehouses() // Removed redundant reload
     // 通知歌单页面刷新数据
     window.dispatchEvent(new CustomEvent('playlist-updated', { detail: { id: currentWh.id } }))
   } else {
@@ -281,7 +281,7 @@ function onDocumentClick() {
 
 // ---- 数据加载 ----
 onMounted(() => {
-  library.loadWarehouses()
+  // library.loadWarehouses() // Removed startup redundant load
   document.addEventListener('click', onDocumentClick)
 })
 

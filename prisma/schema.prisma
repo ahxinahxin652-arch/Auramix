@@ -46,8 +46,6 @@ model Artist {
 
   tracks          TrackArtist[]
   albums          AlbumArtist[]
-  artistFollowers ArtistFollower[]
-
   @@map("artists")
 }
 
@@ -243,7 +241,6 @@ model ArtistFollower {
   userId     BigInt   @map("user_id")
   followedAt DateTime @default(now()) @map("followed_at")
 
-  artist Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([artistId, userId])

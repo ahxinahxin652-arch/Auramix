@@ -120,11 +120,7 @@ module.exports = function(mainWindow) {
           for (const artist of syncData.followedArtists) {
             const artistId = BigInt(artist.id)
 
-            await tx.artist.upsert({
-              where: { id: artistId },
-              update: {}, // 不缓存歌手具体数据
-              create: { id: artistId, name: "Unknown Artist " + artistId }
-            })
+            // 直接缓存 artist_followers，不强制要求缓存具体的 artist 信息
             await tx.artistFollower.create({
               data: {
                 userId: localUserId,
@@ -225,7 +221,7 @@ module.exports = function(mainWindow) {
       // 若是已有歌单，则不需要。
       const playlistExists = await db.playlist.findUnique({ where: { id: playlistId } })
       if (!playlistExists) {
-
+        await db.$executeRawUnsafe('INSERT OR IGNORE INTO users (id, email, password_hash, display_name) VALUES (2, "dummy_sub@auramix.com", "", "Other User")')
         await db.playlist.create({ data: { id: playlistId, ownerId: 2n, name: "Subscribed Playlist", isPublic: 1 } })
       }
 
