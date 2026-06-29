@@ -11,12 +11,23 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.son.auramix.common.result.PageResult;
+import com.son.auramix.domain.vo.user.UserArtistSyncVO;
+import org.springframework.web.bind.annotation.RequestParam;
+
 @RestController
 @RequestMapping("/api/user/artists")
 @RequiredArgsConstructor
 public class UserArtistController {
 
     private final UserArtistService userArtistService;
+
+    @GetMapping("/followed")
+    public Result<PageResult<UserArtistSyncVO>> listFollowed(
+            @RequestParam(required = false, defaultValue = "1") Integer pageNum,
+            @RequestParam(required = false, defaultValue = "100") Integer pageSize) {
+        return Result.success(userArtistService.listFollowed(pageNum, pageSize));
+    }
 
     @GetMapping("/{id}")
     public Result<UserArtistDetailVO> detail(@PathVariable Long id) {

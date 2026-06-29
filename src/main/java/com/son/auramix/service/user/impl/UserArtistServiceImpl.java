@@ -25,6 +25,8 @@ import com.son.auramix.service.user.UserArtistService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import com.son.auramix.common.result.PageResult;
+import com.son.auramix.domain.vo.user.UserArtistSyncVO;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,34 @@ public class UserArtistServiceImpl implements UserArtistService {
     private final TrackMapper trackMapper;
     private final AlbumMapper albumMapper;
     private final ArtistFollowerMapper artistFollowerMapper;
+
+    @Override
+    public PageResult<UserArtistSyncVO> listFollowed(Integer pageNum, Integer pageSize) {
+        Long userId = getCurrentUserId();
+        Page<ArtistFollower> page = new Page<>(pageNum, pageSize);
+        Page<ArtistFollower> followerPage = artistFollowerMapper.selectPage(page,
+                new LambdaQueryWrapper<ArtistFollower>().eq(ArtistFollower::getUserId, userId));
+
+        List<UserArtistSyncVO> list = new ArrayList<>();
+        if (!followerPage.getRecords().isEmpty()) {
+            List<Long> artistIds = followerPage.getRecords().stream()
+                    .map(ArtistFollower::getArtistId).collect(Collectors.toList());
+            List<Artist> artists = artistMapper.selectBatchIds(artistIds);
+            Map<Long, Artist> map = artists.stream().collect(Collectors.toMap(Artist::getId, a -> a));
+            for (ArtistFollower f : followerPage.getRecords()) {
+                Artist a = map.get(f.getArtistId());
+                if (a != null) {
+                    UserArtistSyncVO vo = new UserArtistSyncVO();
+                    vo.setId(a.getId());
+                    vo.setName(a.getName());
+                    vo.setCoverImg(a.getCoverImg());
+                    list.add(vo);
+                }
+            }
+        }
+        return new PageResult<>(followerPage.getCurrent(), followerPage.getSize(),
+                followerPage.getTotal(), followerPage.getPages(), list);
+    }
 
     @Override
     public UserArtistDetailVO getArtistDetail(Long artistId) {
