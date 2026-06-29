@@ -124,6 +124,7 @@ async function getWarehouseTracksById(libraryId, token) {
           discNumber: 1,
           member: '',
           lyrics: '',
+          genres: t.genres || [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }))
@@ -219,6 +220,7 @@ async function resolveTrackById(trackId, token) {
           trackNumber: 1,
           discNumber: 1,
           lyrics: t.lyricsUrl || '',
+          genres: t.genres || [],
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
