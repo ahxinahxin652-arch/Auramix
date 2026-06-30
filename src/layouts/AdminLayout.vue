@@ -14,6 +14,7 @@ import {
   Avatar,
   GoldMedal,
   PriceTag,
+  Document,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import UserDropdown from '@/components/UserDropdown.vue'
@@ -92,6 +93,7 @@ const allMenus: MenuItem[] = [
   { path: '/member', label: '会员管理', icon: GoldMedal },
   { path: '/scene', label: '场景标签', icon: PriceTag },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
+  { path: '/reports', label: '我的报告', icon: Document },
 ]
 
 const visibleMenus = computed(() =>
