@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Check, Close, WarningFilled, View } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import ReviewDetailDialog from './ReviewDetailDialog.vue'
 import {
   listReviews,
   confirmReview,
@@ -12,8 +12,6 @@ import {
   ReviewVerdict,
   type ReviewListItem,
 } from '@/api/admin/reviewManage'
-
-const router = useRouter()
 
 // ---- 分页与表格 ----
 const list = ref<ReviewListItem[]>([])
@@ -31,6 +29,10 @@ const confirmLoading = ref(false)
 const currentReview = ref<ReviewListItem | null>(null)
 const adminVerdict = ref<1 | -1>(1)
 const adminNote = ref('')
+
+// ---- 详情弹窗 ----
+const detailVisible = ref(false)
+const currentReviewId = ref<string | null>(null)
 
 // ---- 自动刷新 ----
 const autoRefresh = ref(false)
@@ -131,7 +133,12 @@ function handleStatusFilterChange() {
 }
 
 function goDetail(row: ReviewListItem) {
-  router.push(`/approval/detail/${row.id}`)
+  currentReviewId.value = row.id
+  detailVisible.value = true
+}
+
+function handleDetailConfirmed() {
+  loadData()
 }
 
 function statusText(s: number): string {
@@ -250,7 +257,7 @@ onUnmounted(() => {
         </div>
 
         <el-table v-loading="loading" :data="list" style="width: 100%" empty-text="暂无审核记录">
-          <el-table-column label="歌曲" min-width="200">
+          <el-table-column label="歌曲" min-width="140">
             <template #default="{ row }">
               <div class="track-info">
                 <el-icon class="track-icon"><WarningFilled /></el-icon>
@@ -261,7 +268,7 @@ onUnmounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column label="AI 置信度" width="130" align="center">
+          <el-table-column label="AI 置信度" width="110" align="center">
             <template #default="{ row }">
               <div class="confidence-box">
                 <el-progress
@@ -269,13 +276,13 @@ onUnmounted(() => {
                   :color="confidenceColor(row.confidence)"
                   :stroke-width="14"
                   :text-inside="true"
-                  style="width: 100px;"
+                  style="width: 84px;"
                 />
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column label="AI 裁决" width="100" align="center">
+          <el-table-column label="AI 裁决" width="90" align="center">
             <template #default="{ row }">
               <el-tag :type="verdictTagType(row.verdict)" size="small">
                 {{ verdictText(row.verdict) }}
@@ -283,7 +290,7 @@ onUnmounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column label="处理状态" width="120" align="center">
+          <el-table-column label="处理状态" width="110" align="center">
             <template #default="{ row }">
               <el-tag :type="statusTagType(row.status)" size="small" effect="plain">
                 {{ statusText(row.status) }}
@@ -291,13 +298,13 @@ onUnmounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column label="审核时间" width="170" align="center">
+          <el-table-column label="审核时间" width="150" align="center">
             <template #default="{ row }">
               <span>{{ formatTime(row.createdAt) }}</span>
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="260" fixed="right" align="center">
+          <el-table-column label="操作" width="300" fixed="right" align="center">
             <template #default="{ row }">
               <el-button link type="primary" :icon="View" @click="goDetail(row as ReviewListItem)">
                 查看进度
@@ -400,6 +407,13 @@ onUnmounted(() => {
         </div>
       </template>
     </el-dialog>
+
+    <!-- 审核详情弹窗 -->
+    <ReviewDetailDialog
+      v-model="detailVisible"
+      :review-id="currentReviewId"
+      @confirmed="handleDetailConfirmed"
+    />
   </div>
 </template>
 
@@ -462,6 +476,11 @@ onUnmounted(() => {
 .confidence-box {
   display: flex;
   justify-content: center;
+}
+
+// 操作列按钮不换行
+:deep(.el-table__cell .cell) {
+  white-space: nowrap;
 }
 
 .text-placeholder {

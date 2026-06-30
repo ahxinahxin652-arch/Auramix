@@ -102,11 +102,17 @@ export function confirmReview(
 
 // ==================== 5.3 审核进度快照 ====================
 
-/** 维度进度状态 */
-export type DimensionStatus = 'PENDING' | 'DONE'
+/** 维度进度状态（v3.0 新增 RUNNING） */
+export type DimensionStatus = 'PENDING' | 'RUNNING' | 'DONE' | 'FAIL'
 
 /** 维度判定结果 */
 export type DimensionVerdict = 'PASS' | 'FAIL'
+
+/** 歌词拉取结果（LYRICS_DONE 事件中 judge.verdict 临时复用） */
+export type LyricsResult = 'HAS_LYRICS' | 'NO_LYRICS'
+
+/** 流水线阶段（v3.0 新增） */
+export type PipelineStage = 'LYRICS_PHASE' | 'DIMENSION_PHASE' | 'JUDGE_PHASE' | 'FINISHED'
 
 /** 维度 Agent 进度（DimensionProgressVO） */
 export interface DimensionProgress {
@@ -141,11 +147,15 @@ export interface JudgeProgress {
   durationMs: number | null
 }
 
-/** SSE 事件类型 */
+/** SSE 事件类型（v3.0 新增 LYRICS_FETCHING / LYRICS_DONE / DIMENSION_STARTED / JUDGE_STARTED） */
 export type SSEEventType =
   | 'SNAPSHOT'
+  | 'LYRICS_FETCHING'
+  | 'LYRICS_DONE'
   | 'STARTED'
+  | 'DIMENSION_STARTED'
   | 'DIMENSION_DONE'
+  | 'JUDGE_STARTED'
   | 'JUDGE_DONE'
   | 'FINISHED'
 
@@ -158,6 +168,12 @@ export interface ReviewProgress {
   trackTitle: string
   /** 流水线开始时间 */
   startedAt: string | null
+  /** 流水线阶段（v3.0 新增） */
+  stage: PipelineStage | null
+  /** 维度总数（v3.0 新增，固定 4） */
+  totalDimensions: number | null
+  /** 已完成维度数（v3.0 新增，0–4），可直接用于进度条 */
+  completedDimensions: number | null
   /** 4 维度进度，按 order 升序 */
   dimensions: DimensionProgress[]
   /** 裁决 Agent 进度 */
@@ -172,13 +188,75 @@ export interface ReviewProgress {
   finalConfidence: number | null
 }
 
-export function getReviewProgress(id: string): Promise<ReviewProgress> {
-  return request.get<unknown, ReviewProgress>(
-    `/admin/manage/reviews/${id}/progress`,
+// ==================== 5.3 审核记录详情 ====================
+
+/** 维度精简概览（DimensionSummary） */
+export interface DimensionSummary {
+  agentName: AgentName
+  verdict: DimensionVerdict
+  confidence: number
+}
+
+/** 维度完整详情（AgentResult） */
+export interface DimensionDetail {
+  agentName: AgentName
+  verdict: DimensionVerdict
+  confidence: number
+  reason: string | null
+}
+
+/** 裁决 Agent 详情 */
+export interface JudgeDetail {
+  agentName: 'ReviewJudgeAgent'
+  verdict: DimensionVerdict
+  confidence: number
+  reason: string | null
+}
+
+/** 审核报告（AgentResultsPayload，status≠0 时返回） */
+export interface ReviewReport {
+  dimensionSummary: DimensionSummary[]
+  dimensions: DimensionDetail[]
+  judge: JudgeDetail
+}
+
+/** 管理员确认信息（status=4 时返回） */
+export interface AdminConfirm {
+  adminId: number
+  adminVerdict: 1 | -1
+  adminNote: string | null
+  reviewedAt: string
+}
+
+/** 审核记录详情（ReviewDetailVO） */
+export interface ReviewDetail {
+  // ---- 基础信息（始终返回） ----
+  id: string
+  trackId: string
+  trackTitle: string
+  artistNames: string
+  albumTitle: string
+  status: number
+  verdict: number
+  confidence: number
+  failReasons: string | null
+  createdAt: string
+  updatedAt: string
+  // ---- 条件段：progress（仅 status=0 返回） ----
+  progress?: ReviewProgress
+  // ---- 条件段：report（status≠0 且 agentResults 非空时返回） ----
+  report?: ReviewReport
+  // ---- 条件段：adminConfirm（仅 status=4 返回） ----
+  adminConfirm?: AdminConfirm
+}
+
+export function getReviewDetail(id: string): Promise<ReviewDetail> {
+  return request.get<unknown, ReviewDetail>(
+    `/admin/manage/reviews/${id}`,
   )
 }
 
-// ==================== 5.4 SSE 订阅 ====================
+// ==================== 5.5 获取审核进度快照 ====================
 
 /** 维度 Agent 中文显示名映射（与后端 4.4 一致） */
 export const DIMENSION_DISPLAY_NAME: Record<AgentName, string> = {
