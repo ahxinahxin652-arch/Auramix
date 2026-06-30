@@ -32,11 +32,17 @@ public class PlaybackLogAspect {
     public void afterLogPointcut() {}
 
     /**
-     * 在标注了 @AfterLog 的方法成功返回后，自动记录用户播放历史
+     * 仅监听 behaviorType = 0（播放歌曲）的 @AfterLog 方法
+     * 成功返回后自动记录播放历史到 playback_history 表
      */
     @AfterReturning(pointcut = "afterLogPointcut() && @annotation(afterLog)", returning = "result")
     public void afterReturning(JoinPoint joinPoint, AfterLog afterLog, Object result) {
         try {
+            // 0. 仅处理播放行为（behaviorType = 0），其他行为跳过
+            if (afterLog.behaviorType() != 0) {
+                return;
+            }
+
             // 1. 获取当前登录用户 ID
             Long userId = getCurrentUserId();
 
@@ -53,14 +59,19 @@ public class PlaybackLogAspect {
             history.setTrackId(trackId);
             history.setPlayedAt(java.time.LocalDateTime.now());
 
-            // 4. 设置播放上下文
-            int contextType = afterLog.contextType();
-            if (contextType >= 0) {
+            // 4. 设置播放上下文（优先从方法参数获取动态值，其次取注解静态值）
+            Integer contextType = extractIntParam(joinPoint, "contextType");
+            if (contextType != null && contextType >= 0) {
                 history.setContextType(contextType);
+            } else if (afterLog.contextType() >= 0) {
+                history.setContextType(afterLog.contextType());
             }
-            long contextId = afterLog.contextId();
-            if (contextId > 0) {
+
+            Long contextId = extractLongParam(joinPoint, "contextId");
+            if (contextId != null && contextId > 0) {
                 history.setContextId(contextId);
+            } else if (afterLog.contextId() > 0) {
+                history.setContextId(afterLog.contextId());
             }
 
             // 5. 写入数据库
@@ -116,6 +127,38 @@ public class PlaybackLogAspect {
             }
         }
 
+        return null;
+    }
+
+    /**
+     * 按参数名提取 Integer 类型的值
+     */
+    private Integer extractIntParam(JoinPoint joinPoint, String paramName) {
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Parameter[] parameters = signature.getMethod().getParameters();
+        Object[] args = joinPoint.getArgs();
+
+        for (int i = 0; i < parameters.length; i++) {
+            if (paramName.equals(parameters[i].getName()) && args[i] instanceof Integer) {
+                return (Integer) args[i];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 按参数名提取 Long 类型的值
+     */
+    private Long extractLongParam(JoinPoint joinPoint, String paramName) {
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Parameter[] parameters = signature.getMethod().getParameters();
+        Object[] args = joinPoint.getArgs();
+
+        for (int i = 0; i < parameters.length; i++) {
+            if (paramName.equals(parameters[i].getName()) && args[i] instanceof Long) {
+                return (Long) args[i];
+            }
+        }
         return null;
     }
 }

@@ -1,6 +1,7 @@
 package com.son.auramix.controller.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.son.auramix.annotation.AfterLog;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.dto.user.PlaylistCreateDTO;
@@ -99,9 +100,12 @@ public class PlaylistController {
 
     // ============================ 添加歌曲到歌单 ============================
 
+    @AfterLog(value = "添加到歌单", behaviorType = 7)
     @PostMapping("/{playlistId}/tracks")
     public Result<Void> addTracks(@PathVariable Long playlistId,
-                                  @Valid @RequestBody PlaylistTracksDTO req) {
+                                  @Valid @RequestBody PlaylistTracksDTO req,
+                                  @RequestParam(required = false) Integer duration,
+                                  @RequestParam(required = false) String context) {
         playlistService.addTracks(playlistId, req);
         return Result.success(null, "歌曲已添加到歌单");
     }
@@ -117,16 +121,22 @@ public class PlaylistController {
 
     // ============================ 关注歌单 ============================
 
+    @AfterLog(value = "收藏歌单", behaviorType = 1)
     @PostMapping("/{playlistId}/follow")
-    public Result<Void> follow(@PathVariable Long playlistId) {
+    public Result<Void> follow(@PathVariable Long playlistId,
+                               @RequestParam(required = false) Integer duration,
+                               @RequestParam(required = false) String context) {
         playlistService.followPlaylist(playlistId);
         return Result.success(null, "已关注歌单");
     }
 
     // ============================ 取消关注 ============================
 
+    @AfterLog(value = "取消收藏歌单", behaviorType = 2)
     @DeleteMapping("/{playlistId}/follow")
-    public Result<Void> unfollow(@PathVariable Long playlistId) {
+    public Result<Void> unfollow(@PathVariable Long playlistId,
+                                 @RequestParam(required = false) Integer duration,
+                                 @RequestParam(required = false) String context) {
         playlistService.unfollowPlaylist(playlistId);
         return Result.success(null, "已取消关注");
     }
