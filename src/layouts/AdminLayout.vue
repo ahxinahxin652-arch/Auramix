@@ -13,6 +13,8 @@ import {
   CircleCheck,
   Avatar,
   GoldMedal,
+  PriceTag,
+  Document,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import UserDropdown from '@/components/UserDropdown.vue'
@@ -84,11 +86,13 @@ const allMenus: MenuItem[] = [
   { path: '/home', label: '主页', icon: House },
   { path: '/admin', label: '管理员管理', icon: UserFilled, rootOnly: true },
   { path: '/user', label: '用户管理', icon: User },
+  { path: '/genre', label: '流派管理', icon: PriceTag },
   { path: '/song', label: '歌曲管理', icon: Headset },
   { path: '/album', label: '专辑管理', icon: Collection },
   { path: '/artist', label: '歌手管理', icon: Avatar },
   { path: '/member', label: '会员管理', icon: GoldMedal },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
+  { path: '/reports', label: '我的报告', icon: Document },
 ]
 
 const visibleMenus = computed(() =>

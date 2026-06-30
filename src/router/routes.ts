@@ -25,6 +25,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '管理员管理' },
       },
       {
+        path: 'genre',
+        name: 'GenreManage',
+        component: () => import('@/views/genre/Index.vue'),
+        meta: { requiresAuth: true, title: '流派管理' },
+      },
+      {
         path: 'song',
         name: 'SongManage',
         component: () => import('@/views/song/Index.vue'),
@@ -59,12 +65,6 @@ const routes: RouteRecordRaw[] = [
         name: 'Approval',
         component: () => import('@/views/approval/Index.vue'),
         meta: { requiresAuth: true, title: '智能审批' },
-      },
-      {
-        path: 'approval/detail/:id',
-        name: 'ApprovalDetail',
-        component: () => import('@/views/approval/Detail.vue'),
-        meta: { requiresAuth: true, title: '审核详情' },
       },
     ],
   },

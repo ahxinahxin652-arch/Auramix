@@ -302,15 +302,17 @@ onUnmounted(() => {
               <el-button link type="primary" :icon="View" @click="goDetail(row as ReviewListItem)">
                 查看进度
               </el-button>
-              <el-button link type="success" :icon="Check" @click="handleQuickConfirm(row as ReviewListItem, 1)">
-                通过
-              </el-button>
-              <el-button link type="danger" :icon="Close" @click="handleQuickConfirm(row as ReviewListItem, -1)">
-                驳回
-              </el-button>
-              <el-button link type="info" @click="openConfirmDialog(row as ReviewListItem)">
-                附注
-              </el-button>
+              <template v-if="row.status !== ReviewStatus.MANUAL_DONE">
+                <el-button link type="success" :icon="Check" @click="handleQuickConfirm(row as ReviewListItem, 1)">
+                  通过
+                </el-button>
+                <el-button link type="danger" :icon="Close" @click="handleQuickConfirm(row as ReviewListItem, -1)">
+                  驳回
+                </el-button>
+                <el-button link type="info" @click="openConfirmDialog(row as ReviewListItem)">
+                  附注
+                </el-button>
+              </template>
             </template>
           </el-table-column>
 
