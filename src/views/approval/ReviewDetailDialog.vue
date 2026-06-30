@@ -12,6 +12,7 @@ import {
   Document,
   Monitor,
   Connection,
+  UserFilled,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import {
@@ -116,8 +117,9 @@ const statusBanner = computed(() => {
     text = `AI 置信度 ${d.confidence}，低于 80，待人工确认`
     type = 'warning'
   } else if (s === ReviewStatus.MANUAL_DONE) {
-    text = v === ReviewVerdict.PASS ? '管理员已确认通过，歌曲已上架' : '管理员已确认驳回，歌曲已下架'
-    type = v === ReviewVerdict.PASS ? 'success' : 'error'
+    const adminV = d.adminConfirm?.adminVerdict
+    text = adminV === 1 ? '管理员已确认通过，歌曲已上架' : '管理员已确认驳回，歌曲已下架'
+    type = adminV === 1 ? 'success' : 'error'
   } else if (s === ReviewStatus.FAILED) {
     text = 'AI 审核异常，可手动覆盖结果'
     type = 'error'
@@ -135,6 +137,32 @@ const canConfirm = computed(() => {
   const s = detail.value?.status
   if (s == null) return false
   return s !== ReviewStatus.MANUAL_DONE && s !== ReviewStatus.REVIEWING
+})
+
+// ---- AI 裁决结果摘要 ----
+const aiVerdictSummary = computed(() => {
+  const d = detail.value
+  if (!d) return null
+  const v = d.verdict
+  let label = '审核中'
+  let type: 'success' | 'danger' | 'warning' | 'info' = 'info'
+  if (v === ReviewVerdict.PASS) { label = '通过'; type = 'success' }
+  else if (v === ReviewVerdict.FAIL) { label = '不通过'; type = 'danger' }
+  else if (v === ReviewVerdict.WAITING_MANUAL) { label = '待确认'; type = 'warning' }
+  return { label, type }
+})
+
+// ---- 人工确认结果摘要 ----
+const adminVerdictSummary = computed(() => {
+  const ac = detail.value?.adminConfirm
+  if (!ac) return null
+  return {
+    label: ac.adminVerdict === 1 ? '通过' : '驳回',
+    type: (ac.adminVerdict === 1 ? 'success' : 'danger') as 'success' | 'danger',
+    note: ac.adminNote || '无',
+    adminId: ac.adminId,
+    reviewedAt: ac.reviewedAt,
+  }
 })
 
 // ---- 辅助函数 ----
@@ -477,21 +505,107 @@ onUnmounted(() => {
           class="detail-alert"
         />
 
-        <!-- 基本信息卡片 -->
+        <!-- ========== 结果总览：AI 裁决 + 人工确认 ========== -->
+        <div class="verdict-overview">
+          <!-- AI 裁决结果卡片 -->
+          <div class="verdict-card verdict-card--ai">
+            <div class="verdict-card__header">
+              <div class="verdict-card__icon verdict-card__icon--ai">
+                <el-icon><Monitor /></el-icon>
+              </div>
+              <span class="verdict-card__title">AI 裁决</span>
+            </div>
+            <div class="verdict-card__body">
+              <div class="verdict-card__verdict">
+                <el-tag
+                  v-if="aiVerdictSummary"
+                  :type="aiVerdictSummary.type"
+                  size="default"
+                  effect="light"
+                >
+                  <el-icon v-if="aiVerdictSummary.type === 'success'" class="el-icon--left"><Check /></el-icon>
+                  <el-icon v-else-if="aiVerdictSummary.type === 'danger'" class="el-icon--left"><Close /></el-icon>
+                  <el-icon v-else class="el-icon--left"><Clock /></el-icon>
+                  {{ aiVerdictSummary.label }}
+                </el-tag>
+              </div>
+              <div class="verdict-card__metric">
+                <span class="verdict-card__metric-label">置信度</span>
+                <span class="verdict-card__metric-value" :style="{ color: confidenceColor(detail.confidence) }">
+                  {{ detail.confidence }}/100
+                </span>
+              </div>
+              <div v-if="detail.failReasons" class="verdict-card__reason">
+                <el-icon><WarningFilled /></el-icon>
+                <span>{{ detail.failReasons }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 人工确认结果卡片 -->
+          <div
+            v-if="adminVerdictSummary"
+            class="verdict-card"
+            :class="adminVerdictSummary.type === 'success' ? 'verdict-card--pass' : 'verdict-card--reject'"
+          >
+            <div class="verdict-card__header">
+              <div
+                class="verdict-card__icon"
+                :class="adminVerdictSummary.type === 'success' ? 'verdict-card__icon--pass' : 'verdict-card__icon--reject'"
+              >
+                <el-icon><UserFilled /></el-icon>
+              </div>
+              <span class="verdict-card__title">人工确认</span>
+            </div>
+            <div class="verdict-card__body">
+              <div class="verdict-card__verdict">
+                <el-tag :type="adminVerdictSummary.type" size="default" effect="light">
+                  <el-icon v-if="adminVerdictSummary.type === 'success'" class="el-icon--left"><Check /></el-icon>
+                  <el-icon v-else class="el-icon--left"><Close /></el-icon>
+                  {{ adminVerdictSummary.label }}
+                </el-tag>
+              </div>
+              <div class="verdict-card__metric">
+                <span class="verdict-card__metric-label">管理员</span>
+                <span class="verdict-card__metric-value">#{{ adminVerdictSummary.adminId }}</span>
+              </div>
+              <div class="verdict-card__metric">
+                <span class="verdict-card__metric-label">确认时间</span>
+                <span class="verdict-card__metric-value">{{ formatTime(adminVerdictSummary.reviewedAt) }}</span>
+              </div>
+              <div class="verdict-card__note">
+                <span class="verdict-card__note-label">备注</span>
+                <span class="verdict-card__note-text">{{ adminVerdictSummary.note }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 待人工确认占位卡片 -->
+          <div
+            v-else-if="detail.status === ReviewStatus.PENDING_MANUAL || detail.status === ReviewStatus.FAILED"
+            class="verdict-card verdict-card--pending"
+          >
+            <div class="verdict-card__header">
+              <div class="verdict-card__icon verdict-card__icon--pending">
+                <el-icon><Clock /></el-icon>
+              </div>
+              <span class="verdict-card__title">人工确认</span>
+            </div>
+            <div class="verdict-card__body">
+              <div class="verdict-card__placeholder">
+                <el-icon class="verdict-card__placeholder-icon"><WarningFilled /></el-icon>
+                <span>{{ detail.status === ReviewStatus.FAILED ? 'AI 异常，待人工覆盖' : '待人工确认' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 基本信息网格 -->
         <div class="info-grid">
           <div class="info-cell">
-            <span class="info-cell__label">AI 置信度</span>
-            <span class="info-cell__value" :style="{ color: confidenceColor(detail.confidence) }">
-              {{ detail.confidence }}/100
-            </span>
-          </div>
-          <div class="info-cell">
-            <span class="info-cell__label">AI 裁决</span>
-            <el-tag
-              :type="verdictTagType(detail.verdict === ReviewVerdict.PASS ? 'PASS' : detail.verdict === ReviewVerdict.FAIL ? 'FAIL' : null)"
-              size="small"
-            >
-              {{ detail.verdict === ReviewVerdict.PASS ? '通过' : detail.verdict === ReviewVerdict.FAIL ? '不通过' : detail.verdict === ReviewVerdict.WAITING_MANUAL ? '待确认' : '审核中' }}
+            <span class="info-cell__label">处理状态</span>
+            <el-tag :type="statusTagType(detail.status)" size="small" effect="plain">
+              {{ statusText(detail.status) }}
             </el-tag>
           </div>
           <div class="info-cell">
@@ -687,33 +801,6 @@ onUnmounted(() => {
           </div>
         </template>
 
-        <!-- ========== 管理员确认信息 ========== -->
-        <template v-if="detail.adminConfirm">
-          <div class="section-block">
-            <div class="section-block__title">人工确认信息</div>
-            <div class="admin-info">
-              <div class="admin-info__row">
-                <span class="admin-info__label">管理员 ID</span>
-                <span class="admin-info__value">{{ detail.adminConfirm.adminId }}</span>
-              </div>
-              <div class="admin-info__row">
-                <span class="admin-info__label">确认时间</span>
-                <span class="admin-info__value">{{ formatTime(detail.adminConfirm.reviewedAt) }}</span>
-              </div>
-              <div class="admin-info__row">
-                <span class="admin-info__label">管理员裁决</span>
-                <el-tag :type="detail.adminConfirm.adminVerdict === 1 ? 'success' : 'danger'" size="small">
-                  {{ detail.adminConfirm.adminVerdict === 1 ? '通过' : '驳回' }}
-                </el-tag>
-              </div>
-              <div class="admin-info__row">
-                <span class="admin-info__label">审核备注</span>
-                <span class="admin-info__value">{{ detail.adminConfirm.adminNote || '无' }}</span>
-              </div>
-            </div>
-          </div>
-        </template>
-
         <!-- ========== 操作区 ========== -->
         <div v-if="canConfirm" class="action-zone">
           <el-button type="success" :icon="Check" @click="handleQuickConfirm(1)">通过（上架）</el-button>
@@ -825,10 +912,173 @@ onUnmounted(() => {
   }
 }
 
+// ---- 结果总览卡片 ----
+.verdict-overview {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+
+  @media (max-width: 760px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.verdict-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid $border-base;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  background: $bg-surface;
+
+  &--ai {
+    border-color: rgba(244, 63, 94, 0.20);
+    background: linear-gradient(135deg, rgba(244, 63, 94, 0.03) 0%, $bg-surface 60%);
+  }
+
+  &--pass {
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+
+  &--reject {
+    border-color: rgba(239, 68, 68, 0.25);
+  }
+
+  &--pending {
+    border-style: dashed;
+    border-color: $border-base;
+    background: $bg-subtle;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $border-subtle;
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    font-size: 18px;
+
+    &--ai {
+      background: $primary-soft;
+      color: $primary-color;
+    }
+
+    &--pass {
+      background: rgba(16, 185, 129, 0.10);
+      color: $success-color;
+    }
+
+    &--reject {
+      background: rgba(239, 68, 68, 0.10);
+      color: $danger-color;
+    }
+
+    &--pending {
+      background: $border-subtle;
+      color: $text-tertiary;
+    }
+  }
+
+  &__title {
+    font-size: $font-size-sm;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md $spacing-md;
+  }
+
+  &__verdict {
+    display: flex;
+    align-items: center;
+  }
+
+  &__metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-sm;
+  }
+
+  &__metric-label {
+    font-size: $font-size-2xs;
+    color: $text-tertiary;
+  }
+
+  &__metric-value {
+    font-size: $font-size-sm;
+    font-weight: 600;
+    color: $text-primary;
+  }
+
+  &__reason {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    background: $bg-subtle;
+    border-radius: $radius-sm;
+    padding: 6px 8px;
+    font-size: $font-size-2xs;
+    color: $text-secondary;
+    line-height: 1.5;
+
+    .el-icon { color: $warning-color; flex-shrink: 0; margin-top: 1px; }
+  }
+
+  &__note {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: $bg-subtle;
+    border-radius: $radius-sm;
+    padding: 6px 8px;
+  }
+
+  &__note-label {
+    font-size: $font-size-2xs;
+    color: $text-tertiary;
+    font-weight: 600;
+  }
+
+  &__note-text {
+    font-size: $font-size-2xs;
+    color: $text-secondary;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  &__placeholder {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs 0;
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+  }
+
+  &__placeholder-icon {
+    font-size: 16px;
+    color: $warning-color;
+  }
+}
+
 // ---- 信息网格 ----
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: $spacing-sm;
   padding: $spacing-sm 0;
 
@@ -1131,40 +1381,6 @@ onUnmounted(() => {
     line-height: 1.5;
 
     .el-icon { color: $warning-color; flex-shrink: 0; margin-top: 1px; }
-  }
-}
-
-// ---- 管理员确认信息 ----
-.admin-info {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-xs;
-  border: 1px solid $border-base;
-  border-radius: $radius-md;
-  padding: $spacing-sm $spacing-md;
-  background: $bg-surface;
-
-  @media (max-width: 760px) {
-    grid-template-columns: 1fr;
-  }
-
-  &__row {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    padding: 4px 0;
-  }
-
-  &__label {
-    font-size: $font-size-2xs;
-    color: $text-tertiary;
-    width: 64px;
-    flex-shrink: 0;
-  }
-
-  &__value {
-    font-size: $font-size-xs;
-    color: $text-primary;
   }
 }
 
