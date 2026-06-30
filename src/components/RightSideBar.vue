@@ -14,6 +14,15 @@ const router = useRouter()
 const showModal = ref(false)
 const followedArtists = ref({})
 const isHovered = ref(false)
+const transformTransition = ref('0s')
+
+watch(isHovered, () => {
+  transformTransition.value = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+})
+
+watch(() => sidebarStore.isOpen, () => {
+  transformTransition.value = 'none'
+})
 
 const artistWrapRef = ref(null)
 const canScrollArtist = ref(false)
@@ -305,7 +314,8 @@ const handleCardArtistClick = (art) => {
     :class="{ 'is-collapsed': !sidebarStore.isOpen }" 
     :style="{ 
       width: sidebarStore.isOpen ? '100%' : sidebarStore.width + 'px',
-      transform: (!sidebarStore.isOpen && !isHovered) ? `translateX(calc(100% - 40px))` : (!sidebarStore.isOpen && isHovered ? `translateX(calc(100% - 80px))` : 'translateX(0)')
+      transform: (!sidebarStore.isOpen && !isHovered) ? `translateX(calc(100% - 40px))` : (!sidebarStore.isOpen && isHovered ? `translateX(calc(100% - 64px))` : 'translateX(0)'),
+      transition: transformTransition
     }"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
@@ -554,7 +564,6 @@ const handleCardArtistClick = (art) => {
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .right-sidebar.is-collapsed {

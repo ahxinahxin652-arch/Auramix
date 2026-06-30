@@ -488,13 +488,13 @@ body {
     z-index: 100;
     overflow: hidden;
     pointer-events: auto;
+    transition: width 0s;
 }
 
 .right-sidebar-wrapper.collapsed {
     cursor: pointer;
     background-color: var(--surface); /* match sidebar bg so it looks like a drawer */
     border-left: 1px solid var(--border);
-    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
