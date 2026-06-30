@@ -54,10 +54,19 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
             ...pl,
             trackCount: pl.trackCount || 0,
           })
+          // 乐观更新左侧栏对应的本地库歌单
+          const libStore = useLibraryStore()
+          if (!libStore.playlists.find(p => String(p.id) === String(pl.id))) {
+            libStore.playlists.unshift({
+              id: pl.id,
+              name: pl.name,
+              coverUrl: pl.coverUrl || '',
+              trackIds: []
+            })
+          }
         } else {
           await loadWarehouses()
         }
-        useLibraryStore().forceSync()
         return { success: true }
       }
       return { success: false, error: result.error || result.message || '创建失败' }
@@ -95,7 +104,17 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
             warehouses.value[idx].coverUrl = ''
           }
         }
-        useLibraryStore().forceSync()
+        // 同步修改左侧栏对应的本地库歌单
+        const libStore = useLibraryStore()
+        const libIdx = libStore.playlists.findIndex(p => String(p.id) === String(libraryId))
+        if (libIdx !== -1) {
+          if (options.name !== undefined) libStore.playlists[libIdx].name = options.name
+          if (result.data && result.data.coverUrl) {
+            libStore.playlists[libIdx].coverUrl = result.data.coverUrl
+          } else if (options.clearCover) {
+            libStore.playlists[libIdx].coverUrl = ''
+          }
+        }
         return { success: true, data: result.data }
       }
       return { success: false, error: result.error || result.message || '保存失败' }
@@ -116,7 +135,11 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
         warehouses.value = warehouses.value.filter(
           w => w.id !== libraryId && String(w.id) !== String(libraryId)
         )
-        useLibraryStore().forceSync()
+        // 从左侧栏对应的本地库歌单中移除
+        const libStore = useLibraryStore()
+        libStore.playlists = libStore.playlists.filter(
+          p => String(p.id) !== String(libraryId)
+        )
         return true
       }
       return false
