@@ -409,7 +409,9 @@ function onSidebarAfterLeave() {
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile">{{ userStore.profile?.displayName || 'User Profile' }}</el-dropdown-item>
-              <el-dropdown-item command="premium" divided>Upgrade to Premium</el-dropdown-item>
+              <el-dropdown-item command="premium" divided>
+                {{ isMembershipActive ? 'Premiumed' : 'Upgrade to Premium' }}
+              </el-dropdown-item>
               <el-dropdown-item command="settings">Settings</el-dropdown-item>
               <el-dropdown-item command="logout" divided>Log out</el-dropdown-item>
             </el-dropdown-menu>
