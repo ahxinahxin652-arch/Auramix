@@ -1,4 +1,5 @@
 package com.son.auramix.controller.admin;
+import com.son.auramix.annotation.AnalyzeAudio;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.dto.admin.TrackCreateDTO;
@@ -38,18 +39,21 @@ public class AdminTrackManageController {
     }
 
     @PostMapping
-    public Result<Void> create(@Valid @RequestBody TrackCreateDTO req) {
-        trackService.createTrack(req);
-        return Result.success();
+    @AnalyzeAudio
+    public Result<Long> create(@Valid @RequestBody TrackCreateDTO req) {
+        Long trackId = trackService.createTrack(req);
+        return Result.success(trackId);
     }
 
     @PutMapping("/{id}")
+    @AnalyzeAudio
     public Result<Void> update(@PathVariable Long id, @Valid @RequestBody TrackUpdateDTO req) {
         trackService.updateTrack(id, req);
         return Result.success();
     }
 
     @DeleteMapping("/{id}")
+    @AnalyzeAudio
     public Result<Void> delete(@PathVariable Long id) {
         trackService.deleteTrack(id);
         return Result.success();

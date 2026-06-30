@@ -124,3 +124,6 @@ auramix:
   # 内部 API Key — 用于桌面端 Express Server → Java 后端之间的服务间调用
   # 桌面端通过 X-Internal-Api-Key 请求头传递此密钥，绕过 Admin JWT 认证
   internal-api-key: auramix-desktop-internal-key-2026
+  # Python 脚本路径
+  audio:
+    script-path: E:\Auramix\backend\auramix\scripts\audio_analyzer.py
