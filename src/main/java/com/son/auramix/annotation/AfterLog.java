@@ -15,6 +15,19 @@ public @interface AfterLog {
     String value() default "";
 
     /**
+     * 用户行为类型
+     * 0=播放  1=收藏  2=取消收藏  3=跳过
+     * 4=完整听完  5=搜索  6=分享  7=添加到歌单
+     */
+    int behaviorType() default -1;
+
+    /**
+     * 行为上下文（来源页面）
+     * home / recommend / discover / playlist / search
+     */
+    String context() default "";
+
+    /**
      * 播放来源类型
      * -1=未指定  0=歌单  1=专辑  2=歌手页
      */

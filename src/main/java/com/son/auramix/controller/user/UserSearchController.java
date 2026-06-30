@@ -1,5 +1,6 @@
 package com.son.auramix.controller.user;
 
+import com.son.auramix.annotation.AfterLog;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.vo.user.*;
@@ -14,12 +15,15 @@ public class UserSearchController {
 
     private final UserSearchService userSearchService;
 
+    @AfterLog(value = "搜索", behaviorType = 5, context = "search")
     @GetMapping
     public Result<?> search(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "all") String type,
             @RequestParam(required = false, defaultValue = "1") Integer pageNum,
-            @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
+            @RequestParam(required = false, defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) Integer duration,
+            @RequestParam(required = false) String context) {
 
         switch (type.toLowerCase()) {
             case "tracks":
