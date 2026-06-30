@@ -69,8 +69,25 @@ function deleteMusicWarehouseById(libraryId) {
 }
 
 /** 通过 track ID 解析当前最新的 track 信息（含最新 path） */
-function resolveTrackById(trackId) {
-  return apiFetch(`/api/music/tracks/${encodeURIComponent(trackId)}`)
+function resolveTrackById(trackId, contextType, contextId, duration, context) {
+  let url = `/api/music/tracks/${encodeURIComponent(trackId)}`
+  const params = []
+  if (contextType !== undefined && contextType !== null) {
+    params.push(`contextType=${contextType}`)
+  }
+  if (contextId !== undefined && contextId !== null) {
+    params.push(`contextId=${contextId}`)
+  }
+  if (duration !== undefined && duration !== null) {
+    params.push(`duration=${duration}`)
+  }
+  if (context !== undefined && context !== null) {
+    params.push(`context=${encodeURIComponent(context)}`)
+  }
+  if (params.length > 0) {
+    url += '?' + params.join('&')
+  }
+  return apiFetch(url)
 }
 
 /** 更新曲目信息（编辑歌曲） */

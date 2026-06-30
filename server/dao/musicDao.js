@@ -1124,8 +1124,8 @@ async function fetchArtistDetailRemote(id, token) {
     return remoteApi.fetchArtistDetail(id, token)
 }
 
-async function fetchTrackDetailRemote(id, token) {
-    return remoteApi.fetchTrackDetail(id, token)
+async function fetchTrackDetailRemote(id, token, contextType, contextId, duration, context) {
+    return remoteApi.fetchTrackDetail(id, token, contextType, contextId, duration, context)
 }
 
 /**

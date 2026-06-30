@@ -51,7 +51,9 @@ async function fetchResults(isLoadMore = false) {
       keyword: query.value,
       type: currentTab.value,
       pageNum: pageNum.value,
-      pageSize: currentTab.value === 'all' ? 5 : 20
+      pageSize: currentTab.value === 'all' ? 5 : 20,
+      duration: '0',
+      context: 'home'
     })
 
     if (res.success) {

@@ -181,6 +181,13 @@ async function deletePlaylist(playlistId, token) {
 }
 
 async function globalSearch(params, token) {
+    // 补充 duration 和 context 默认值（前端未传时兜底）
+    if (params.duration === undefined) {
+        params.duration = '0'
+    }
+    if (params.context === undefined) {
+        params.context = 'home'
+    }
     const qs = new URLSearchParams(params).toString()
     return request('/api/user/search?' + qs, { token })
 }
@@ -193,8 +200,26 @@ async function fetchArtistDetail(artistId, token) {
     return request('/api/user/artists/' + artistId, { token })
 }
 
-async function fetchTrackDetail(trackId, token) {
-    return request('/api/user/tracks/' + trackId, { token })
+async function fetchTrackDetail(trackId, token, contextType, contextId, duration, context) {
+    let url = '/api/user/tracks/' + trackId
+    const params = []
+    if (contextType !== undefined && contextType !== null) {
+        params.push('contextType=' + contextType)
+    }
+    if (contextId !== undefined && contextId !== null) {
+        params.push('contextId=' + contextId)
+    }
+    if (duration !== undefined && duration !== null) {
+        params.push('duration=' + duration)
+    }
+    if (context !== undefined && context !== null) {
+        params.push('context=' + encodeURIComponent(context))
+    }
+    if (params.length > 0) {
+        url += '?' + params.join('&')
+    }
+    console.log('[remoteApiClient] fetchTrackDetail ->', REMOTE_BASE_URL + url)
+    return request(url, { token })
 }
 
 module.exports = {
