@@ -40,7 +40,8 @@ function playQueueTrack(track, indexOffset) {
     detail: { 
       track, 
       playlist: player.currentPlaylist, 
-      index: realIndex 
+      index: realIndex,
+      source: player.playbackSource
     } 
   }))
 }

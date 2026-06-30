@@ -168,7 +168,7 @@ module.exports = function(mainWindow) {
 
       // 异步调用远端 (Optimistic Update)
       const token = req.headers['x-user-token']
-      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/tracks`, {
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/tracks?duration=0&context=detail`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ trackIds: [req.body.trackId] })
@@ -195,7 +195,7 @@ module.exports = function(mainWindow) {
       })
 
       const token = req.headers['x-user-token']
-      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/tracks`, {
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/tracks?duration=0&context=detail`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ trackIds: [req.params.trackId] })
@@ -232,7 +232,7 @@ module.exports = function(mainWindow) {
       })
 
       const token = req.headers['x-user-token']
-      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow`, {
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow?duration=0&context=discover`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       }).catch(err => console.error('Cloud API error:', err))
@@ -255,7 +255,7 @@ module.exports = function(mainWindow) {
       })
 
       const token = req.headers['x-user-token']
-      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow`, {
+      fetch(`http://localhost:8080/api/user/playlists/${req.params.id}/follow?duration=0&context=playlist`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       }).catch(err => console.error('Cloud API error:', err))

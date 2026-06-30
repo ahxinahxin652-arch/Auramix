@@ -242,6 +242,16 @@ onUnmounted(() => {
   stopCurrent()
 })
 
+// 播放来源类型 → 后端 contextType 映射
+// 0=歌单 1=专辑 2=歌手页 3=今日推荐 4=AI生成歌单 5=场景化推荐 6=发现模块 7=相似推荐
+const SOURCE_TYPE_MAP = {
+  playlist: 0,
+  album: 1,
+  artist: 2,
+  search: 6,
+  recommend: 3,
+}
+
 // 格式化时间
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -255,11 +265,21 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
   stopCurrent()
   player.setTrack(track, playlist, index, source)
 
+  // 推导 contextType 和 contextId（用于后端播放记录统计）
+  const effectiveSource = source || player.playbackSource
+  let contextType, contextId
+  const contextParam = effectiveSource?.type || 'unknown'
+  if (effectiveSource?.type && SOURCE_TYPE_MAP[effectiveSource.type] !== undefined) {
+    contextType = SOURCE_TYPE_MAP[effectiveSource.type]
+    contextId = effectiveSource.id ? Number(effectiveSource.id) : undefined
+  }
+
   // 通过 track ID 从数据库解析最新的文件路径（防止改名后路径失效）
   let currentTrack = track
   if (track.id) {
     try {
-      const resolved = await window.electronAPI.resolveTrackById(track.id)
+      const durationParam = track.duration != null ? Math.floor(track.duration) : 0
+      const resolved = await window.electronAPI.resolveTrackById(track.id, contextType, contextId, durationParam, contextParam)
       if (resolved.success && resolved.data && resolved.data.track) {
         currentTrack = resolved.data.track
         // 同步更新 playlist 中对应的 track 对象

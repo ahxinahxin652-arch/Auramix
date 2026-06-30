@@ -41,7 +41,12 @@ module.exports = function(mainWindow) {
   // 通过 track ID 解析当前最新的 track 信息 // 获取曲目详情及音频文件信息
   router.get('/tracks/:id', async (req, res) => {
     const { id } = req.params
-    res.json(await musicService.resolveTrackById(decodeURIComponent(id), getToken(req)))
+    const contextType = req.query.contextType !== undefined ? parseInt(req.query.contextType, 10) : undefined
+    const contextId = req.query.contextId !== undefined ? parseInt(req.query.contextId, 10) : undefined
+    const duration = req.query.duration !== undefined ? parseInt(req.query.duration, 10) : undefined
+    const context = req.query.context || undefined
+    console.log('[musicController] GET /tracks/:id params:', { contextType, contextId, duration, context, token: getToken(req) ? 'present' : 'absent' })
+    res.json(await musicService.resolveTrackById(decodeURIComponent(id), getToken(req), contextType, contextId, duration, context))
   })
 
   // 更新曲目信息

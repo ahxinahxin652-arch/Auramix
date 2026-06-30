@@ -342,7 +342,7 @@ function onSidebarAfterLeave() {
           </svg>
         </button>
         <div class="search-bar-container">
-          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg class="search-icon clickable" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" @click="handleSearch" title="搜索">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
@@ -351,8 +351,7 @@ function onSidebarAfterLeave() {
             class="search-input"
             v-model="searchQuery"
             placeholder="想听什么？"
-            @input="handleSearch"
-            @keyup.enter="handleSearch"
+            @keydown.enter.prevent="handleSearch"
           />
           <button v-if="searchQuery" class="clear-search-btn" @click="clearSearch" title="清除">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

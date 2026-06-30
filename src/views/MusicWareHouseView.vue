@@ -223,8 +223,9 @@ function playAll() {
       [list[i], list[j]] = [list[j], list[i]]
     }
     player.setPlaylist(list, 0)
+    const source = { type: 'playlist', id: libraryId.value, name: warehouseInfo.value.name, route: `/warehouse/${libraryId.value}` }
     window.dispatchEvent(new CustomEvent('play-track', {
-      detail: { track: list[0], playlist: list, index: 0 }
+      detail: { track: list[0], playlist: list, index: 0, source }
     }))
   } else {
     // 顺序模式：从第一首开始

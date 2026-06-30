@@ -280,6 +280,10 @@ body {
     height: 18px;
 }
 
+.search-icon.clickable {
+    cursor: pointer;
+}
+
 .search-input {
     background: transparent;
     border: none;

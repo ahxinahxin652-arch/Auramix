@@ -194,10 +194,10 @@ async function validateTrackPlayable(trackId, filePath) {
  * @param {string} trackId
  * @returns {Promise<import('../pojo/vo/ApiResult')>}
  */
-async function resolveTrackById(trackId, token) {
+async function resolveTrackById(trackId, token, contextType, contextId, duration, context) {
   if (token) {
     try {
-      const remoteRes = await musicDao.fetchTrackDetailRemote(trackId, token)
+      const remoteRes = await musicDao.fetchTrackDetailRemote(trackId, token, contextType, contextId, duration, context)
       if (remoteRes && remoteRes.success && remoteRes.data) {
         const t = remoteRes.data
         const track = {
