@@ -295,3 +295,29 @@ model PlaybackHistory {
   @@index([trackId])
   @@map("playback_history")
 }
+
+// 18. AI 聊天会话表
+model AiChatSession {
+  id        String   @id @default(uuid()) @map("id")
+  title     String   @map("title")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  messages AiChatMessage[]
+
+  @@map("ai_chat_sessions")
+}
+
+// 19. AI 聊天消息表
+model AiChatMessage {
+  id        String   @id @default(uuid()) @map("id")
+  sessionId String   @map("session_id")
+  role      String   @map("role") // "user" or "ai"
+  content   String   @map("content")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session AiChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("ai_chat_messages")
+}

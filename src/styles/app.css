@@ -378,6 +378,26 @@ body {
 
 /* ========== Premium 会员入口图标 ========== */
 
+.ai-chat-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    color: #b3b3b3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    -webkit-app-region: no-drag;
+    margin-right: 8px;
+}
+
+.ai-chat-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    transform: scale(1.05);
+}
 
 .user-avatar-btn {
     width: 34px;

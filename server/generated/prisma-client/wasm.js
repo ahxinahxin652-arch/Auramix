@@ -264,6 +264,21 @@ exports.Prisma.PlaybackHistoryScalarFieldEnum = {
   contextId: 'contextId'
 };
 
+exports.Prisma.AiChatSessionScalarFieldEnum = {
+  id: 'id',
+  title: 'title',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.AiChatMessageScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  role: 'role',
+  content: 'content',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -292,7 +307,9 @@ exports.Prisma.ModelName = {
   ArtistFollower: 'ArtistFollower',
   LikedTrack: 'LikedTrack',
   LikedAlbum: 'LikedAlbum',
-  PlaybackHistory: 'PlaybackHistory'
+  PlaybackHistory: 'PlaybackHistory',
+  AiChatSession: 'AiChatSession',
+  AiChatMessage: 'AiChatMessage'
 };
 
 /**

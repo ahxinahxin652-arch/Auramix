@@ -337,6 +337,29 @@ async function autoMigrate() {
       )
     `)
 
+    // 19. 创建 ai_chat_sessions 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ai_chat_sessions" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "title" TEXT NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    // 20. 创建 ai_chat_messages 表
+    await db.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ai_chat_messages" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "session_id" TEXT NOT NULL,
+        "role" TEXT NOT NULL,
+        "content" TEXT NOT NULL,
+        "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "ai_chat_messages_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "ai_chat_sessions" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `)
+    await db.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "ai_chat_messages_session_id_idx" ON "ai_chat_messages"("session_id")`)
+
     await seedDatabase(db)
 
     console.log('[DB] Auramix Refactored auto-migration completed.')

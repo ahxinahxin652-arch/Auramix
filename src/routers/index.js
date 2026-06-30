@@ -66,6 +66,11 @@ const routes = [
     name: 'premium',
     component: () => import('../views/PremiumView.vue'),
   },
+  {
+    path: '/ai-chat',
+    name: 'AiChat',
+    component: () => import('../views/AiChatView.vue'),
+  },
 ]
 
 const router = createRouter({
