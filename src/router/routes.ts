@@ -60,6 +60,50 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/approval/Index.vue'),
         meta: { requiresAuth: true, title: '智能审批' },
       },
+      {
+        path: 'analytics',
+        name: 'Analytics',
+        redirect: '/analytics/overview',
+        meta: { requiresAuth: true, title: '数据分析' },
+        children: [
+          {
+            path: 'overview',
+            name: 'AnalyticsOverview',
+            component: () => import('@/views/analytics/Index.vue'),
+            meta: { requiresAuth: true, title: '数据看板' },
+          },
+          {
+            path: 'user',
+            name: 'AnalyticsUser',
+            component: () => import('@/views/analytics/User.vue'),
+            meta: { requiresAuth: true, title: '用户分析' },
+          },
+          {
+            path: 'track',
+            name: 'AnalyticsTrack',
+            component: () => import('@/views/analytics/Track.vue'),
+            meta: { requiresAuth: true, title: '歌曲分析' },
+          },
+          {
+            path: 'catalog',
+            name: 'AnalyticsCatalog',
+            component: () => import('@/views/analytics/Catalog.vue'),
+            meta: { requiresAuth: true, title: '歌手/专辑分析' },
+          },
+          {
+            path: 'review',
+            name: 'AnalyticsReview',
+            component: () => import('@/views/analytics/Review.vue'),
+            meta: { requiresAuth: true, title: '审核分析' },
+          },
+          {
+            path: 'member',
+            name: 'AnalyticsMember',
+            component: () => import('@/views/analytics/Member.vue'),
+            meta: { requiresAuth: true, title: '会员分析' },
+          },
+        ],
+      },
     ],
   },
   {
