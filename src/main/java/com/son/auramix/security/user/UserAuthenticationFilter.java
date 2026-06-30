@@ -57,6 +57,12 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        // 返回 false，使得此过滤器在 Spring WebFlux/Async 环境中执行，从而能让内部线程获得授权
+        return false;
+    }
+
+    @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain chain)
@@ -84,7 +90,10 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
             }
             chain.doFilter(request, response);
         } finally {
-            SecurityContextHolder.clearContext();
+            // 在异步请求期间不清除上下文
+            if (!request.isAsyncStarted()) {
+                SecurityContextHolder.clearContext();
+            }
         }
     }
 
