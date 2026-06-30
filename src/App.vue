@@ -155,6 +155,7 @@ onMounted(() => {
         console.error('Global sync failed:', err)
       } finally {
         isGlobalSyncing.value = false
+        refreshing.value = false
         refreshPage() // Refresh central view
       }
     })
