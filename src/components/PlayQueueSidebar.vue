@@ -231,7 +231,6 @@ function playQueueTrack(track, indexOffset) {
 
 .track-item {
   display: flex;
-  align-items: center;
   padding: 8px 12px;
   width: 100%;
   margin: 0;
@@ -273,21 +272,22 @@ function playQueueTrack(track, indexOffset) {
 }
 
 .track-info {
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
 }
 
 .track-name {
   font-size: 14px;
   color: #fff;
+  margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
 }
 
 .track-artist {
