@@ -373,10 +373,73 @@ body {
     justify-content: flex-end;
     gap: 16px;
     flex: 0 0 auto;
-    min-width: 180px;
+    min-width: 280px;
 }
 
-/* ========== Premium 会员入口图标 ========== */
+/* ========== 会员标识文字 ========== */
+.membership-badge-gold {
+    height: 34px;
+    line-height: 34px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.12);
+    padding: 0 10px;
+    border-radius: 17px;
+    white-space: nowrap;
+    -webkit-app-region: no-drag;
+    user-select: none;
+}
+
+/* ========== 会员入口（皇冠图标） ========== */
+.premium-icon-btn {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    color: #b3b3b3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+    -webkit-app-region: no-drag;
+}
+
+.premium-icon-btn.is-member {
+    color: #fbbf24;
+}
+
+.premium-icon-btn:hover {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    transform: scale(1.05);
+}
+
+.premium-icon-btn:hover .premium-hover-text {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.premium-hover-text {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    font-size: 10px;
+    font-weight: 500;
+    color: #fbbf24;
+    background: #1f1f1f;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+/* ========== AI 助手入口 ========== */
 
 .ai-chat-btn {
     width: 34px;
@@ -414,22 +477,6 @@ body {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     -webkit-app-region: no-drag;
     position: relative;
-}
-
-.avatar-premium-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #fbbf24; /* 金黄色 */
-    color: #000;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #1f1f1f;
-    z-index: 10;
 }
 
 .user-avatar-btn svg.user-avatar-svg {
