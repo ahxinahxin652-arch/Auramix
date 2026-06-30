@@ -377,83 +377,7 @@ body {
 }
 
 /* ========== Premium 会员入口图标 ========== */
-/* 会员标识金色 Badge */
-.membership-badge-gold {
-  font-size: 13px;
-  font-weight: 700;
-  color: #fbbf24;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1));
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 50px;
-  padding: 3px 12px;
-  white-space: nowrap;
-  -webkit-app-region: no-drag;
-  flex-shrink: 0;
-}
 
-.premium-icon-btn {
-  position: relative;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-    background: #1f1f1f;
-    color: #b3b3b3;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s, color 0.2s, transform 0.1s;
-    -webkit-app-region: no-drag;
-    flex-shrink: 0;
-}
-
-.premium-icon-btn:hover {
-    background: #333333;
-    color: #fbbf24;
-    transform: scale(1.05);
-}
-
-.premium-icon-btn.is-member {
-    background: rgba(251, 191, 36, 0.12);
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
-}
-
-.premium-icon-btn.is-member:hover {
-    background: rgba(251, 191, 36, 0.22);
-    box-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
-}
-
-.premium-hover-text {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333333;
-    color: #e0e0e0;
-    font-size: 11px;
-    font-weight: 500;
-    padding: 4px 10px;
-    border-radius: 4px;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s;
-    z-index: 200;
-}
-
-.premium-hover-text::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-bottom-color: #333333;
-}
-
-.premium-icon-btn:hover .premium-hover-text {
-    opacity: 1;
-}
 
 .user-avatar-btn {
     width: 34px;
@@ -469,6 +393,23 @@ body {
     border: 2px solid rgba(224, 224, 224, 0.7);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     -webkit-app-region: no-drag;
+    position: relative;
+}
+
+.avatar-premium-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #fbbf24; /* 金黄色 */
+    color: #000;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1f1f1f;
+    z-index: 10;
 }
 
 .user-avatar-btn svg.user-avatar-svg {

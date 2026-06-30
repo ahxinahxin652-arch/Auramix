@@ -392,20 +392,18 @@ function onSidebarAfterLeave() {
 
       <!-- Right: User Avatar Dropdown & Traffic Lights -->
       <div class="header-right">
-        <span v-if="membershipBadge" class="membership-badge-gold">{{ membershipBadge }}</span>
-        <div class="premium-icon-btn" :class="{ 'has-badge': membershipBadge, 'is-member': isMembershipActive }" @click="router.push('/premium')" title="会员">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :style="isMembershipActive ? { color: '#fbbf24' } : {}">
-            <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
-            <path d="M3 20h18"/>
-          </svg>
-          <span class="premium-hover-text">会员</span>
-        </div>
-
         <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-profile-dropdown">
           <div class="user-avatar-btn">
             <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" class="user-avatar-img" />
             <div v-else class="user-avatar-placeholder">
               {{ userStore.profile?.displayName?.charAt(0).toUpperCase() || 'U' }}
+            </div>
+            <!-- 会员皇冠角标 -->
+            <div v-if="isMembershipActive" class="avatar-premium-badge" title="会员">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
+                <path d="M3 20h18"/>
+              </svg>
             </div>
           </div>
           <template #dropdown>
