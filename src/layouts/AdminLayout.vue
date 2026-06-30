@@ -15,6 +15,7 @@ import {
   GoldMedal,
   PriceTag,
   Document,
+  DataLine,
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/store/modules/auth'
 import UserDropdown from '@/components/UserDropdown.vue'
@@ -92,7 +93,8 @@ const allMenus: MenuItem[] = [
   { path: '/artist', label: '歌手管理', icon: Avatar },
   { path: '/member', label: '会员管理', icon: GoldMedal },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
-  { path: '/reports', label: '我的报告', icon: Document },
+  { path: '/analytics', label: '数据分析', icon: DataLine },
+  { path: '/admin-reports', label: '报告管理', icon: Document },
 ]
 
 const visibleMenus = computed(() =>
