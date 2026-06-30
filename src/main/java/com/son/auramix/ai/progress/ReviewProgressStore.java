@@ -55,6 +55,10 @@ public class ReviewProgressStore {
             root.put("trackTitle", trackTitle);
             root.put("startedAt", LocalDateTime.now().toString());
 
+            root.put("stage", "DIMENSION_PHASE");
+            root.put("totalDimensions", sortedAgents.size());
+            root.put("completedDimensions", 0);
+
             List<ObjectNode> dims = new ArrayList<>(sortedAgents.size());
             for (DimensionAgent agent : sortedAgents) {
                 ObjectNode d = objectMapper.createObjectNode();
@@ -94,7 +98,25 @@ public class ReviewProgressStore {
         }
     }
 
-    /** 单维度完成：更新对应 agentName 的维度节点 */
+    /** 单维度开始执行：置 RUNNING + 写 startedAt（修复 durationMs 永远 null 的 bug） */
+    public void dimensionStarted(Long recordId, String agentName) {
+        update(recordId, root -> {
+            JsonNode dims = root.get("dimensions");
+            if (dims == null || !dims.isArray()) return;
+            for (int i = 0; i < dims.size(); i++) {
+                JsonNode d = dims.get(i);
+                if (d.get("agentName").asText().equals(agentName)) {
+                    ObjectNode dim = (ObjectNode) d;
+                    dim.put("status", "RUNNING");
+                    dim.put("startedAt", LocalDateTime.now().toString());
+                    return;
+                }
+            }
+            log.warn("[ReviewProgress] dimensionStarted 未找到 agentName={} recordId={}", agentName, recordId);
+        });
+    }
+
+    /** 单维度完成：更新对应 agentName 的维度节点 + completedDimensions +1 */
     public void dimensionDone(Long recordId, AgentResult result) {
         update(recordId, root -> {
             JsonNode dims = root.get("dimensions");
@@ -103,7 +125,8 @@ public class ReviewProgressStore {
                 JsonNode d = dims.get(i);
                 if (d.get("agentName").asText().equals(result.getAgentName())) {
                     ObjectNode dim = (ObjectNode) d;
-                    dim.put("status", "DONE");
+                    String status = result.isFail() ? "FAIL" : "DONE";
+                    dim.put("status", status);
                     dim.put("verdict", result.getVerdict());
                     dim.put("confidence", result.getConfidence());
                     if (result.getReason() != null) {
@@ -124,11 +147,31 @@ public class ReviewProgressStore {
                     } else {
                         dim.putNull("durationMs");
                     }
+                    // 维护总进度计数
+                    ObjectNode rootObj = (ObjectNode) root;
+                    JsonNode compNode = rootObj.get("completedDimensions");
+                    int cur = (compNode != null && !compNode.isNull()) ? compNode.asInt() : 0;
+                    rootObj.put("completedDimensions", cur + 1);
                     return;
                 }
             }
             log.warn("[ReviewProgress] dimensionDone 未找到 agentName={} recordId={}",
                 result.getAgentName(), recordId);
+        });
+    }
+
+    /** 裁决开始：置 judge.status=RUNNING + 写 judge.startedAt */
+    public void judgeStarted(Long recordId) {
+        update(recordId, root -> {
+            ObjectNode rootObj = (ObjectNode) root;
+            rootObj.put("stage", "JUDGE_PHASE");
+            ObjectNode judge = (ObjectNode) rootObj.get("judge");
+            if (judge == null) {
+                judge = objectMapper.createObjectNode();
+                rootObj.set("judge", judge);
+            }
+            judge.put("status", "RUNNING");
+            judge.put("startedAt", LocalDateTime.now().toString());
         });
     }
 
@@ -165,10 +208,11 @@ public class ReviewProgressStore {
         });
     }
 
-    /** 流水线完结：写 finishedAt + finalStatus + finalVerdict + finalConfidence */
+    /** 流水线完结：写 stage=FINISHED + finishedAt + finalStatus + finalVerdict + finalConfidence */
     public void finished(Long recordId, Integer finalStatus, Integer finalVerdict, Integer finalConfidence) {
         update(recordId, root -> {
             ObjectNode o = (ObjectNode) root;
+            o.put("stage", "FINISHED");
             o.put("finishedAt", LocalDateTime.now().toString());
             if (finalStatus != null) o.put("finalStatus", finalStatus); else o.putNull("finalStatus");
             if (finalVerdict != null) o.put("finalVerdict", finalVerdict); else o.putNull("finalVerdict");

@@ -4,20 +4,24 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.ai.aggregator.AgentResultsFormatter;
 import com.son.auramix.ai.dto.AgentResult;
+import com.son.auramix.ai.dto.AgentResultsPayload;
 import com.son.auramix.ai.dto.ReviewContext;
 import com.son.auramix.ai.lyrics.LyricsFetcher;
 import com.son.auramix.ai.orchestrator.ReviewOrchestrator;
 import com.son.auramix.ai.progress.ProgressEvent;
 import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
 import com.son.auramix.ai.progress.ReviewProgressStore;
+import com.son.auramix.ai.progress.ReviewProgressVO;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
 import com.son.auramix.domain.dto.admin.ReviewConfirmDTO;
 import com.son.auramix.domain.entity.*;
+import com.son.auramix.domain.vo.admin.ReviewDetailVO;
 import com.son.auramix.domain.vo.admin.ReviewListItemVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.service.admin.ReviewService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +50,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final AgentResultsFormatter agentResultsFormatter;
     private final ReviewProgressStore progressStore;
     private final ReviewProgressSseRegistry sseRegistry;
+    private final ObjectMapper objectMapper;
     /**
      * Spring 自动注入的事务管理器；用于构造 {@link #transactionTemplate}，
      * 把"读+校验"放到事务外、只把"两个 UPDATE"放进极短事务内，
@@ -113,10 +118,25 @@ public class ReviewServiceImpl implements ReviewService {
             reviewRecordMapper.insert(record);
 
             // 拉取歌词（可能抛异常，已落库 record 故 catch 中可更新失败状态）
+            // 推 LYRICS_FETCHING 事件：让前端展示"正在拉取歌词..."（此时 progress_json 尚未初始化，
+            // progressStore.update 会跳过，事件仅走 SSE 实时通道，不入快照——可接受，歌词阶段短暂）
+            try {
+                sseRegistry.send(record.getId(),
+                        ProgressEvent.lyricsFetching(record.getId(), trackId, track.getTitle()));
+            } catch (Exception ex) {
+                log.warn("[AI审核] trackId={} LYRICS_FETCHING 推送异常", trackId, ex);
+            }
             String lyricsContent = lyricsFetcher.fetch(track.getLyricsUrl());
             boolean hasLyrics = lyricsFetcher.hasValidLyrics(lyricsContent);
             record.setLyricsContent(lyricsContent);
             reviewRecordMapper.updateById(record);
+            // 推 LYRICS_DONE 事件：告知前端歌词拉取完成及是否拿到有效歌词
+            try {
+                sseRegistry.send(record.getId(),
+                        ProgressEvent.lyricsDone(record.getId(), trackId, track.getTitle(), hasLyrics));
+            } catch (Exception ex) {
+                log.warn("[AI审核] trackId={} LYRICS_DONE 推送异常", trackId, ex);
+            }
 
             // 构建审核上下文
             ReviewContext ctx = ReviewContext.builder()
@@ -222,21 +242,93 @@ public class ReviewServiceImpl implements ReviewService {
                 .orderByDesc(TrackReviewRecord::getCreatedAt);
         reviewRecordMapper.selectPage(page, wrapper);
 
-        List<ReviewListItemVO> list = page.getRecords().stream().map(r -> {
-            ReviewListItemVO vo = new ReviewListItemVO();
-            vo.setId(r.getId());
-            vo.setTrackId(r.getTrackId());
-            vo.setTrackTitle(r.getTrackTitle());
-            vo.setVerdict(r.getVerdict());
-            vo.setConfidence(r.getConfidence());
-            vo.setFailReasons(r.getFailReasons());
-            vo.setStatus(r.getStatus());
-            vo.setCreatedAt(r.getCreatedAt());
-            vo.setDimensionDetails(agentResultsFormatter.formatDimensions(r.getAgentResults()));
-            return vo;
-        }).collect(Collectors.toList());
+        List<ReviewListItemVO> list = page.getRecords().stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
 
         return new PageResult<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), list);
+    }
+
+    @Override
+    public PageResult<ReviewListItemVO> listAll(Integer status, Integer pageNum, Integer pageSize) {
+        int current = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int size = pageSize == null || pageSize < 1 ? 10 : (pageSize > 100 ? 100 : pageSize);
+        Page<TrackReviewRecord> page = new Page<>(current, size);
+        LambdaQueryWrapper<TrackReviewRecord> wrapper = new LambdaQueryWrapper<>();
+        if (status != null) {
+            wrapper.eq(TrackReviewRecord::getStatus, status);
+        }
+        wrapper.orderByDesc(TrackReviewRecord::getCreatedAt);
+        reviewRecordMapper.selectPage(page, wrapper);
+
+        List<ReviewListItemVO> list = page.getRecords().stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
+
+        return new PageResult<>(page.getCurrent(), page.getSize(), page.getTotal(), page.getPages(), list);
+    }
+
+    /** Entity → ReviewListItemVO，提取各维度的中文摘要填充 dimensionDetails */
+    private ReviewListItemVO toVO(TrackReviewRecord r) {
+        ReviewListItemVO vo = new ReviewListItemVO();
+        vo.setId(r.getId());
+        vo.setTrackId(r.getTrackId());
+        vo.setTrackTitle(r.getTrackTitle());
+        vo.setVerdict(r.getVerdict());
+        vo.setConfidence(r.getConfidence());
+        vo.setFailReasons(r.getFailReasons());
+        vo.setStatus(r.getStatus());
+        vo.setCreatedAt(r.getCreatedAt());
+        vo.setDimensionDetails(agentResultsFormatter.formatDimensions(r.getAgentResults()));
+        return vo;
+    }
+
+    @Override
+    public ReviewDetailVO getDetail(Long id) {
+        TrackReviewRecord r = reviewRecordMapper.selectById(id);
+        if (r == null) {
+            throw new BusinessException(ResultCode.REVIEW_NOT_FOUND);
+        }
+
+        ReviewDetailVO vo = new ReviewDetailVO();
+        vo.setId(r.getId());
+        vo.setTrackId(r.getTrackId());
+        vo.setTrackTitle(r.getTrackTitle());
+        vo.setArtistNames(r.getArtistNames());
+        vo.setAlbumTitle(r.getAlbumTitle());
+        vo.setStatus(r.getStatus());
+        vo.setVerdict(r.getVerdict());
+        vo.setConfidence(r.getConfidence());
+        vo.setFailReasons(r.getFailReasons());
+        vo.setCreatedAt(r.getCreatedAt());
+        vo.setUpdatedAt(r.getUpdatedAt());
+
+        if (r.getStatus() != null && r.getStatus() == 0) {
+            // 审核中：返回实时进度（含各维度 PENDING/DONE 状态 + 已完成维度结果）
+            ReviewProgressVO progress = progressStore.snapshot(id);
+            vo.setProgress(progress);
+        } else {
+            // 完成或异常：返回完整审核报告
+            if (r.getAgentResults() != null && !r.getAgentResults().isBlank()) {
+                try {
+                    AgentResultsPayload report = objectMapper.readValue(
+                            r.getAgentResults(), AgentResultsPayload.class);
+                    vo.setReport(report);
+                } catch (Exception e) {
+                    log.warn("[AI审核] recordId={} agentResults 反序列化失败: {}", id, e.getMessage());
+                }
+            }
+            // 人工已确认：额外返回管理员裁决信息
+            if (r.getStatus() != null && r.getStatus() == 4 && r.getAdminId() != null) {
+                ReviewDetailVO.AdminConfirmInfo admin = new ReviewDetailVO.AdminConfirmInfo();
+                admin.setAdminId(r.getAdminId());
+                admin.setAdminVerdict(r.getAdminVerdict());
+                admin.setAdminNote(r.getAdminNote());
+                admin.setReviewedAt(r.getReviewedAt());
+                vo.setAdminConfirm(admin);
+            }
+        }
+        return vo;
     }
 
     @Override

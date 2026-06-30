@@ -31,6 +31,9 @@ public final class ProgressEvent {
         ReviewProgressVO vo = base(recordId, trackId, trackTitle);
         vo.setEventType("STARTED");
         vo.setStartedAt(LocalDateTime.now());
+        vo.setStage("DIMENSION_PHASE");
+        vo.setTotalDimensions(sortedAgents.size());
+        vo.setCompletedDimensions(0);
 
         List<ReviewProgressVO.DimensionProgressVO> dims = new ArrayList<>(sortedAgents.size());
         for (DimensionAgent agent : sortedAgents) {
@@ -49,10 +52,51 @@ public final class ProgressEvent {
         return vo;
     }
 
+    /** LYRICS_FETCHING 事件：开始拉取歌词 */
+    public static ReviewProgressVO lyricsFetching(Long recordId, Long trackId, String trackTitle) {
+        ReviewProgressVO vo = base(recordId, trackId, trackTitle);
+        vo.setEventType("LYRICS_FETCHING");
+        vo.setStartedAt(LocalDateTime.now());
+        vo.setStage("LYRICS_PHASE");
+        return vo;
+    }
+
+    /** LYRICS_DONE 事件：歌词拉取完成，hasLyrics 指示是否拿到有效歌词 */
+    public static ReviewProgressVO lyricsDone(Long recordId, Long trackId, String trackTitle, boolean hasLyrics) {
+        ReviewProgressVO vo = base(recordId, trackId, trackTitle);
+        vo.setEventType("LYRICS_DONE");
+        vo.setStage("LYRICS_PHASE");
+        // 把歌词拉取结果塞进 judge.reason 会让语义混乱，这里用一个简短的 flag 字段复用 verdict 位
+        // —— 不新增 VO 字段，前端按 eventType=LYRICS_DONE + judge.verdict="HAS_LYRICS"/"NO_LYRICS" 判断
+        ReviewProgressVO.JudgeProgressVO j = new ReviewProgressVO.JudgeProgressVO();
+        j.setStatus("DONE");
+        j.setVerdict(hasLyrics ? "HAS_LYRICS" : "NO_LYRICS");
+        vo.setJudge(j);
+        return vo;
+    }
+
+    /** DIMENSION_STARTED 事件：单个维度开始执行（置 RUNNING + 写 startedAt） */
+    public static ReviewProgressVO dimensionStarted(Long recordId, Long trackId, String agentName) {
+        ReviewProgressVO vo = base(recordId, trackId, trackTitlePlaceholder(trackId));
+        vo.setEventType("DIMENSION_STARTED");
+        vo.setStage("DIMENSION_PHASE");
+
+        ReviewProgressVO.DimensionProgressVO d = new ReviewProgressVO.DimensionProgressVO();
+        d.setAgentName(agentName);
+        d.setDisplayName(DISPLAY_NAMES.getOrDefault(agentName, agentName));
+        d.setStatus("RUNNING");
+        d.setStartedAt(LocalDateTime.now());
+        List<ReviewProgressVO.DimensionProgressVO> dims = new ArrayList<>(1);
+        dims.add(d);
+        vo.setDimensions(dims);
+        return vo;
+    }
+
     /** DIMENSION_DONE 事件：单个维度完成（含异常转 FAIL 的占位结果） */
     public static ReviewProgressVO dimensionDone(Long recordId, Long trackId, AgentResult r) {
         ReviewProgressVO vo = base(recordId, trackId, trackTitlePlaceholder(trackId));
         vo.setEventType("DIMENSION_DONE");
+        vo.setStage("DIMENSION_PHASE");
 
         ReviewProgressVO.DimensionProgressVO d = new ReviewProgressVO.DimensionProgressVO();
         d.setAgentName(r.getAgentName());
@@ -68,10 +112,24 @@ public final class ProgressEvent {
         return vo;
     }
 
+    /** JUDGE_STARTED 事件：裁决 agent 开始汇总 */
+    public static ReviewProgressVO judgeStarted(Long recordId, Long trackId) {
+        ReviewProgressVO vo = base(recordId, trackId, trackTitlePlaceholder(trackId));
+        vo.setEventType("JUDGE_STARTED");
+        vo.setStage("JUDGE_PHASE");
+
+        ReviewProgressVO.JudgeProgressVO j = new ReviewProgressVO.JudgeProgressVO();
+        j.setStatus("RUNNING");
+        j.setStartedAt(LocalDateTime.now());
+        vo.setJudge(j);
+        return vo;
+    }
+
     /** JUDGE_DONE 事件：裁决完成 */
     public static ReviewProgressVO judgeDone(Long recordId, Long trackId, AgentResult r) {
         ReviewProgressVO vo = base(recordId, trackId, trackTitlePlaceholder(trackId));
         vo.setEventType("JUDGE_DONE");
+        vo.setStage("JUDGE_PHASE");
 
         ReviewProgressVO.JudgeProgressVO j = new ReviewProgressVO.JudgeProgressVO();
         j.setStatus("DONE");
@@ -88,6 +146,7 @@ public final class ProgressEvent {
                                             Integer finalStatus, Integer finalVerdict, Integer finalConfidence) {
         ReviewProgressVO vo = base(recordId, trackId, trackTitlePlaceholder(trackId));
         vo.setEventType("FINISHED");
+        vo.setStage("FINISHED");
         vo.setFinishedAt(LocalDateTime.now());
         vo.setFinalStatus(finalStatus);
         vo.setFinalVerdict(finalVerdict);

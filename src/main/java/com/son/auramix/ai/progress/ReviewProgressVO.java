@@ -22,6 +22,14 @@ public class ReviewProgressVO {
 
     private LocalDateTime startedAt;
 
+    /** 流水线阶段：LYRICS_PHASE / DIMENSION_PHASE / JUDGE_PHASE / FINISHED */
+    private String stage;
+
+    /** 维度总数 */
+    private Integer totalDimensions;
+    /** 已完成维度数（status=DONE 或 FAIL） */
+    private Integer completedDimensions;
+
     private List<DimensionProgressVO> dimensions;
 
     private JudgeProgressVO judge;

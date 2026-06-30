@@ -63,18 +63,25 @@ public class ReviewOrchestrator {
         List<CompletableFuture<AgentResult>> futures = sortedAgents.stream()
             .map(agent -> CompletableFuture.supplyAsync(
                 () -> {
+                    String name;
+                    try {
+                        name = agent.getName();
+                    } catch (Exception ignored) {
+                        name = agent.getClass().getSimpleName();
+                    }
+                    // 维度开始：置 RUNNING + 写 startedAt + 推 DIMENSION_STARTED
+                    try {
+                        progressStore.dimensionStarted(recordId, name);
+                        sseRegistry.send(recordId, ProgressEvent.dimensionStarted(recordId, ctx.getTrackId(), name));
+                    } catch (Exception ex) {
+                        log.warn("[AI审核] trackId={} dimensionStarted 推送异常，继续", ctx.getTrackId(), ex);
+                    }
                     AgentResult r;
                     try {
                         r = agent.review(ctx);
                         log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
                             ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
                     } catch (Exception e) {
-                        String name;
-                        try {
-                            name = agent.getName();
-                        } catch (Exception ignored) {
-                            name = agent.getClass().getSimpleName();
-                        }
                         log.error("[AI审核] trackId={} agent={} review 异常，转 FAIL 占位", ctx.getTrackId(), name, e);
                         r = AgentResult.builder()
                             .agentName(name)
@@ -101,6 +108,13 @@ public class ReviewOrchestrator {
             .toList();
 
         // 3) 裁决 agent 汇总（串行）
+        // 3.0) 推 JUDGE_STARTED：让前端展示"正在裁决汇总..."
+        try {
+            progressStore.judgeStarted(recordId);
+            sseRegistry.send(recordId, ProgressEvent.judgeStarted(recordId, ctx.getTrackId()));
+        } catch (Exception e) {
+            log.warn("[AI审核] trackId={} judgeStarted 推送异常，继续", ctx.getTrackId(), e);
+        }
         AgentResult finalResult = reviewJudgeAgent.judge(ctx, dims);
         log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={}",
             ctx.getTrackId(), finalResult.getVerdict(), finalResult.getConfidence());
