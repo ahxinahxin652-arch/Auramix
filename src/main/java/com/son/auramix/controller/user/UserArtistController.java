@@ -1,5 +1,6 @@
 package com.son.auramix.controller.user;
 
+import com.son.auramix.annotation.AfterLog;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.vo.user.UserArtistDetailVO;
 import com.son.auramix.service.user.UserArtistService;

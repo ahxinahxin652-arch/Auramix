@@ -260,6 +260,24 @@ CREATE TABLE `playback_history` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
+-- 17.1 用户行为日志表 (user_behavior_logs)
+-- 实时记录用户的每个操作行为，用于推荐模型训练和短期兴趣捕捉
+-- ------------------------------------------------------------------------------
+CREATE TABLE `user_behavior_logs` (
+    `id` BIGINT NOT NULL PRIMARY KEY COMMENT '雪花算法唯一ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `track_id` BIGINT NULL COMMENT '关联单曲ID(可为null, 如搜索行为无具体歌曲)',
+    `behavior_type` INT NOT NULL COMMENT '行为类型: 0=播放, 1=收藏, 2=取消收藏, 3=跳过, 4=完整听完, 5=搜索, 6=分享, 7=添加到歌单',
+    `context` VARCHAR(255) NULL COMMENT '行为上下文 (如来源页面: home/recommend/discover/playlist/search)',
+    `behavior_duration` INT NULL COMMENT '行为持续时长(秒), 如收听时长',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_user_created` (`user_id`, `created_at`),
+    KEY `idx_user_behavior` (`user_id`, `behavior_type`),
+    KEY `idx_track_behavior_created` (`track_id`, `behavior_type`, `created_at`),
+    KEY `idx_created_at` (`created_at`)
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
 -- 18. 管理员表 (admin)
 -- ------------------------------------------------------------------------------
 CREATE TABLE `admin` (

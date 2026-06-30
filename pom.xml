@@ -68,6 +68,13 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- AOP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+            <version>4.0.0-M2</version>
+        </dependency>
+
         <!-- Redis (Spring Data Redis,默认 Lettuce 客户端) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -172,6 +179,7 @@
                             <goal>compile</goal>
                         </goals>
                         <configuration>
+                            <parameters>true</parameters>
                             <annotationProcessorPaths>
                                 <path>
                                     <groupId>org.projectlombok</groupId>
@@ -187,6 +195,7 @@
                             <goal>testCompile</goal>
                         </goals>
                         <configuration>
+                            <parameters>true</parameters>
                             <annotationProcessorPaths>
                                 <path>
                                     <groupId>org.projectlombok</groupId>
