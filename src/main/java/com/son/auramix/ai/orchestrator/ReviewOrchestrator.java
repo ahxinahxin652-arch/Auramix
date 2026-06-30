@@ -107,15 +107,41 @@ public class ReviewOrchestrator {
             .map(CompletableFuture::join)
             .toList();
 
-        // 3) 裁决 agent 汇总（串行）
-        // 3.0) 推 JUDGE_STARTED：让前端展示"正在裁决汇总..."
-        try {
-            progressStore.judgeStarted(recordId);
-            sseRegistry.send(recordId, ProgressEvent.judgeStarted(recordId, ctx.getTrackId()));
-        } catch (Exception e) {
-            log.warn("[AI审核] trackId={} judgeStarted 推送异常，继续", ctx.getTrackId(), e);
+        // 2.5) PENDING 短路：任一维度异常降级为 PENDING → 整体直接 PENDING，跳过 judge 调用，
+        //      避免异常维度污染裁决结果，配合 ReviewServiceImpl 的 confidence<80 走 status=3 人工确认
+        boolean hasPending = dims.stream().anyMatch(AgentResult::isPending);
+        AgentResult finalResult;
+        if (hasPending) {
+            List<AgentResult> pendingDims = dims.stream().filter(AgentResult::isPending).toList();
+            String pendingNames = pendingDims.stream()
+                    .map(AgentResult::getAgentName)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("unknown");
+            String reasons = pendingDims.stream()
+                    .map(AgentResult::getReason)
+                    .filter(r -> r != null && !r.isBlank())
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("维度异常转人工");
+            finalResult = AgentResult.builder()
+                    .agentName("ReviewJudge")
+                    .verdict("PENDING")
+                    .confidence(0)
+                    .reason("维度[" + pendingNames + "]异常，转人工确认: " + reasons)
+                    .analysis("短路：维度异常，跳过裁决")
+                    .build();
+            log.warn("[AI审核] trackId={} 检测到维度 PENDING({})，整体降级 PENDING 转人工",
+                    ctx.getTrackId(), pendingNames);
+        } else {
+            // 3) 裁决 agent 汇总（串行）
+            // 3.0) 推 JUDGE_STARTED：让前端展示"正在裁决汇总..."
+            try {
+                progressStore.judgeStarted(recordId);
+                sseRegistry.send(recordId, ProgressEvent.judgeStarted(recordId, ctx.getTrackId()));
+            } catch (Exception e) {
+                log.warn("[AI审核] trackId={} judgeStarted 推送异常，继续", ctx.getTrackId(), e);
+            }
+            finalResult = reviewJudgeAgent.judge(ctx, dims);
         }
-        AgentResult finalResult = reviewJudgeAgent.judge(ctx, dims);
         log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={}",
             ctx.getTrackId(), finalResult.getVerdict(), finalResult.getConfidence());
 

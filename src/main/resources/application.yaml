@@ -64,7 +64,8 @@ spring:
       model: qwen-plus
       chat:
         options:
-          temperature: 0.3
+          # 审核任务追求一致性，降低随机性；维度/裁决 agent 共用此默认值
+          temperature: 0.1
 
   # ============================ Jackson ============================
   jackson:
