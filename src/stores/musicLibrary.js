@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useLibraryStore } from './library.js'
 
 export const useMusicLibraryStore = defineStore('musicLibrary', () => {
   // ---- 状态 ----
@@ -56,6 +57,7 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
         } else {
           await loadWarehouses()
         }
+        useLibraryStore().forceSync()
         return { success: true }
       }
       return { success: false, error: result.error || result.message || '创建失败' }
@@ -93,6 +95,7 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
             warehouses.value[idx].coverUrl = ''
           }
         }
+        useLibraryStore().forceSync()
         return { success: true, data: result.data }
       }
       return { success: false, error: result.error || result.message || '保存失败' }
@@ -113,6 +116,7 @@ export const useMusicLibraryStore = defineStore('musicLibrary', () => {
         warehouses.value = warehouses.value.filter(
           w => w.id !== libraryId && String(w.id) !== String(libraryId)
         )
+        useLibraryStore().forceSync()
         return true
       }
       return false
