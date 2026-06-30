@@ -1,5 +1,6 @@
 package com.son.auramix.controller.user;
 
+import com.son.auramix.annotation.AfterLog;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.vo.user.UserTrackDetailVO;
 import com.son.auramix.service.user.UserTrackService;
@@ -16,6 +17,7 @@ public class UserTrackController {
 
     private final UserTrackService userTrackService;
 
+    @AfterLog("播放歌曲")
     @GetMapping("/{id}")
     public Result<UserTrackDetailVO> getTrackDetail(@PathVariable Long id) {
         return Result.success(userTrackService.getTrackDetail(id));

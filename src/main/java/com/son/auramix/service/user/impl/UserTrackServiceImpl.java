@@ -10,10 +10,15 @@ import com.son.auramix.domain.entity.TrackArtist;
 import com.son.auramix.domain.entity.TrackAudioResource;
 import com.son.auramix.domain.vo.user.ArtistInfoVO;
 import com.son.auramix.domain.vo.user.UserTrackDetailVO;
+import com.son.auramix.domain.entity.Genre;
+import com.son.auramix.domain.entity.TrackGenre;
+import com.son.auramix.domain.vo.admin.GenreVO;
 import com.son.auramix.mapper.AlbumMapper;
 import com.son.auramix.mapper.ArtistMapper;
+import com.son.auramix.mapper.GenreMapper;
 import com.son.auramix.mapper.TrackArtistMapper;
 import com.son.auramix.mapper.TrackAudioResourceMapper;
+import com.son.auramix.mapper.TrackGenreMapper;
 import com.son.auramix.mapper.TrackMapper;
 import com.son.auramix.service.user.UserTrackService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,8 @@ public class UserTrackServiceImpl implements UserTrackService {
     private final ArtistMapper artistMapper;
     private final AlbumMapper albumMapper;
     private final TrackAudioResourceMapper trackAudioResourceMapper;
+    private final TrackGenreMapper trackGenreMapper;
+    private final GenreMapper genreMapper;
 
     @Override
     public UserTrackDetailVO getTrackDetail(Long trackId) {
@@ -72,6 +79,23 @@ public class UserTrackServiceImpl implements UserTrackService {
                 return null;
             }).filter(Objects::nonNull).collect(Collectors.toList());
             vo.setArtists(artists);
+        }
+
+        List<TrackGenre> trackGenres = trackGenreMapper.selectList(
+                new LambdaQueryWrapper<TrackGenre>().eq(TrackGenre::getTrackId, trackId));
+        if (!trackGenres.isEmpty()) {
+            List<GenreVO> genres = trackGenres.stream().map(tg -> {
+                Genre genre = genreMapper.selectById(tg.getGenreId());
+                if (genre != null) {
+                    GenreVO g = new GenreVO();
+                    g.setId(genre.getId());
+                    g.setName(genre.getName());
+                    g.setCreatedAt(genre.getCreatedAt());
+                    return g;
+                }
+                return null;
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+            vo.setGenres(genres);
         }
 
         List<TrackAudioResource> audioResources = trackAudioResourceMapper.selectList(
