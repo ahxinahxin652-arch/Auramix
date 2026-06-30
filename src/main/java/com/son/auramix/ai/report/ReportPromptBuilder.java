@@ -2,7 +2,6 @@ package com.son.auramix.ai.report;
 
 import com.son.auramix.domain.dto.report.StatsAggregateResult;
 import com.son.auramix.service.report.PeriodRange;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,13 +15,15 @@ import java.time.format.DateTimeFormatter;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ReportPromptBuilder {
 
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-    @Qualifier(ReportChatConfig.REPORT_CHAT_CLIENT)
     private final ChatClient chatClient;
+
+    public ReportPromptBuilder(@Qualifier(ReportChatConfig.REPORT_CHAT_CLIENT) ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
 
     public ChatClient chatClient() {
         return chatClient;
