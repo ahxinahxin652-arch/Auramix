@@ -10,6 +10,7 @@ import com.son.auramix.ai.report.ReportPromptBuilder;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
+import com.son.auramix.domain.dto.report.StatsAggregateResult;
 import com.son.auramix.domain.dto.user.ReportGenerateDTO;
 import com.son.auramix.domain.entity.User;
 import com.son.auramix.domain.entity.UserListeningStats;
@@ -100,7 +101,7 @@ public class ReportGenerateService {
             User user = userMapper.selectById(userId);
 
             // 1. 统计
-            var stats = listeningStatsService.aggregate(userId, range);
+            StatsAggregateResult stats = listeningStatsService.aggregate(userId, range);
             if (stats.getTotalPlays() == null || stats.getTotalPlays() == 0) {
                 markStatus(reportId, STATUS_NO_DATA, "本周期内无播放数据", null, null, null, null);
                 log.info("报告无数据, 跳过 LLM: reportId={}", reportId);
@@ -211,7 +212,7 @@ public class ReportGenerateService {
         reportMapper.updateById(upd);
     }
 
-    private void saveStats(Long reportId, Long userId, PeriodRange range, var stats) {
+    private void saveStats(Long reportId, Long userId, PeriodRange range, StatsAggregateResult stats) {
         try {
             UserListeningStats s = new UserListeningStats();
             s.setUserId(userId);

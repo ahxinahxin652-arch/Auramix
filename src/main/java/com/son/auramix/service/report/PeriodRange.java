@@ -17,11 +17,13 @@ public class PeriodRange {
     private final int periodType;
     private final LocalDate periodStart;
     private final LocalDate periodEnd;
+    private final String label;
 
-    public PeriodRange(int periodType, LocalDate periodStart, LocalDate periodEnd) {
+    public PeriodRange(int periodType, LocalDate periodStart, LocalDate periodEnd, String label) {
         this.periodType = periodType;
         this.periodStart = periodStart;
         this.periodEnd = periodEnd;
+        this.label = label;
     }
 
     /**
@@ -33,7 +35,7 @@ public class PeriodRange {
         LocalDate thisMonday = today.minusDays(today.getDayOfWeek().getValue() - 1L);
         LocalDate lastSunday = thisMonday.minusDays(1);
         LocalDate lastMonday = lastSunday.minusDays(6);
-        return new PeriodRange(TYPE_WEEKLY, lastMonday, lastSunday);
+        return new PeriodRange(TYPE_WEEKLY, lastMonday, lastSunday, "last-week");
     }
 
     /**
@@ -44,6 +46,6 @@ public class PeriodRange {
         LocalDate firstOfThisMonth = today.withDayOfMonth(1);
         LocalDate lastOfPrevMonth = firstOfThisMonth.minusDays(1);
         LocalDate firstOfPrevMonth = lastOfPrevMonth.withDayOfMonth(1);
-        return new PeriodRange(TYPE_MONTHLY, firstOfPrevMonth, lastOfPrevMonth);
+        return new PeriodRange(TYPE_MONTHLY, firstOfPrevMonth, lastOfPrevMonth, "last-month");
     }
 }
