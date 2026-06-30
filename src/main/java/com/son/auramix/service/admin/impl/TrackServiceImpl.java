@@ -234,7 +234,7 @@ public class TrackServiceImpl implements TrackService {
 
     @Override
     @Transactional
-    public void createTrack(TrackCreateDTO req) {
+    public Long createTrack(TrackCreateDTO req) {
         // Validation: albumId exists
         Album album = albumMapper.selectById(req.getAlbumId());
         if (album == null) {
@@ -278,6 +278,8 @@ public class TrackServiceImpl implements TrackService {
         // 触发 AI 内容审核：通过 AFTER_COMMIT 事务事件异步触发，
         // 避免异步线程在事务提交前查询不到刚插入的 track
         eventPublisher.publishEvent(new TrackCreatedEvent(t.getId()));
+
+        return t.getId();
     }
 
     @Override

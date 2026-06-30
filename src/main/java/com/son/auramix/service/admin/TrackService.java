@@ -9,7 +9,7 @@ import com.son.auramix.domain.dto.admin.TrackUpdateDTO;
 public interface TrackService {
     PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize);
     TrackDetailVO getTrackDetail(Long id);
-    void createTrack(TrackCreateDTO req);
+    Long createTrack(TrackCreateDTO req);
     void updateTrack(Long id, TrackUpdateDTO req);
     void deleteTrack(Long id);
 }
