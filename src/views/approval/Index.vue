@@ -1,17 +1,29 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Check, Close, WarningFilled } from '@element-plus/icons-vue'
+import { Refresh, Check, Close, WarningFilled, View } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { listPendingReviews, confirmReview, type ReviewListItem } from '@/api/admin/reviewManage'
+import {
+  listReviews,
+  confirmReview,
+  ReviewStatus,
+  ReviewVerdict,
+  type ReviewListItem,
+} from '@/api/admin/reviewManage'
+
+const router = useRouter()
 
 // ---- 分页与表格 ----
 const list = ref<ReviewListItem[]>([])
 const loading = ref(false)
 const total = ref(0)
 const pageNum = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(5)
+
+// ---- 状态筛选 ----
+const statusFilter = ref<number | undefined>(undefined)
 
 // ---- 确认对话框 ----
 const confirmVisible = ref(false)
@@ -27,14 +39,16 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
 async function loadData() {
   loading.value = true
   try {
-    const res = await listPendingReviews({
+    const res = await listReviews({
       pageNum: pageNum.value,
       pageSize: pageSize.value,
+      status: statusFilter.value,
     })
     list.value = res.records
-    total.value = res.total
+    // 后端 total 为 Long 类型，JSON 可能序列化为字符串，el-pagination 需要 number
+    total.value = Number(res.total) || 0
   } catch (err) {
-    console.error('加载待审核列表出错:', err)
+    console.error('加载审核列表出错:', err)
   } finally {
     loading.value = false
   }
@@ -78,9 +92,9 @@ async function handleConfirmSubmit() {
 
 function handleQuickConfirm(row: ReviewListItem, verdict: 1 | -1) {
   const action = verdict === 1 ? '通过' : '驳回'
-  const statusText = verdict === 1 ? '恢复上架' : '下架'
+  const actionResult = verdict === 1 ? '恢复上架' : '下架'
   ElMessageBox.confirm(
-    `确认对歌曲《${row.trackTitle}》执行【${action}】操作？歌曲将${statusText}。`,
+    `确认对歌曲《${row.trackTitle}》执行【${action}】操作？歌曲将${actionResult}。`,
     '审核确认',
     {
       confirmButtonText: action,
@@ -91,7 +105,7 @@ function handleQuickConfirm(row: ReviewListItem, verdict: 1 | -1) {
     .then(async () => {
       try {
         await confirmReview(row.id, { adminVerdict: verdict })
-        ElMessage.success(`已${action}，歌曲已${statusText}`)
+        ElMessage.success(`已${action}，歌曲已${actionResult}`)
         loadData()
       } catch (err) {
         console.error('快速确认出错:', err)
@@ -108,6 +122,58 @@ function toggleAutoRefresh(val: boolean) {
   } else if (refreshTimer) {
     clearInterval(refreshTimer)
     refreshTimer = null
+  }
+}
+
+function handleStatusFilterChange() {
+  pageNum.value = 1
+  loadData()
+}
+
+function goDetail(row: ReviewListItem) {
+  router.push(`/approval/detail/${row.id}`)
+}
+
+function statusText(s: number): string {
+  switch (s) {
+    case ReviewStatus.REVIEWING: return '审核中'
+    case ReviewStatus.PENDING_AUTO: return '待自动处理'
+    case ReviewStatus.AUTO_DONE: return '已自动处理'
+    case ReviewStatus.PENDING_MANUAL: return '待人工确认'
+    case ReviewStatus.MANUAL_DONE: return '人工已确认'
+    case ReviewStatus.FAILED: return '失败/异常'
+    default: return String(s)
+  }
+}
+
+function statusTagType(s: number): 'primary' | 'info' | 'warning' | 'success' | 'danger' {
+  switch (s) {
+    case ReviewStatus.REVIEWING: return 'primary'
+    case ReviewStatus.PENDING_AUTO: return 'info'
+    case ReviewStatus.AUTO_DONE: return 'info'
+    case ReviewStatus.PENDING_MANUAL: return 'warning'
+    case ReviewStatus.MANUAL_DONE: return 'success'
+    case ReviewStatus.FAILED: return 'danger'
+    default: return 'info'
+  }
+}
+
+function verdictText(v: number): string {
+  switch (v) {
+    case ReviewVerdict.PENDING: return '审核中'
+    case ReviewVerdict.PASS: return '通过'
+    case ReviewVerdict.FAIL: return '不通过'
+    case ReviewVerdict.WAITING_MANUAL: return '待确认'
+    default: return String(v)
+  }
+}
+
+function verdictTagType(v: number): 'success' | 'danger' | 'warning' | 'info' {
+  switch (v) {
+    case ReviewVerdict.PASS: return 'success'
+    case ReviewVerdict.FAIL: return 'danger'
+    case ReviewVerdict.WAITING_MANUAL: return 'warning'
+    default: return 'info'
   }
 }
 
@@ -136,7 +202,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page-approval">
-    <PageHeader title="智能审批" subtitle="AI 内容安全审核 — 人工确认低置信度审核结果">
+    <PageHeader title="智能审批" subtitle="AI 内容安全审核 — 查看全部审核记录与人工确认">
       <template #actions>
         <el-switch
           v-model="autoRefresh"
@@ -159,26 +225,37 @@ onUnmounted(() => {
       >
         <template #default>
           歌曲创建/更新后自动触发 4 维度 AI 审核。置信度 ≥ 80 的结果由系统自动处理，< 80 的低置信度记录需管理员在此人工确认。
-          通过则歌曲恢复上架，驳回则歌曲下架。
+          通过则歌曲恢复上架，驳回则歌曲下架。可按状态筛选查看不同阶段的审核记录。
         </template>
       </el-alert>
 
       <el-card shadow="never" class="page-card">
         <template #header>
           <div class="card-header">
-            <span class="card-title">待人工确认列表</span>
-            <el-tag type="warning" size="small">共 {{ total }} 条待处理</el-tag>
+            <span class="card-title">审核记录列表</span>
+            <el-tag size="small">共 {{ total }} 条</el-tag>
           </div>
         </template>
 
-        <el-table v-loading="loading" :data="list" style="width: 100%" empty-text="暂无待确认审核">
+        <div class="filter-bar">
+          <el-radio-group v-model="statusFilter" @change="handleStatusFilterChange">
+            <el-radio-button :value="undefined">全部</el-radio-button>
+            <el-radio-button :value="ReviewStatus.REVIEWING">审核中</el-radio-button>
+            <el-radio-button :value="ReviewStatus.PENDING_AUTO">待自动处理</el-radio-button>
+            <el-radio-button :value="ReviewStatus.AUTO_DONE">已自动处理</el-radio-button>
+            <el-radio-button :value="ReviewStatus.PENDING_MANUAL">待人工确认</el-radio-button>
+            <el-radio-button :value="ReviewStatus.MANUAL_DONE">人工已确认</el-radio-button>
+            <el-radio-button :value="ReviewStatus.FAILED">失败/异常</el-radio-button>
+          </el-radio-group>
+        </div>
+
+        <el-table v-loading="loading" :data="list" style="width: 100%" empty-text="暂无审核记录">
           <el-table-column label="歌曲" min-width="200">
             <template #default="{ row }">
               <div class="track-info">
                 <el-icon class="track-icon"><WarningFilled /></el-icon>
                 <div class="track-meta">
                   <span class="track-title">{{ row.trackTitle }}</span>
-                  <span class="track-id">ID: {{ row.trackId }}</span>
                 </div>
               </div>
             </template>
@@ -200,18 +277,17 @@ onUnmounted(() => {
 
           <el-table-column label="AI 裁决" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.verdict === -2 ? 'warning' : 'info'" size="small">
-                待确认
+              <el-tag :type="verdictTagType(row.verdict)" size="small">
+                {{ verdictText(row.verdict) }}
               </el-tag>
             </template>
           </el-table-column>
 
-          <el-table-column label="不通过原因" min-width="300">
+          <el-table-column label="处理状态" width="120" align="center">
             <template #default="{ row }">
-              <div class="fail-reasons" v-if="row.failReasons">
-                {{ row.failReasons }}
-              </div>
-              <span v-else class="text-placeholder">-</span>
+              <el-tag :type="statusTagType(row.status)" size="small" effect="plain">
+                {{ statusText(row.status) }}
+              </el-tag>
             </template>
           </el-table-column>
 
@@ -221,22 +297,25 @@ onUnmounted(() => {
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column label="操作" width="260" fixed="right" align="center">
             <template #default="{ row }">
+              <el-button link type="primary" :icon="View" @click="goDetail(row as ReviewListItem)">
+                查看进度
+              </el-button>
               <el-button link type="success" :icon="Check" @click="handleQuickConfirm(row as ReviewListItem, 1)">
                 通过
               </el-button>
               <el-button link type="danger" :icon="Close" @click="handleQuickConfirm(row as ReviewListItem, -1)">
                 驳回
               </el-button>
-              <el-button link type="primary" @click="openConfirmDialog(row as ReviewListItem)">
+              <el-button link type="info" @click="openConfirmDialog(row as ReviewListItem)">
                 附注
               </el-button>
             </template>
           </el-table-column>
 
           <template #empty>
-            <EmptyState icon="CircleCheck" title="全部处理完成" hint="当前没有待人工确认的审核记录" />
+            <EmptyState icon="CircleCheck" title="暂无审核记录" hint="当前筛选条件下没有审核记录" />
           </template>
         </el-table>
 
@@ -245,7 +324,7 @@ onUnmounted(() => {
             v-model:current-page="pageNum"
             v-model:page-size="pageSize"
             :total="total"
-            :page-sizes="[10, 20, 50]"
+            :page-sizes="[5, 10]"
             layout="total, sizes, prev, pager, next, jumper"
             @current-change="handlePageChange"
             @size-change="handleSizeChange"
@@ -351,6 +430,10 @@ onUnmounted(() => {
   }
 }
 
+.filter-bar {
+  margin-bottom: $spacing-md;
+}
+
 .track-info {
   display: flex;
   align-items: center;
@@ -371,25 +454,12 @@ onUnmounted(() => {
       font-weight: 500;
       color: $text-primary;
     }
-
-    .track-id {
-      font-size: $font-size-2xs;
-      color: $text-tertiary;
-    }
   }
 }
 
 .confidence-box {
   display: flex;
   justify-content: center;
-}
-
-.fail-reasons {
-  font-size: $font-size-xs;
-  color: $text-secondary;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
 .text-placeholder {
