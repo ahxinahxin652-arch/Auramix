@@ -331,6 +331,7 @@ const sendMessage = async () => {
     return
   }
 
+  // 显示 typing-indicator（isStreaming=true），等拿到第一个 chunk 后关闭
   isStreaming.value = true
   
   // 准备发送到后端的数据（提取历史记录）
@@ -355,28 +356,61 @@ const sendMessage = async () => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder('utf-8')
     let aiContent = ''
-    
-    // 创建一个占位的 AI 消息
-    const aiMessage = { role: 'ai', content: '' }
-    messages.value.push(aiMessage)
+    // SSE 跨 chunk 的行缓冲
+    let lineBuffer = ''
+    // 是否已推入 AI 占位气泡
+    let placeholderPushed = false
+    let aiIndex = -1
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       
-      const chunk = decoder.decode(value, { stream: true })
-      // SSE 格式通常是: data: 实际内容\n\n
-      const lines = chunk.split('\n')
+      // 将新 chunk 追加到行缓冲，按换行切割处理完整行
+      lineBuffer += decoder.decode(value, { stream: true })
+      const lines = lineBuffer.split('\n')
+      // 最后一个可能是不完整行，留在 buffer 中等待下次 chunk
+      lineBuffer = lines.pop()
+
       for (const line of lines) {
-        if (line.startsWith('data:')) {
-          const dataStr = line.substring(5).trim()
-          if (dataStr && dataStr !== '[DONE]') {
-             aiContent += dataStr
-             aiMessage.content = aiContent
-             scrollToBottom()
-          }
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const dataStr = trimmed.slice(5).trim()
+        if (!dataStr || dataStr === '[DONE]') continue
+
+        // 收到第一个有效 chunk：推入占位气泡并关闭 typing-indicator，避免双气泡
+        if (!placeholderPushed) {
+          isStreaming.value = false
+          messages.value.push({ role: 'ai', content: '' })
+          aiIndex = messages.value.length - 1
+          placeholderPushed = true
         }
+
+        aiContent += dataStr
+        // ✅ 通过响应式数组下标赋值，Vue Proxy 能感知变化，实现实时渲染
+        messages.value[aiIndex].content = aiContent
+        scrollToBottom()
       }
+    }
+
+    // 处理缓冲区剩余内容（流结束时最后一行可能没有末尾换行）
+    if (lineBuffer.trim().startsWith('data:')) {
+      const dataStr = lineBuffer.trim().slice(5).trim()
+      if (dataStr && dataStr !== '[DONE]') {
+        if (!placeholderPushed) {
+          isStreaming.value = false
+          messages.value.push({ role: 'ai', content: '' })
+          aiIndex = messages.value.length - 1
+          placeholderPushed = true
+        }
+        aiContent += dataStr
+        messages.value[aiIndex].content = aiContent
+      }
+    }
+
+    // 如果流为空（没有任何 chunk），给出提示
+    if (!placeholderPushed) {
+      messages.value.push({ role: 'ai', content: '（AI 未返回任何内容，请稍后重试）' })
     }
     
     // 2. 保存 AI 回复到本地 SQLite
