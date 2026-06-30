@@ -90,6 +90,7 @@ const allMenus: MenuItem[] = [
   { path: '/album', label: '专辑管理', icon: Collection },
   { path: '/artist', label: '歌手管理', icon: Avatar },
   { path: '/member', label: '会员管理', icon: GoldMedal },
+  { path: '/scene', label: '场景标签', icon: PriceTag },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
 ]
 
