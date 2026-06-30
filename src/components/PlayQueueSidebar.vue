@@ -87,7 +87,6 @@ function playQueueTrack(track, indexOffset) {
       <div class="section-title next-up-title" v-if="nextTracks.length > 0">Next up</div>
       <div class="track-list" v-if="nextTracks.length > 0">
         <div class="track-item" v-for="(t, index) in nextTracks" :key="t.id + '-' + index" @dblclick="playQueueTrack(t, index)">
-          <div class="track-index">{{ index + 1 }}</div>
           <img v-if="t.cover" :src="t.cover" class="track-cover" />
           <div v-else class="track-cover-placeholder">
              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -100,13 +99,26 @@ function playQueueTrack(track, indexOffset) {
             <div class="track-name">{{ t.title || t.name }}</div>
             <div class="track-artist">{{ t.artist }}</div>
           </div>
-          <div class="track-duration">{{ formatTime(t.duration) }}</div>
         </div>
       </div>
     </div>
 
     <div class="queue-content" v-if="activeTab === 'history'">
       <div v-if="historyTracks.length > 0" class="track-list">
+        <div class="track-item" v-for="(t, index) in historyTracks" :key="t.id + '-' + index" @dblclick="playQueueTrack(t, index)">
+          <img v-if="t.cover" :src="t.cover" class="track-cover" />
+          <div v-else class="track-cover-placeholder">
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 18V5l12-2v13"></path>
+              <circle cx="6" cy="18" r="3"></circle>
+              <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div class="track-info">
+            <div class="track-name">{{ t.title || t.name }}</div>
+            <div class="track-artist">{{ t.artist }}</div>
+          </div>
+        </div>
       </div>
       <div v-else class="empty-state">
         <p>No recent tracks</p>
@@ -191,6 +203,7 @@ function playQueueTrack(track, indexOffset) {
 .queue-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px 20px;
 }
 
@@ -220,7 +233,9 @@ function playQueueTrack(track, indexOffset) {
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  margin: 0 -12px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -235,13 +250,6 @@ function playQueueTrack(track, indexOffset) {
   color: #fff;
 }
 
-.track-index {
-  width: 24px;
-  font-size: 14px;
-  color: #b3b3b3;
-  text-align: right;
-  margin-right: 12px;
-}
 
 .track-cover {
   width: 40px;
@@ -261,7 +269,6 @@ function playQueueTrack(track, indexOffset) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-right: 12px;
   color: #b3b3b3;
 }
 
@@ -293,12 +300,6 @@ function playQueueTrack(track, indexOffset) {
 
 .playing-indicator {
   color: #1db954;
-}
-
-.track-duration {
-  font-size: 13px;
-  color: #b3b3b3;
-  margin-left: 12px;
 }
 
 .now-playing .track-name {
