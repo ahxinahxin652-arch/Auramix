@@ -443,14 +443,39 @@ function nextTrack() {
 
 // 进度条拖动
 
-function seekTo(e) {
+function seekToByEvent(e) {
   if (!howl || !player.duration) return
-  const rect = e.currentTarget.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const percent = Math.max(0, Math.min(1, x / rect.width))
-  const seekTime = percent * player.duration
+  const track = e.currentTarget
+  const rect = track.getBoundingClientRect()
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  const seekTime = x * player.duration
   howl.seek(seekTime)
   player.setCurrentTime(seekTime)
+}
+
+function startProgressDrag(e) {
+  if (!howl || !player.duration) return
+  isDragging.value = true
+  seekToByEvent(e)
+  document.addEventListener('mousemove', onProgressDrag)
+  document.addEventListener('mouseup', stopProgressDrag)
+}
+
+function onProgressDrag(e) {
+  if (!isDragging.value || !howl || !player.duration) return
+  const track = document.querySelector('.progress-track')
+  if (!track) return
+  const rect = track.getBoundingClientRect()
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  const seekTime = x * player.duration
+  howl.seek(seekTime)
+  player.setCurrentTime(seekTime)
+}
+
+function stopProgressDrag() {
+  isDragging.value = false
+  document.removeEventListener('mousemove', onProgressDrag)
+  document.removeEventListener('mouseup', stopProgressDrag)
 }
 
 // 音量
@@ -646,10 +671,10 @@ onUnmounted(() => {
       <!-- 进度条 -->
       <div class="progress-area">
         <span class="time-label">{{ formatTime(player.currentTime) }}</span>
-        <div class="progress-track" @click="seekTo">
-          <div class="progress-bg"></div>
-          <div class="progress-fill" :style="{ width: (player.duration > 0 ? player.currentTime / player.duration * 100 : 0) + '%' }"></div>
-          <div class="progress-thumb"></div>
+        <div class="progress-track" :class="{ dragging: isDragging }" @mousedown="startProgressDrag">
+          <div class="progress-fill" :style="{ width: (player.duration > 0 ? player.currentTime / player.duration * 100 : 0) + '%' }">
+            <div class="progress-thumb"></div>
+          </div>
         </div>
         <span class="time-label">{{ formatTime(player.duration) }}</span>
       </div>
@@ -720,6 +745,7 @@ onUnmounted(() => {
         step="0.01"
         :value="player.volume"
         @input="setVolume"
+        :style="{ background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${player.volume * 100}%, var(--surface-3) ${player.volume * 100}%)` }"
       />
     </div>
   </footer>
