@@ -122,6 +122,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/reports/Detail.vue'),
         meta: { requiresAuth: true, title: '报告详情' },
       },
+      {
+        path: 'admin-reports',
+        name: 'AdminReports',
+        component: () => import('@/views/admin-reports/Index.vue'),
+        meta: { requiresAuth: true, title: '报告管理' },
+      },
+      {
+        path: 'admin-reports/:id',
+        name: 'AdminReportDetail',
+        component: () => import('@/views/admin-reports/Detail.vue'),
+        meta: { requiresAuth: true, title: '报告详情' },
+      },
     ],
   },
   {
