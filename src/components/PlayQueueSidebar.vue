@@ -62,7 +62,6 @@ function getArtistsArray(trackObj) {
 function goToArtist(artistId) {
   if (!artistId) return;
   router.push(`/artist/${artistId}`);
-  emit('close');
 }
 </script>
 

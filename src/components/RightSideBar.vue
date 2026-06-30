@@ -13,6 +13,7 @@ const router = useRouter()
 
 const showModal = ref(false)
 const followedArtists = ref({})
+const isHovered = ref(false)
 
 const artistWrapRef = ref(null)
 const canScrollArtist = ref(false)
@@ -299,7 +300,16 @@ const handleCardArtistClick = (art) => {
 </script>
 
 <template>
-  <div class="right-sidebar" :class="{ 'is-collapsed': !sidebarStore.isOpen }" :style="{ width: sidebarStore.isOpen ? '100%' : sidebarStore.width + 'px' }">
+  <div 
+    class="right-sidebar" 
+    :class="{ 'is-collapsed': !sidebarStore.isOpen }" 
+    :style="{ 
+      width: sidebarStore.isOpen ? '100%' : sidebarStore.width + 'px',
+      transform: (!sidebarStore.isOpen && !isHovered) ? `translateX(calc(100% - 40px))` : (!sidebarStore.isOpen && isHovered ? `translateX(calc(100% - 80px))` : 'translateX(0)')
+    }"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+  >
     <!-- Collapsed handle overlay -->
     <div v-show="!sidebarStore.isOpen" class="sidebar-collapsed-overlay" @click="openSidebar" title="显示详情">
       <svg class="expand-icon" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5">
@@ -544,10 +554,16 @@ const handleCardArtistClick = (art) => {
   display: flex;
   flex-direction: column;
   position: relative;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .right-sidebar.is-collapsed {
-  pointer-events: none; /* disable interactions on the hidden expanded content */
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 100;
+  box-shadow: -4px 0 12px rgba(0,0,0,0.5);
+  /* no pointer-events: none here, so it can be hovered */
 }
 
 .sidebar-collapsed-overlay {
@@ -559,26 +575,22 @@ const handleCardArtistClick = (art) => {
   z-index: 50;
   cursor: pointer;
   pointer-events: auto;
-  background: rgba(0, 0, 0, 0.4); /* Darken slightly to make icon pop */
-  transition: background 0.2s;
+  background: #000000;
+  transition: background 0.3s;
 }
 
-.sidebar-collapsed-overlay:hover {
-  background: rgba(0, 0, 0, 0.6);
+.right-sidebar:hover .sidebar-collapsed-overlay {
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .sidebar-collapsed-overlay .expand-icon {
   position: absolute;
   top: 50%;
-  left: 12px; /* Center within the 24px collapsed width */
+  left: 20px; /* center it within the visible 40px */
   transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   color: #ffffff;
-  transition: transform 0.2s;
-}
-
-.sidebar-collapsed-overlay:hover .expand-icon {
-  transform: translate(-50%, -50%) scale(1.1);
+  opacity: 1; /* always visible when not hovered */
 }
 </style>

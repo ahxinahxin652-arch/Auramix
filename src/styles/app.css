@@ -497,10 +497,6 @@ body {
     transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.right-sidebar-wrapper.collapsed:hover {
-    width: 64px !important; /* 悬停展开一部分 */
-    background-color: var(--surface-2);
-}
 
 /* User Avatar & Login Layout */
 .user-avatar-img {
