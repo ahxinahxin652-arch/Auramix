@@ -27,6 +27,50 @@ body {
     overflow: hidden;
 }
 
+/* 全局加载遮罩 */
+.global-sync-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #000;
+    z-index: 99999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sync-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 页面级别 Loading 状态 (用于路由组件) */
+.page-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    min-height: 50vh;
+    color: var(--text);
+    font-size: 14px;
+}
+
+.page-loading-state .spinner {
+    margin-bottom: 12px;
+}
+
 /* ========== 主内容体（标题栏 + 底部栏之间的区域）========== */
 .app-body {
     flex: 1;

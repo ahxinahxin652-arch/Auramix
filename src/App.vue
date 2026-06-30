@@ -70,13 +70,18 @@ const handleResize = () => {
 const canBack = ref(false)
 const canForward = ref(false)
 const refreshing = ref(false)
+const routerKey = ref(0)
+const isGlobalSyncing = ref(false)
 
 function refreshPage() {
   if (refreshing.value) return
   refreshing.value = true
   setTimeout(() => {
-    router.go(0)
-  }, 300)
+    routerKey.value++
+    setTimeout(() => {
+      refreshing.value = false
+    }, 500)
+  }, 50)
 }
 
 const updateNavButtons = () => {
@@ -136,6 +141,24 @@ onMounted(() => {
 
   // 初始化媒体库同步
   globalLibraryStore.initialize()
+  
+  // 监听全局同步快捷键 (Ctrl+R)
+  if (window.electronAPI && window.electronAPI.onAppSyncReload) {
+    window.electronAPI.onAppSyncReload(async () => {
+      if (isGlobalSyncing.value) return
+      isGlobalSyncing.value = true
+      refreshing.value = true
+      
+      try {
+        await globalLibraryStore.forceSync()
+      } catch (err) {
+        console.error('Global sync failed:', err)
+      } finally {
+        isGlobalSyncing.value = false
+        refreshPage() // Refresh central view
+      }
+    })
+  }
   
   window.addEventListener('resize', handleResize)
   handleResize()
@@ -262,6 +285,10 @@ function onSidebarAfterLeave() {
 </script>
 
 <template>
+  <div v-if="isGlobalSyncing" class="global-sync-overlay">
+    <div class="sync-spinner"></div>
+  </div>
+
   <!-- 歌词浮窗模式：无窗口修饰 -->
   <div v-if="currentRoute === 'LyricsWidget'" style="width: 100%; height: 100%;">
     <router-view />
@@ -421,7 +448,7 @@ function onSidebarAfterLeave() {
 
       <!-- 中心区域：路由视图，可滚动 -->
       <main class="main-view">
-        <router-view />
+        <router-view :key="routerKey" />
       </main>
 
       <!-- 右侧侧栏：滑出式 Spotify 风格面板，闭合时缩小为抽屉样式 -->

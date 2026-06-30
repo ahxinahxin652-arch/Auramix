@@ -432,4 +432,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 文件读取
   readFileAsBlob,
   fetchText: (url) => ipcRenderer.invoke('fetch-text', url),
+  // 自定义系统重载
+  onAppSyncReload: (callback) => ipcRenderer.on('app-sync-reload', callback),
 })

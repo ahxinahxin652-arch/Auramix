@@ -57,6 +57,31 @@ export const useLibraryStore = defineStore('library', {
         this.syncing = false
       }
     },
+    async forceSync() {
+      if (this.syncing) return
+      this.syncing = true
+      try {
+        if (window.electronAPI && window.electronAPI.syncLocalLibrary) {
+          const syncRes = await window.electronAPI.syncLocalLibrary()
+          if (syncRes.success && syncRes.data) {
+            this.playlists = syncRes.data.playlists || []
+            this.followedArtists = syncRes.data.followedArtists || []
+            this.subscribedPlaylists = syncRes.data.subscribedPlaylists || []
+            this.playlists.forEach(p => {
+              if (p.trackIds) p.trackIds = p.trackIds.map(String)
+            })
+            this.subscribedPlaylists.forEach(p => {
+              if (p.trackIds) p.trackIds = p.trackIds.map(String)
+            })
+          }
+        }
+        this.initialized = true
+      } catch (err) {
+        console.error('Failed to force sync library store:', err)
+      } finally {
+        this.syncing = false
+      }
+    },
     openSelector(trackId, x, y) {
       this.selectorTrackId = trackId
       this.selectorX = x

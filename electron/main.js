@@ -128,6 +128,14 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
+  // Intercept Ctrl+R to prevent default reload and send custom sync event
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if ((input.control || input.meta) && input.key.toLowerCase() === 'r') {
+      event.preventDefault()
+      mainWindow.webContents.send('app-sync-reload')
+    }
+  })
+
   // 关键：点击关闭按钮时隐藏到托盘，而不是关闭窗口
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
