@@ -26,7 +26,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/manage/member")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyAuthority('ROOT_ADMIN')")
+@PreAuthorize("hasAnyAuthority('ROOT_ADMIN') or hasAuthority('ADMIN')")
 public class AdminMemberMangeController {
 
     private final MemberPlanService memberPlanService;
