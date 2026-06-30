@@ -176,7 +176,11 @@ public class ReviewScheduleJob {
      * 重试卡在 status=0 (AI审核中) 超过 30 分钟的审核记录。
      * <p>
      * 异步审核可能因 LLM 调用异常、线程池拒绝等导致记录永久停在 status=0，
-     * 这里把超时的卡死记录对应 track 重新触发审核（triggerReview 会新插入一条记录）。
+     * 这里将超时的卡死记录<b>直接删除</b>（旧记录本身未产出任何业务结果，保留只会造成数据堆积），
+     * 并对该 track 重新触发审核（triggerReview 会新插入一条 status=0 的记录）。
+     * <p>
+     * 同一 trackId 的多条卡死记录只触发一次重试（分组后只调一次 triggerReview），
+     * 避免对同一首歌重复插入多条新记录。
      */
     private void retryStuckReviewRecords() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(30);
@@ -190,22 +194,29 @@ public class ReviewScheduleJob {
         }
 
         log.info("[定时审核] 发现 {} 条卡在 status=0 超过 30 分钟的审核记录，开始重试", stuckRecords.size());
-        int triggered = 0;
-        for (TrackReviewRecord r : stuckRecords) {
-            try {
-                // 将旧记录标记为失败(status=5)，避免下次再次扫描到
-                r.setStatus(5);
-                r.setFailReasons("审核超时未完成，由定时任务标记为失败并重试");
-                reviewRecordMapper.updateById(r);
 
-                // 重新触发审核（会新插入一条 status=0 的记录）
-                reviewService.triggerReview(r.getTrackId());
+        // 按 trackId 分组：同一首歌的多条卡死记录只触发一次重试
+        java.util.Map<Long, List<TrackReviewRecord>> groupedByTrack = stuckRecords.stream()
+                .collect(Collectors.groupingBy(TrackReviewRecord::getTrackId));
+
+        int triggered = 0;
+        for (java.util.Map.Entry<Long, List<TrackReviewRecord>> entry : groupedByTrack.entrySet()) {
+            Long trackId = entry.getKey();
+            List<TrackReviewRecord> records = entry.getValue();
+            try {
+                // 直接删除该歌曲的所有卡死记录（审核未完成且超时，旧记录无业务结果）
+                for (TrackReviewRecord r : records) {
+                    reviewRecordMapper.deleteById(r.getId());
+                }
+
+                // 重新触发审核（triggerReview 会新插入一条 status=0 的记录）
+                reviewService.triggerReview(trackId);
                 triggered++;
             } catch (Exception e) {
-                log.error("[定时审核] 重试卡死记录异常 recordId={} trackId={}", r.getId(), r.getTrackId(), e);
+                log.error("[定时审核] 重试卡死记录异常 trackId={} recordCount={}", trackId, records.size(), e);
             }
         }
-        log.info("[定时审核] 卡死记录重试完成，共 {} 条", triggered);
+        log.info("[定时审核] 卡死记录重试完成，共 {} 首歌", triggered);
     }
 }
 

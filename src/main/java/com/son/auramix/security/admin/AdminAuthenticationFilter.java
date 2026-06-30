@@ -46,6 +46,10 @@ public class AdminAuthenticationFilter extends OncePerRequestFilter {
     private static final Integer INTERNAL_ADMIN_ID = -1;
     private static final String INTERNAL_ADMIN_USERNAME = "internal-api";
 
+    /** SSE 流路径后缀，用于 query token 回退鉴权（EventSource 不支持自定义 Header） */
+    private static final String SSE_STREAM_SUFFIX = "/progress/stream";
+    private static final String QUERY_TOKEN_PARAM = "token";
+
     private final AdminTokenStore tokenStore;
     private final AuramixProperties auramixProperties;
 
@@ -117,11 +121,20 @@ public class AdminAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private String extractToken(HttpServletRequest request) {
+        // 1. 优先从 Header 取
         String header = request.getHeader(HEADER);
-        if (header == null || !header.startsWith(PREFIX)) {
-            return null;
+        if (header != null && header.startsWith(PREFIX)) {
+            String token = header.substring(PREFIX.length()).trim();
+            if (!token.isEmpty()) return token;
         }
-        String token = header.substring(PREFIX.length()).trim();
-        return token.isEmpty() ? null : token;
+        // 2. Header 缺失时，仅对 SSE 流路径回退到 query 参数
+        String uri = request.getRequestURI();
+        if (uri.endsWith(SSE_STREAM_SUFFIX)) {
+            String queryToken = request.getParameter(QUERY_TOKEN_PARAM);
+            if (StringUtils.hasText(queryToken)) {
+                return queryToken.trim();
+            }
+        }
+        return null;
     }
 }
