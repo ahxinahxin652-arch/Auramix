@@ -44,6 +44,26 @@ function playQueueTrack(track, indexOffset) {
     } 
   }))
 }
+
+function getArtistsArray(trackObj) {
+  if (!trackObj) return []
+  if (Array.isArray(trackObj.artists) && trackObj.artists.length > 0) return trackObj.artists;
+  if (typeof trackObj.artists === 'string' && trackObj.artists.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trackObj.artists);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      // ignore
+    }
+  }
+  return [];
+}
+
+function goToArtist(artistId) {
+  if (!artistId) return;
+  router.push(`/artist/${artistId}`);
+  emit('close');
+}
 </script>
 
 <template>
@@ -74,7 +94,17 @@ function playQueueTrack(track, indexOffset) {
         </div>
         <div class="track-info">
           <div class="track-name">{{ currentTrack.title || currentTrack.name }}</div>
-          <div class="track-artist">{{ currentTrack.artist }}</div>
+          <div class="track-artist">
+            <template v-if="getArtistsArray(currentTrack).length > 0">
+              <span v-for="(a, aIdx) in getArtistsArray(currentTrack)" :key="a.id">
+                <span class="hover-artist" @click.stop="goToArtist(a.id)">{{ a.name }}</span>
+                <span v-if="aIdx < getArtistsArray(currentTrack).length - 1">, </span>
+              </span>
+            </template>
+            <template v-else>
+              <span>{{ currentTrack.artist }}</span>
+            </template>
+          </div>
         </div>
         <div class="playing-indicator">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -97,7 +127,17 @@ function playQueueTrack(track, indexOffset) {
           </div>
           <div class="track-info">
             <div class="track-name">{{ t.title || t.name }}</div>
-            <div class="track-artist">{{ t.artist }}</div>
+            <div class="track-artist">
+              <template v-if="getArtistsArray(t).length > 0">
+                <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">
+                  <span class="hover-artist" @click.stop="goToArtist(a.id)">{{ a.name }}</span>
+                  <span v-if="aIdx < getArtistsArray(t).length - 1">, </span>
+                </span>
+              </template>
+              <template v-else>
+                <span>{{ t.artist }}</span>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -116,7 +156,17 @@ function playQueueTrack(track, indexOffset) {
           </div>
           <div class="track-info">
             <div class="track-name">{{ t.title || t.name }}</div>
-            <div class="track-artist">{{ t.artist }}</div>
+            <div class="track-artist">
+              <template v-if="getArtistsArray(t).length > 0">
+                <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">
+                  <span class="hover-artist" @click.stop="goToArtist(a.id)">{{ a.name }}</span>
+                  <span v-if="aIdx < getArtistsArray(t).length - 1">, </span>
+                </span>
+              </template>
+              <template v-else>
+                <span>{{ t.artist }}</span>
+              </template>
+            </div>
           </div>
         </div>
       </div>
@@ -256,7 +306,6 @@ function playQueueTrack(track, indexOffset) {
   border-radius: 4px;
   object-fit: cover;
   flex-shrink: 0;
-  margin-right: 12px;
 }
 
 .track-cover-placeholder {
@@ -311,5 +360,14 @@ function playQueueTrack(track, indexOffset) {
   color: #b3b3b3;
   font-size: 14px;
   padding: 40px 0;
+}
+
+.hover-artist {
+  cursor: pointer;
+}
+
+.hover-artist:hover {
+  text-decoration: underline;
+  color: #fff;
 }
 </style>

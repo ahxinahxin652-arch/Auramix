@@ -59,7 +59,20 @@ async function loadAlbumData() {
         albumType: album.albumType ?? 0,
         artists: album.artists || []
       }
-      tracks.value = album.tracks || []
+      tracks.value = (album.tracks || []).map(t => {
+        let artistsStr = t.artist
+        if (!artistsStr && t.artists && Array.isArray(t.artists)) {
+          artistsStr = t.artists.map(a => a.name).join(', ')
+        } else if (!artistsStr && album.artists) {
+          artistsStr = album.artists.map(a => a.name).join(', ')
+        }
+        return {
+          ...t,
+          cover: t.cover || t.coverUrl || album.coverUrl || '',
+          artist: artistsStr || '',
+          artists: t.artists || album.artists || []
+        }
+      })
     } else {
       ElMessage.error('加载专辑失败: ' + (result.message || '未知错误'))
     }

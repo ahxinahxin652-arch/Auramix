@@ -68,7 +68,18 @@ const loadArtistData = async () => {
         coverImg: artist.coverImg || '',
         metadata: parsedMetadata
       }
-      displayTracks.value = artist.tracks || []
+      displayTracks.value = (artist.tracks || []).map(t => {
+        let artistsStr = t.artist
+        if (!artistsStr && t.artists && Array.isArray(t.artists)) {
+          artistsStr = t.artists.map(a => a.name).join(', ')
+        }
+        return {
+          ...t,
+          cover: t.cover || t.coverUrl || artist.coverImg || '',
+          artist: artistsStr || artist.name || '',
+          artists: t.artists || [{ id: artist.id, name: artist.name }]
+        }
+      })
     } else {
       ElMessage.error('歌手加载失败: ' + (result.message || '未知错误'))
     }
