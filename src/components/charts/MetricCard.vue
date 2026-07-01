@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 <style scoped lang="scss">
 .metric-card {
-  background: $bg-card;
+  background: $bg-surface;
   border: 1px solid $border-base;
   border-radius: $radius-md;
   padding: $spacing-md $spacing-lg;
