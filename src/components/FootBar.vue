@@ -250,6 +250,7 @@ const SOURCE_TYPE_MAP = {
   artist: 2,
   search: 6,
   recommend: 3,
+  similar: 7,
 }
 
 // 格式化时间
@@ -287,6 +288,20 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
           playlist[index] = currentTrack
         }
         player.setTrack(currentTrack, playlist, index)
+        // 存储相似推荐曲目和推荐歌单
+        // 当来源非 similar 时始终更新（即使为空，清除旧数据）
+        // 当来源为 similar 时仅在非空时更新（避免清空原推荐数据）
+        if (contextParam !== 'similar') {
+          player.setSimilarTracks(resolved.data.similarTracks || [])
+          player.setSimilarPlaylists(resolved.data.similarPlaylists || [])
+        } else {
+          if (resolved.data.similarTracks && resolved.data.similarTracks.length > 0) {
+            player.setSimilarTracks(resolved.data.similarTracks)
+          }
+          if (resolved.data.similarPlaylists && resolved.data.similarPlaylists.length > 0) {
+            player.setSimilarPlaylists(resolved.data.similarPlaylists)
+          }
+        }
       }
     } catch (e) {
       // 解析失败，回退使用内存中的 track 数据

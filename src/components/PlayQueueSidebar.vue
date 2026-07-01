@@ -1,16 +1,19 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlayerStore } from '../stores/player.js'
 import { useLocalStorageStore } from '../stores/localStorage'
+import { useLibraryStore } from '../stores/library'
+import AddPlaylistIcon from './AddPlaylistIcon.vue'
 
 const emit = defineEmits(['close'])
 
 const player = usePlayerStore()
 const router = useRouter()
 const localStorageStore = useLocalStorageStore()
+const libraryStore = useLibraryStore()
 
-const activeTab = ref('queue') // 'queue' | 'history'
+const activeTab = ref('queue') // 'queue' | 'history' | 'similar'
 
 // 播放队列：当前播放
 const currentTrack = computed(() => player.currentTrack)
@@ -25,6 +28,17 @@ const nextTracks = computed(() => {
 // 最近播放
 const historyTracks = computed(() => {
   return [] // TODO: Integrate with backend history API or local history
+})
+
+// 相似推荐
+const similarTracksList = computed(() => player.similarTracks || [])
+
+// 推荐歌单（当相似曲目为空且当前来源非 similar 时展示）
+const similarPlaylistsList = computed(() => player.similarPlaylists || [])
+
+const showSimilarPlaylists = computed(() => {
+  const sourceType = player.playbackSource?.type
+  return similarTracksList.value.length === 0 && similarPlaylistsList.value.length > 0 && sourceType !== 'similar'
 })
 
 function formatTime(seconds) {
@@ -46,6 +60,21 @@ function playQueueTrack(track, indexOffset) {
   }))
 }
 
+function playSimilarTrack(track, index) {
+  window.dispatchEvent(new CustomEvent('play-track', { 
+    detail: { 
+      track, 
+      playlist: similarTracksList.value, 
+      index,
+      source: { type: 'similar', name: '相似推荐' }
+    } 
+  }))
+}
+
+function addSimilarToPlaylist(track, event) {
+  libraryStore.openSelector(track.id, event.clientX, event.clientY)
+}
+
 function getArtistsArray(trackObj) {
   if (!trackObj) return []
   if (Array.isArray(trackObj.artists) && trackObj.artists.length > 0) return trackObj.artists;
@@ -64,6 +93,24 @@ function goToArtist(artistId) {
   if (!artistId) return;
   router.push(`/artist/${artistId}`);
 }
+
+function goToPlaylist(playlistId) {
+  if (!playlistId) return
+  router.push(`/warehouse/${playlistId}`)
+}
+
+// 监听歌单曲目变更，刷新歌单数据以反映最新状态
+function onPlaylistTrackToggled() {
+  libraryStore.forceSync()
+}
+
+onMounted(() => {
+  window.addEventListener('playlist-track-toggled', onPlaylistTrackToggled)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('playlist-track-toggled', onPlaylistTrackToggled)
+})
 </script>
 
 <template>
@@ -72,6 +119,7 @@ function goToArtist(artistId) {
       <div class="tabs">
         <button class="tab-btn" :class="{ active: activeTab === 'queue' }" @click="activeTab = 'queue'">Queue</button>
         <button class="tab-btn" :class="{ active: activeTab === 'history' }" @click="activeTab = 'history'">Recently played</button>
+        <button class="tab-btn" :class="{ active: activeTab === 'similar' }" @click="activeTab = 'similar'">Similar</button>
       </div>
       <button class="btn-sidebar-close" @click="emit('close')" title="关闭">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -172,6 +220,63 @@ function goToArtist(artistId) {
       </div>
       <div v-else class="empty-state">
         <p>No recent tracks</p>
+      </div>
+    </div>
+
+    <div class="queue-content" v-if="activeTab === 'similar'">
+      <div v-if="similarTracksList.length > 0" class="track-list">
+        <div class="track-item similar-item" v-for="(t, index) in similarTracksList" :key="t.id + '-' + index" @dblclick="playSimilarTrack(t, index)">
+          <img v-if="t.cover" :src="t.cover" class="track-cover" />
+          <div v-else class="track-cover-placeholder">
+             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 18V5l12-2v13"></path>
+              <circle cx="6" cy="18" r="3"></circle>
+              <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div class="track-info">
+            <div class="track-name">{{ t.title || t.name }}</div>
+            <div class="track-artist">
+              <template v-if="getArtistsArray(t).length > 0">
+                <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">
+                  <span class="hover-artist" @click.stop="goToArtist(a.id)">{{ a.name }}</span>
+                  <span v-if="aIdx < getArtistsArray(t).length - 1">, </span>
+                </span>
+              </template>
+              <template v-else>
+                <span>{{ t.artist }}</span>
+              </template>
+            </div>
+          </div>
+          <button
+            class="similar-playlist-btn"
+            :class="{ 'is-saved': libraryStore.isSavedToAnyPlaylist(t.id) }"
+            @click.stop="addSimilarToPlaylist(t, $event)"
+            title="添加到歌单"
+          >
+            <AddPlaylistIcon :isSaved="libraryStore.isSavedToAnyPlaylist(t.id)" />
+          </button>
+        </div>
+      </div>
+      <div v-else-if="showSimilarPlaylists" class="playlist-list">
+        <div class="section-title">推荐歌单</div>
+        <div class="track-item playlist-item" v-for="pl in similarPlaylistsList" :key="pl.id" @click="goToPlaylist(pl.id)">
+          <img v-if="pl.coverUrl" :src="pl.coverUrl" class="track-cover" />
+          <div v-else class="track-cover-placeholder playlist-cover-placeholder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path d="M9 18V5l12-2v13"></path>
+              <circle cx="6" cy="18" r="3"></circle>
+              <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div class="track-info">
+            <div class="track-name">{{ pl.name }}</div>
+            <div class="track-artist">{{ pl.trackCount || 0 }} 首曲目</div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-state">
+        <p>No similar tracks</p>
       </div>
     </div>
   </div>
@@ -369,5 +474,54 @@ function goToArtist(artistId) {
 .hover-artist:hover {
   text-decoration: underline;
   color: #fff;
+}
+
+.similar-item {
+  position: relative;
+}
+
+.similar-playlist-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b3b3b3;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s, background-color 0.2s;
+}
+
+.similar-item:hover .similar-playlist-btn {
+  opacity: 1;
+}
+
+.similar-playlist-btn:hover {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.similar-playlist-btn.is-saved {
+  opacity: 1;
+  color: #9333ea;
+}
+
+.playlist-item {
+  cursor: pointer;
+}
+
+.playlist-item:hover .track-name {
+  color: #fff;
+}
+
+.playlist-cover-placeholder {
+  background: linear-gradient(135deg, #1db954 0%, #1ed760 100%);
 }
 </style>

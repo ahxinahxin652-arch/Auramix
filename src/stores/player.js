@@ -29,6 +29,8 @@ export const usePlayerStore = defineStore('player', () => {
   const currentLyrics = ref('')          // 当前歌词
   const lyricsUrl = ref('')              // 歌词文件 URL
   const playbackSource = ref(null)       // 播放来源 context: { type: 'playlist'|'album'|'artist'|'search', id: string, name: string, route: string }
+  const similarTracks = ref([])           // 相似推荐曲目列表（由后端播放响应返回）
+  const similarPlaylists = ref([])        // 相似推荐歌单列表（当无相似曲目时展示）
 
   // 随机播放历史（用于随机模式下的"上一首"功能）
   const shuffleHistory = ref([])
@@ -117,6 +119,14 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setLyricsUrl(val) {
     lyricsUrl.value = val
+  }
+
+  function setSimilarTracks(tracks) {
+    similarTracks.value = Array.isArray(tracks) ? tracks : []
+  }
+
+  function setSimilarPlaylists(playlists) {
+    similarPlaylists.value = Array.isArray(playlists) ? playlists : []
   }
 
   /**
@@ -347,6 +357,8 @@ export const usePlayerStore = defineStore('player', () => {
     currentTime.value = 0
     duration.value = 0
     currentLyrics.value = ''
+    similarTracks.value = []
+    similarPlaylists.value = []
     shuffleHistory.value = []
     shuffleHistoryIndex.value = -1
   }
@@ -367,6 +379,8 @@ export const usePlayerStore = defineStore('player', () => {
     currentLyrics,
     lyricsUrl,
     playbackSource,
+    similarTracks,
+    similarPlaylists,
     // 计算属性
     hasPrev,
     hasNext,
@@ -389,5 +403,7 @@ export const usePlayerStore = defineStore('player', () => {
     reset,
     setCurrentLyrics,
     setLyricsUrl,
+    setSimilarTracks,
+    setSimilarPlaylists,
   }
 })

@@ -224,7 +224,47 @@ async function resolveTrackById(trackId, token, contextType, contextId, duration
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
-        return ApiResult.ok({ track })
+
+        // 提取相似推荐曲目和推荐歌单（仅当 context != 'similar' 时后端返回）
+        let similarTracks = []
+        let similarPlaylists = []
+        if (context !== 'similar') {
+          if (Array.isArray(t.similarTracks) && t.similarTracks.length > 0) {
+            similarTracks = t.similarTracks.map(st => {
+              const audioUrl = st.audioUrl || ''
+              const ext = audioUrl.split('.').pop().toLowerCase().split('?')[0]
+              return {
+                id: String(st.trackId),
+                title: st.title || '',
+                name: st.title || '',
+                artist: (st.artists || []).map(a => a.name).join(' / '),
+                album: st.albumTitle || 'Unknown Album',
+                cover: st.coverUrl || '',
+                duration: st.duration ? st.duration : 0,
+                path: audioUrl,
+                format: ext || 'mp3',
+                artists: JSON.stringify((st.artists || []).map(a => ({
+                  id: a.id,
+                  name: a.name,
+                  role: a.role === 1 ? 'Featuring' : (a.role === 2 ? 'Composer/Songwriter' : 'Main Artist')
+                }))),
+                score: st.score,
+                sources: st.sources || []
+              }
+            })
+          }
+          if (Array.isArray(t.similarPlaylists) && t.similarPlaylists.length > 0) {
+            similarPlaylists = t.similarPlaylists.map(sp => ({
+              id: String(sp.playlistId || sp.id),
+              name: sp.name || sp.title || '',
+              coverUrl: sp.coverUrl || '',
+              trackCount: sp.trackCount || 0,
+              description: sp.description || ''
+            }))
+          }
+        }
+
+        return ApiResult.ok({ track, similarTracks, similarPlaylists })
       }
     } catch (err) {
       console.error('[MusicService] Failed to fetch remote track detail, fallback to local', err)
