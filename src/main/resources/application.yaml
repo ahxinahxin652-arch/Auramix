@@ -47,7 +47,7 @@ spring:
     redis:
       host: localhost
       port: 6379
-      password:
+      password: 123456
       database: 0
       timeout: 5s
       lettuce:
@@ -64,7 +64,8 @@ spring:
       model: qwen-plus
       chat:
         options:
-          temperature: 0.3
+          # 审核任务追求一致性，降低随机性；维度/裁决 agent 共用此默认值
+          temperature: 0.1
 
   # ============================ Jackson ============================
   jackson:
@@ -77,7 +78,6 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     banner: false
     db-config:
@@ -92,7 +92,6 @@ logging:
   level:
     root: info
     com.son.auramix: debug
-    com.son.auramix.mapper: debug
   pattern:
     console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} : %m%n"
 
@@ -124,3 +123,6 @@ auramix:
   # 内部 API Key — 用于桌面端 Express Server → Java 后端之间的服务间调用
   # 桌面端通过 X-Internal-Api-Key 请求头传递此密钥，绕过 Admin JWT 认证
   internal-api-key: auramix-desktop-internal-key-2026
+  # Python 脚本路径
+  audio:
+    script-path: E:\Auramix\backend\auramix\scripts\audio_analyzer.py

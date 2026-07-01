@@ -43,6 +43,9 @@ public class TrackReviewRecord implements Serializable {
     /** 4+1 个 agent 的完整 JSON 输出 */
     private String agentResults;
 
+    /** AI 审核过程进度轨迹 JSON；审核中实时增量更新，完成后保留供事后回放 */
+    private String progressJson;
+
     /** 处理状态: 0=AI审核中, 1=AI审核完成待自动处理, 2=已自动处理, 3=待人工确认, 4=人工已确认, 5=失败/异常 */
     private Integer status;
 

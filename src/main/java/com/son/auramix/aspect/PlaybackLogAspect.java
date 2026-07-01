@@ -1,12 +1,14 @@
 package com.son.auramix.aspect;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.son.auramix.annotation.AfterLog;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
 import com.son.auramix.domain.entity.PlaybackHistory;
+import com.son.auramix.domain.entity.Track;
 import com.son.auramix.mapper.PlaybackHistoryMapper;
+import com.son.auramix.mapper.TrackMapper;
 import com.son.auramix.security.user.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
@@ -23,10 +25,16 @@ import java.lang.reflect.Parameter;
 @Slf4j
 @Aspect
 @Component
-@RequiredArgsConstructor
 public class PlaybackLogAspect {
 
     private final PlaybackHistoryMapper playbackHistoryMapper;
+    private final TrackMapper trackMapper;
+
+    public PlaybackLogAspect(PlaybackHistoryMapper playbackHistoryMapper,
+                             TrackMapper trackMapper) {
+        this.playbackHistoryMapper = playbackHistoryMapper;
+        this.trackMapper = trackMapper;
+    }
 
     @Pointcut("@annotation(com.son.auramix.annotation.AfterLog)")
     public void afterLogPointcut() {}
@@ -76,6 +84,9 @@ public class PlaybackLogAspect {
 
             // 5. 写入数据库
             playbackHistoryMapper.insert(history);
+
+            // 6. 递增 tracks 表中的 play_count
+            incrementPlayCount(trackId);
 
             log.debug("[播放历史] 已记录 userId={}, trackId={}, contextType={}, contextId={}",
                     userId, trackId, history.getContextType(), history.getContextId());
@@ -160,5 +171,20 @@ public class PlaybackLogAspect {
             }
         }
         return null;
+    }
+
+    /**
+     * 原子递增 tracks 表中的 play_count（play_count = play_count + 1）
+     */
+    private void incrementPlayCount(Long trackId) {
+        try {
+            LambdaUpdateWrapper<Track> wrapper = new LambdaUpdateWrapper<>();
+            wrapper.setSql("play_count = play_count + 1")
+                   .eq(Track::getId, trackId);
+            trackMapper.update(wrapper);
+        } catch (Exception e) {
+            // 播放计数递增失败不影响主流程
+            log.error("[播放计数] 递增失败 trackId={}", trackId, e);
+        }
     }
 }

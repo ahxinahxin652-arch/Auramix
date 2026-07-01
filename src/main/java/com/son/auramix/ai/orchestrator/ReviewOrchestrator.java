@@ -1,104 +1,176 @@
 package com.son.auramix.ai.orchestrator;
 
-import com.son.auramix.ai.agent.*;
+import com.son.auramix.ai.agent.DimensionAgent;
+import com.son.auramix.ai.agent.ReviewAgentSorter;
+import com.son.auramix.ai.agent.ReviewJudgeAgent;
+import com.son.auramix.ai.aggregator.AgentResultsAggregator;
 import com.son.auramix.ai.dto.AgentResult;
 import com.son.auramix.ai.dto.ReviewContext;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import com.son.auramix.ai.progress.ProgressEvent;
+import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
+import com.son.auramix.ai.progress.ReviewProgressStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
- * 流水线编排：4 维度 agent 串行执行 → 裁决 agent 汇总
+ * 流水线编排：注入 List<DimensionAgent>（Spring 按 @Order 自动收集），
+ * 4 维度 CompletableFuture.supplyAsync 并行执行 → 串行裁决 → 委派 Aggregator 拼 JSON。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ReviewOrchestrator {
 
-    private final PoliticalSensitivityAgent politicalSensitivityAgent;
-    private final ViolenceTerrorAgent violenceTerrorAgent;
-    private final ExplicitContentAgent explicitContentAgent;
-    private final AntiSocialAgent antiSocialAgent;
+    /** Spring 自动注入 List<DimensionAgent>（按 @Order 升序） */
+    private final List<DimensionAgent> dimensionAgents;
     private final ReviewJudgeAgent reviewJudgeAgent;
+    private final AgentResultsAggregator aggregator;
+    /** 复用 AsyncConfig 中的 reviewTaskExecutor Bean */
+    @Qualifier("reviewTaskExecutor")
+    private final Executor reviewTaskExecutor;
+    private final ReviewAgentSorter sorter;
+    private final ReviewProgressStore progressStore;
+    private final ReviewProgressSseRegistry sseRegistry;
 
     /**
-     * 流水线执行结果，包含 4 维度结果和最终裁决
+     * 执行审核流水线，返回完整结果（维度结果 + 最终裁决 + agent_results JSON）。
      */
-    @Data
-    @AllArgsConstructor
+    public PipelineResult execute(ReviewContext ctx, Long recordId) {
+        log.info("[AI审核] trackId={} 流水线开始（4维度并行）", ctx.getTrackId());
+
+        // 0) 防御性排序：Spring 已按 @Order 排序，但显式调用 sorter 保持行为一致
+        List<DimensionAgent> sortedAgents = sorter.sort(dimensionAgents);
+
+        // 0.1) 初始化进度骨架 + 推 STARTED 事件
+        try {
+            progressStore.initProgress(recordId, ctx.getTrackId(), ctx.getTrackTitle(), sortedAgents);
+            sseRegistry.send(recordId, ProgressEvent.started(recordId, ctx.getTrackId(),
+                ctx.getTrackTitle(), sortedAgents));
+        } catch (Exception e) {
+            log.warn("[AI审核] trackId={} initProgress/STARTED 异常，继续执行", ctx.getTrackId(), e);
+        }
+
+        // 1) 4 维度并行：AbstractDimensionAgent.review 内部已有 try-catch 兜底，
+        //    但 mock 出来的 DimensionAgent / 边缘 NPE 等场景可能在 review() 阶段直接抛；
+        //    这里再加一层保护：单个 agent 异常不会让整条流水线崩，
+        //    转成 verdict=FAIL / confidence=0 的占位结果继续走。
+        List<CompletableFuture<AgentResult>> futures = sortedAgents.stream()
+            .map(agent -> CompletableFuture.supplyAsync(
+                () -> {
+                    String name;
+                    try {
+                        name = agent.getName();
+                    } catch (Exception ignored) {
+                        name = agent.getClass().getSimpleName();
+                    }
+                    // 维度开始：置 RUNNING + 写 startedAt + 推 DIMENSION_STARTED
+                    try {
+                        progressStore.dimensionStarted(recordId, name);
+                        sseRegistry.send(recordId, ProgressEvent.dimensionStarted(recordId, ctx.getTrackId(), name));
+                    } catch (Exception ex) {
+                        log.warn("[AI审核] trackId={} dimensionStarted 推送异常，继续", ctx.getTrackId(), ex);
+                    }
+                    AgentResult r;
+                    try {
+                        r = agent.review(ctx);
+                        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
+                            ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
+                    } catch (Exception e) {
+                        log.error("[AI审核] trackId={} agent={} review 异常，转 FAIL 占位", ctx.getTrackId(), name, e);
+                        r = AgentResult.builder()
+                            .agentName(name)
+                            .verdict("FAIL")
+                            .confidence(0)
+                            .reason("agent调用异常: " + e.getClass().getSimpleName() + " - " + e.getMessage())
+                            .build();
+                    }
+                    // 无论成功/异常，都推送 DIMENSION_DONE
+                    try {
+                        progressStore.dimensionDone(recordId, r);
+                        sseRegistry.send(recordId, ProgressEvent.dimensionDone(recordId, ctx.getTrackId(), r));
+                    } catch (Exception ex) {
+                        log.warn("[AI审核] trackId={} dimensionDone 推送异常，继续", ctx.getTrackId(), ex);
+                    }
+                    return r;
+                },
+                reviewTaskExecutor))
+            .toList();
+
+        // 2) 阻塞汇合：保留 @Order 顺序
+        List<AgentResult> dims = futures.stream()
+            .map(CompletableFuture::join)
+            .toList();
+
+        // 2.5) PENDING 短路：任一维度异常降级为 PENDING → 整体直接 PENDING，跳过 judge 调用，
+        //      避免异常维度污染裁决结果，配合 ReviewServiceImpl 的 confidence<80 走 status=3 人工确认
+        boolean hasPending = dims.stream().anyMatch(AgentResult::isPending);
+        AgentResult finalResult;
+        if (hasPending) {
+            List<AgentResult> pendingDims = dims.stream().filter(AgentResult::isPending).toList();
+            String pendingNames = pendingDims.stream()
+                    .map(AgentResult::getAgentName)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("unknown");
+            String reasons = pendingDims.stream()
+                    .map(AgentResult::getReason)
+                    .filter(r -> r != null && !r.isBlank())
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("维度异常转人工");
+            finalResult = AgentResult.builder()
+                    .agentName("ReviewJudge")
+                    .verdict("PENDING")
+                    .confidence(0)
+                    .reason("维度[" + pendingNames + "]异常，转人工确认: " + reasons)
+                    .analysis("短路：维度异常，跳过裁决")
+                    .build();
+            log.warn("[AI审核] trackId={} 检测到维度 PENDING({})，整体降级 PENDING 转人工",
+                    ctx.getTrackId(), pendingNames);
+        } else {
+            // 3) 裁决 agent 汇总（串行）
+            // 3.0) 推 JUDGE_STARTED：让前端展示"正在裁决汇总..."
+            try {
+                progressStore.judgeStarted(recordId);
+                sseRegistry.send(recordId, ProgressEvent.judgeStarted(recordId, ctx.getTrackId()));
+            } catch (Exception e) {
+                log.warn("[AI审核] trackId={} judgeStarted 推送异常，继续", ctx.getTrackId(), e);
+            }
+            finalResult = reviewJudgeAgent.judge(ctx, dims);
+        }
+        log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={}",
+            ctx.getTrackId(), finalResult.getVerdict(), finalResult.getConfidence());
+
+        // 3.1) 推 JUDGE_DONE 事件
+        try {
+            progressStore.judgeDone(recordId, finalResult);
+            sseRegistry.send(recordId, ProgressEvent.judgeDone(recordId, ctx.getTrackId(), finalResult));
+        } catch (Exception e) {
+            log.warn("[AI审核] trackId={} judgeDone 推送异常，继续", ctx.getTrackId(), e);
+        }
+
+        // 4) 委派 Aggregator 拼 agent_results JSON
+        String agentResultsJson;
+        try {
+            agentResultsJson = aggregator.build(dims, finalResult);
+        } catch (Exception e) {
+            log.error("[AI审核] trackId={} Aggregator 序列化失败，使用空 JSON", ctx.getTrackId(), e);
+            agentResultsJson = "{}";
+        }
+
+        return new PipelineResult(dims, finalResult, agentResultsJson);
+    }
+
+    @lombok.Data
+    @lombok.AllArgsConstructor
     public static class PipelineResult {
         private List<AgentResult> dimensionResults;
         private AgentResult finalResult;
-    }
-
-    /**
-     * 执行审核流水线，返回完整结果（维度结果 + 最终裁决）
-     */
-    public PipelineResult execute(ReviewContext ctx) {
-        List<AgentResult> dimensionResults = new ArrayList<>();
-
-        // 4 维度 agent 串行执行
-        log.info("[AI审核] trackId={} 流水线开始", ctx.getTrackId());
-
-        AgentResult r1 = politicalSensitivityAgent.review(ctx);
-        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
-                ctx.getTrackId(), r1.getAgentName(), r1.getVerdict(), r1.getConfidence());
-        dimensionResults.add(r1);
-
-        AgentResult r2 = violenceTerrorAgent.review(ctx);
-        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
-                ctx.getTrackId(), r2.getAgentName(), r2.getVerdict(), r2.getConfidence());
-        dimensionResults.add(r2);
-
-        AgentResult r3 = explicitContentAgent.review(ctx);
-        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
-                ctx.getTrackId(), r3.getAgentName(), r3.getVerdict(), r3.getConfidence());
-        dimensionResults.add(r3);
-
-        AgentResult r4 = antiSocialAgent.review(ctx);
-        log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
-                ctx.getTrackId(), r4.getAgentName(), r4.getVerdict(), r4.getConfidence());
-        dimensionResults.add(r4);
-
-        // 裁决 agent 汇总
-        AgentResult finalResult = reviewJudgeAgent.judge(ctx, dimensionResults);
-        log.info("[AI审核] trackId={} 最终裁决 verdict={} confidence={}",
-                ctx.getTrackId(), finalResult.getVerdict(), finalResult.getConfidence());
-
-        return new PipelineResult(dimensionResults, finalResult);
-    }
-
-    /**
-     * 构建所有 agent 结果的完整 JSON（用于持久化）
-     */
-    public String buildAgentResultsJson(List<AgentResult> dimensionResults, AgentResult judgeResult) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\"dimensions\":[");
-        for (int i = 0; i < dimensionResults.size(); i++) {
-            AgentResult ar = dimensionResults.get(i);
-            if (i > 0) sb.append(",");
-            sb.append("{\"agentName\":\"").append(ar.getAgentName()).append("\"");
-            sb.append(",\"verdict\":\"").append(ar.getVerdict()).append("\"");
-            sb.append(",\"confidence\":").append(ar.getConfidence());
-            sb.append(",\"reason\":").append(ar.getReason() != null ? "\"" + escapeJson(ar.getReason()) + "\"" : "null");
-            sb.append("}");
-        }
-        sb.append("],\"judge\":{");
-        sb.append("\"agentName\":\"").append(judgeResult.getAgentName()).append("\"");
-        sb.append(",\"verdict\":\"").append(judgeResult.getVerdict()).append("\"");
-        sb.append(",\"confidence\":").append(judgeResult.getConfidence());
-        sb.append(",\"failReasons\":").append(judgeResult.getReason() != null ? "\"" + escapeJson(judgeResult.getReason()) + "\"" : "null");
-        sb.append("}}");
-        return sb.toString();
-    }
-
-    private String escapeJson(String text) {
-        if (text == null) return "";
-        return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
+        /** agent_results JSON 字符串（含 dimensionSummary + dimensions + judge） */
+        private String agentResultsJson;
     }
 }

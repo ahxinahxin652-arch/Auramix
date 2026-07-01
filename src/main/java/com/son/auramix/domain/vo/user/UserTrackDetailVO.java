@@ -18,4 +18,7 @@ public class UserTrackDetailVO {
     private String format;
     private Long size;
     private String audioUrl;
+
+    /** 上下文不为 "similar" 时返回的相似推荐歌单 */
+    private List<RecommendTrackVO> similarTracks;
 }
