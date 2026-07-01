@@ -71,6 +71,16 @@ const routes = [
     name: 'AiChat',
     component: () => import('../views/AiChatView.vue'),
   },
+  {
+    path: '/reports',
+    name: 'Reports',
+    component: () => import('../views/ReportsView.vue'),
+  },
+  {
+    path: '/reports/:id',
+    name: 'ReportDetail',
+    component: () => import('../views/ReportDetailView.vue'),
+  },
 ]
 
 const router = createRouter({
