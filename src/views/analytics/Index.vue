@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Refresh, Download, Histogram } from '@element-plus/icons-vue'
+import { Refresh, Download, Histogram, FullScreen } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader.vue'
 import EChart from '@/components/charts/EChart.vue'
 import MetricCard from '@/components/charts/MetricCard.vue'
@@ -61,6 +61,10 @@ function handleExport() {
   window.open(url, '_blank')
 }
 
+function handleCast() {
+  window.open('/cast/overview', '_blank')
+}
+
 onMounted(() => load(false))
 </script>
 
@@ -73,6 +77,7 @@ onMounted(() => load(false))
         </el-select>
         <el-button :icon="Refresh" @click="() => load(true)">刷新</el-button>
         <el-button type="primary" :icon="Download" @click="handleExport">导出</el-button>
+        <el-button type="warning" :icon="FullScreen" @click="handleCast">投屏大屏</el-button>
       </template>
     </PageHeader>
 
