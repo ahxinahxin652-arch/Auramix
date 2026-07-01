@@ -9,6 +9,7 @@ import {
   createTrack,
   updateTrack,
   deleteTrack,
+  analyzeAllAudio,
   type TrackListItem,
   type TrackDetail,
   type TrackArtist,
@@ -50,6 +51,7 @@ const activeTab = ref('basic')
 const isEdit = ref(false)
 const editingId = ref<string>('')
 const submitLoading = ref(false)
+const analyzeLoading = ref(false)
 
 // ---- Genre Drawer State ----
 const genreDrawerVisible = ref(false)
@@ -614,6 +616,29 @@ function handleDelete(row: TrackListItem) {
     .catch(() => {})
 }
 
+async function handleAnalyzeAudio() {
+  analyzeLoading.value = true
+  try {
+    const result = await analyzeAllAudio()
+    ElMessageBox.alert(
+      `分析完成！共 <b>${result.total}</b> 首音频，成功 <b>${result.success}</b> 首` +
+      (result.fail > 0 ? `，失败 <b>${result.fail}</b> 首` : '') +
+      (result.skipped > 0 ? `，跳过 <b>${result.skipped}</b> 首` : '') +
+      '。',
+      '音频分析',
+      {
+        confirmButtonText: '知道了',
+        dangerouslyUseHTMLString: true,
+        type: 'success',
+      },
+    )
+  } catch (err) {
+    console.error('音频分析失败:', err)
+  } finally {
+    analyzeLoading.value = false
+  }
+}
+
 // ---- Quick Album Creation ----
 function openQuickAlbumDialog() {
   quickAlbumVisible.value = true
@@ -718,6 +743,9 @@ onMounted(() => {
   <div class="page-song">
     <PageHeader title="歌曲管理" subtitle="管理 Auramix 流媒体音乐平台的所有歌曲、音视频资源与歌词">
       <template #actions>
+        <el-button type="warning" :icon="Headset" :loading="analyzeLoading" @click="handleAnalyzeAudio">
+          {{ analyzeLoading ? '正在分析...' : '分析音频' }}
+        </el-button>
         <el-button type="primary" class="gradient-btn" @click="openCreateDrawer">
           <el-icon><Plus /></el-icon>
           新建歌曲

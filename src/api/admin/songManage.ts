@@ -81,3 +81,14 @@ export function deleteTrack(id: string): Promise<void> {
   return request.delete<unknown, void>(`/admin/manage/tracks/${id}`)
 }
 
+export interface AnalyzeAudioResult {
+  total: number
+  success: number
+  fail: number
+  skipped: number
+}
+
+export function analyzeAllAudio(): Promise<AnalyzeAudioResult> {
+  return request.post<unknown, AnalyzeAudioResult>('/admin/audio-feature/analyze-all')
+}
+
