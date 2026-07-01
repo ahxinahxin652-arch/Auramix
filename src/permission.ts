@@ -16,9 +16,9 @@ export function setupPermissionGuard(router: Router) {
       return { path: '/login', query: { redirect: to.fullPath } }
     }
 
-    // 2. 已登录访问 /login → 跳 /home
+    // 2. 已登录访问 /login → 跳 /analytics/overview
     if (to.path === '/login' && auth.isLoggedIn) {
-      return { path: '/home' }
+      return { path: '/analytics/overview' }
     }
 
     // 3. 受保护页 + 已登录 + 无 profile → 拉一次 /me
