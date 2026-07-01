@@ -322,7 +322,11 @@ function formatTime(seconds) {
 }
 
 // 播放曲目
+let currentPlayId = 0
+
 async function playTrack(track, playlist = [], index = -1, source = null) {
+  const playId = ++currentPlayId
+
   stopCurrent()
   player.setTrack(track, playlist, index, source)
 
@@ -341,6 +345,8 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     try {
       const durationParam = track.duration != null ? Math.floor(track.duration) : 0
       const resolved = await window.electronAPI.resolveTrackById(track.id, contextType, contextId, durationParam, contextParam)
+      if (playId !== currentPlayId) return
+      
       if (resolved.success && resolved.data && resolved.data.track) {
         currentTrack = resolved.data.track
         // 同步更新 playlist 中对应的 track 对象
@@ -394,6 +400,7 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     handleLyricsUrl(currentTrack.lyrics)
   } else {
     window.electronAPI.getFileMetadata(currentTrack.path).then(res => {
+      if (playId !== currentPlayId) return
       if (res.success && res.data) {
         handleLyricsUrl(res.data.lyrics || '')
       }
@@ -407,8 +414,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     let audioBlob
     try {
       audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
+      if (playId !== currentPlayId) return
     } catch (err) {
-      console.error('鐠囪褰囬棅鎶筋暥閺傚洣娆㈡径杈Е:', err)
+      console.error('读取本地文件失败:', err)
       player.setPlaying(false)
       return
     }
@@ -417,6 +425,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
 
   // 读取真实的后缀名
   const fileExtension = currentTrack.path.split('.').pop().toLowerCase()
+
+  player.setCurrentTime(0)
+  player.setPlaying(false)
 
   howl = new Howl({
     src: [currentBlobUrl],
@@ -438,19 +449,19 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
       handleTrackEnd()
     },
     onload: () => {
+      if (playId !== currentPlayId) return
       player.setDuration(howl.duration())
+      howl.play()
     },
     onloaderror: (id, err) => {
-      console.error('閸旂姾娴囨径杈Е:', err)
+      console.error('加载音频失败:', err)
       player.setPlaying(false)
     },
     onplayerror: (id, err) => {
-      console.error('閹绢厽鏂佹径杈Е:', err)
+      console.error('播放音频失败:', err)
       player.setPlaying(false)
     },
   })
-
-  howl.play()
 
   // 启动 VIP 试听限制检查（非会员播放会员歌曲时仅可试听 30s）
   startVipPreviewCheck(currentTrack)
@@ -556,7 +567,7 @@ function onProgressDrag(e) {
   if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) {
     seekTime = VIP_PREVIEW_LIMIT
   }
-  howl.seek(seekTime)
+  // 拖动时仅更新状态，不调用 howl.seek 避免杂音
   player.setCurrentTime(seekTime)
 }
 
@@ -564,6 +575,11 @@ function stopProgressDrag() {
   isDragging.value = false
   document.removeEventListener('mousemove', onProgressDrag)
   document.removeEventListener('mouseup', stopProgressDrag)
+  
+  // 停止拖动时再执行 seek
+  if (howl && player.duration) {
+    howl.seek(player.currentTime)
+  }
 }
 
 // 音量
