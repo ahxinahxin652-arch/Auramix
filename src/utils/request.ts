@@ -52,7 +52,7 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   (response) => {
     const res = response.data as ApiResponse
-    if (res.code === 200) {
+    if (res.code === 200 || res.code === 0) {
       return res.data as any
     }
 

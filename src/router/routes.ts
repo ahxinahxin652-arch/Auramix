@@ -61,6 +61,12 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true, title: '会员权益管理' },
       },
       {
+        path: 'scene',
+        name: 'SceneTag',
+        component: () => import('@/views/scene/Index.vue'),
+        meta: { requiresAuth: true, title: '场景标签' },
+      },
+      {
         path: 'approval',
         name: 'Approval',
         component: () => import('@/views/approval/Index.vue'),
