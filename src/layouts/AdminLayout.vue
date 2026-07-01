@@ -84,7 +84,7 @@ interface MenuItem {
 }
 
 const allMenus: MenuItem[] = [
-  { path: '/home', label: '主页', icon: House },
+  { path: '/analytics', label: '数据分析', icon: DataLine },
   { path: '/admin', label: '管理员管理', icon: UserFilled, rootOnly: true },
   { path: '/user', label: '用户管理', icon: User },
   { path: '/genre', label: '流派管理', icon: PriceTag },
@@ -94,7 +94,6 @@ const allMenus: MenuItem[] = [
   { path: '/member', label: '会员管理', icon: GoldMedal },
   { path: '/scene', label: '场景标签', icon: PriceTag },
   { path: '/approval', label: '智能审批', icon: CircleCheck },
-  { path: '/analytics', label: '数据分析', icon: DataLine },
   { path: '/admin-reports', label: '报告管理', icon: Document },
 ]
 
