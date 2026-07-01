@@ -1,9 +1,13 @@
 <template>
-  <div class="ai-chat-container">
-    <!-- 左侧会话历史侧边栏 -->
-    <div class="ai-sidebar">
+  <div class="ai-chat-container" ref="containerRef">
+    <!-- 左侧会话历史侧边栏（中心区域过小时隐藏） -->
+    <div
+      v-show="showAiSidebar"
+      class="ai-sidebar"
+      :style="{ width: aiSidebarWidth + 'px', minWidth: aiSidebarWidth + 'px' }"
+    >
       <div class="sidebar-header">
-        <h2 class="sidebar-title">AI Chat</h2>
+        <h2 class="sidebar-title">Auramix Agent</h2>
         <button class="new-chat-btn" @click="startNewSession" title="新建对话">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -32,6 +36,13 @@
         </div>
       </div>
     </div>
+
+    <!-- 拖拽分隔条（仅在左侧栏可见时显示） -->
+    <div
+      v-show="showAiSidebar"
+      class="ai-sidebar-resizer"
+      @mousedown="startSidebarDrag"
+    ></div>
 
     <!-- 右侧聊天主区域 -->
     <div class="ai-main">
@@ -90,7 +101,7 @@
         <div class="input-container">
           <textarea 
             v-model="inputText" 
-            placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+            placeholder="你好！今天想聊什么？"
             @keydown="handleKeydown"
             :disabled="isStreaming"
             rows="1"
@@ -109,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
@@ -120,12 +131,80 @@ const inputText = ref('')
 const isStreaming = ref(false)
 const messagesContainer = ref(null)
 const inputArea = ref(null)
+const containerRef = ref(null)
+
+// ===== 响应式：是否显示左侧对话框 =====
+// 当中心区域（ai-chat-container）宽度小于阈值时隐藏左侧对话框
+const SIDEBAR_HIDE_THRESHOLD = 520 // px，低于此值隐藏左侧会话列表
+const showAiSidebar = ref(true)
+
+// ===== 左侧栏拖拽宽度 =====
+const AI_SIDEBAR_MIN = 150   // 最小宽度
+const AI_SIDEBAR_MAX = 360   // 最大宽度
+const AI_SIDEBAR_DEFAULT = 240
+const aiSidebarWidth = ref(AI_SIDEBAR_DEFAULT)
+const isSidebarDragging = ref(false)
+
+// ResizeObserver 监测容器宽度变化
+let resizeObserver = null
+
+function updateSidebarVisibility(width) {
+  showAiSidebar.value = width >= SIDEBAR_HIDE_THRESHOLD
+}
+
+// ===== 拖拽逻辑 =====
+function startSidebarDrag(e) {
+  e.preventDefault()
+  isSidebarDragging.value = true
+  const startX = e.clientX
+  const startWidth = aiSidebarWidth.value
+
+  function onMouseMove(e) {
+    const delta = e.clientX - startX
+    let newWidth = startWidth + delta
+    newWidth = Math.max(AI_SIDEBAR_MIN, Math.min(AI_SIDEBAR_MAX, newWidth))
+    aiSidebarWidth.value = newWidth
+  }
+
+  function onMouseUp() {
+    isSidebarDragging.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
 
 const LOCAL_API = 'http://localhost:3000/api/ai-chat'
 const BACKEND_API = 'http://localhost:8080/api/user/ai/chat/stream'
 
 onMounted(() => {
   loadSessions()
+
+  // 用 ResizeObserver 监听容器宽度变化
+  if (containerRef.value) {
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width
+        updateSidebarVisibility(width)
+      }
+    })
+    resizeObserver.observe(containerRef.value)
+    // 初始检测
+    updateSidebarVisibility(containerRef.value.offsetWidth)
+  }
+})
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
 })
 
 const loadSessions = async () => {
@@ -252,6 +331,7 @@ const sendMessage = async () => {
     return
   }
 
+  // 显示 typing-indicator（isStreaming=true），等拿到第一个 chunk 后关闭
   isStreaming.value = true
   
   // 准备发送到后端的数据（提取历史记录）
@@ -276,28 +356,61 @@ const sendMessage = async () => {
     const reader = response.body.getReader()
     const decoder = new TextDecoder('utf-8')
     let aiContent = ''
-    
-    // 创建一个占位的 AI 消息
-    const aiMessage = { role: 'ai', content: '' }
-    messages.value.push(aiMessage)
+    // SSE 跨 chunk 的行缓冲
+    let lineBuffer = ''
+    // 是否已推入 AI 占位气泡
+    let placeholderPushed = false
+    let aiIndex = -1
 
     while (true) {
       const { done, value } = await reader.read()
       if (done) break
       
-      const chunk = decoder.decode(value, { stream: true })
-      // SSE 格式通常是: data: 实际内容\n\n
-      const lines = chunk.split('\n')
+      // 将新 chunk 追加到行缓冲，按换行切割处理完整行
+      lineBuffer += decoder.decode(value, { stream: true })
+      const lines = lineBuffer.split('\n')
+      // 最后一个可能是不完整行，留在 buffer 中等待下次 chunk
+      lineBuffer = lines.pop()
+
       for (const line of lines) {
-        if (line.startsWith('data:')) {
-          const dataStr = line.substring(5).trim()
-          if (dataStr && dataStr !== '[DONE]') {
-             aiContent += dataStr
-             aiMessage.content = aiContent
-             scrollToBottom()
-          }
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+        const dataStr = trimmed.slice(5).trim()
+        if (!dataStr || dataStr === '[DONE]') continue
+
+        // 收到第一个有效 chunk：推入占位气泡并关闭 typing-indicator，避免双气泡
+        if (!placeholderPushed) {
+          isStreaming.value = false
+          messages.value.push({ role: 'ai', content: '' })
+          aiIndex = messages.value.length - 1
+          placeholderPushed = true
         }
+
+        aiContent += dataStr
+        // ✅ 通过响应式数组下标赋值，Vue Proxy 能感知变化，实现实时渲染
+        messages.value[aiIndex].content = aiContent
+        scrollToBottom()
       }
+    }
+
+    // 处理缓冲区剩余内容（流结束时最后一行可能没有末尾换行）
+    if (lineBuffer.trim().startsWith('data:')) {
+      const dataStr = lineBuffer.trim().slice(5).trim()
+      if (dataStr && dataStr !== '[DONE]') {
+        if (!placeholderPushed) {
+          isStreaming.value = false
+          messages.value.push({ role: 'ai', content: '' })
+          aiIndex = messages.value.length - 1
+          placeholderPushed = true
+        }
+        aiContent += dataStr
+        messages.value[aiIndex].content = aiContent
+      }
+    }
+
+    // 如果流为空（没有任何 chunk），给出提示
+    if (!placeholderPushed) {
+      messages.value.push({ role: 'ai', content: '（AI 未返回任何内容，请稍后重试）' })
     }
     
     // 2. 保存 AI 回复到本地 SQLite
@@ -324,14 +437,18 @@ const sendMessage = async () => {
   width: 100%;
   background-color: #121212;
   color: #e0e0e0;
+  overflow: hidden;
 }
 
+/* ===== 左侧会话历史侧边栏 ===== */
 .ai-sidebar {
-  width: 280px;
   background-color: #000000;
   border-right: 1px solid #282828;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  transition: width 0.15s ease;
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -340,6 +457,7 @@ const sendMessage = async () => {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #282828;
+  flex-shrink: 0;
 }
 
 .sidebar-title {
@@ -366,6 +484,21 @@ const sendMessage = async () => {
   flex: 1;
   overflow-y: auto;
   padding: 8px;
+}
+
+/* ===== Webkit 滚动条 — 会话列表 ===== */
+.session-list::-webkit-scrollbar {
+  width: 4px;
+}
+.session-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.session-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 100px;
+}
+.session-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .session-item {
@@ -415,12 +548,33 @@ const sendMessage = async () => {
   color: #f87171;
 }
 
-/* 主聊天区 */
+/* ===== 拖拽分隔条 ===== */
+.ai-sidebar-resizer {
+  width: 4px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 10;
+}
+.ai-sidebar-resizer:hover,
+.ai-sidebar-resizer:active {
+  background: rgba(29, 185, 84, 0.5);
+}
+
+/* 拖拽时全局 cursor 不被覆盖 */
+.ai-chat-container:has(.ai-sidebar-resizer:active) {
+  cursor: col-resize;
+}
+
+/* ===== 主聊天区 ===== */
 .ai-main {
   flex: 1;
   display: flex;
   flex-direction: column;
   position: relative;
+  min-width: 0;
 }
 
 .chat-messages {
@@ -429,6 +583,25 @@ const sendMessage = async () => {
   padding: 24px;
   display: flex;
   flex-direction: column;
+}
+
+/* ===== Webkit 滚动条 — 聊天消息区 ===== */
+.chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+  transition: background 0.2s;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.chat-messages::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .welcome-screen {
@@ -494,6 +667,7 @@ const sendMessage = async () => {
   line-height: 1.6;
   color: #e0e0e0;
   word-wrap: break-word;
+  word-break: break-word;
 }
 
 .message-wrapper.is-user .message-content {
@@ -523,8 +697,10 @@ const sendMessage = async () => {
   50% { transform: translateY(-4px); }
 }
 
+/* ===== 输入区域 ===== */
 .chat-input-area {
   padding: 16px 24px 24px;
+  flex-shrink: 0;
 }
 
 .input-container {
@@ -552,6 +728,21 @@ textarea {
   max-height: 120px;
   min-height: 24px;
   outline: none;
+}
+
+/* ===== Webkit 滚动条 — 输入框 ===== */
+textarea::-webkit-scrollbar {
+  width: 4px;
+}
+textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 100px;
+}
+textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .send-btn {
