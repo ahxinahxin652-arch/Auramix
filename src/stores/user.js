@@ -78,6 +78,12 @@ export const useUserStore = defineStore('user', () => {
       libraryStore.initialized = false
     }).catch(err => console.error(err))
 
+    // 退出登录时重置播放器状态，停止播放
+    import('./player.js').then(({ usePlayerStore }) => {
+      const playerStore = usePlayerStore()
+      playerStore.reset()
+    }).catch(err => console.error(err))
+
     import('../routers/index.js').then(m => m.default.replace('/login'))
   }
 
