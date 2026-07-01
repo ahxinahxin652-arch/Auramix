@@ -175,6 +175,11 @@ watch(() => userStore.isLoggedIn, (loggedIn) => {
   }
 })
 
+// 同步会员状态到 user store（供 FootBar 等组件判断 VIP 试听）
+watch(isMembershipActive, (val) => {
+  userStore.setMembershipActive(val)
+}, { immediate: true })
+
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
 })

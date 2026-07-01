@@ -772,7 +772,9 @@ function parseArtists(track) {
                 </svg>
               </div>
               <div class="track-text">
-                <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span>
+                <div class="track-name-row">
+                  <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span><span v-if="track.member === 1" class="vip-badge-inline">VIP</span>
+                </div>
                 <span class="track-artists-links">
                   <template v-if="parseArtists(track).length > 0">
                     <span v-for="(tArt, tIdx) in parseArtists(track)" :key="tArt.id || tIdx">

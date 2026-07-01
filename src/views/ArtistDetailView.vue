@@ -303,7 +303,7 @@ const formatPlayCount = (num) => {
             <div class="col-title-cell">
               <span class="track-row-title" :class="{ green: isTrackActive(track.id) }">
                 {{ track.title || track.name }}
-              </span>
+              </span><span v-if="track.member === 1" class="vip-badge-inline">VIP</span>
             </div>
 
             <!-- Column 4: Play count -->

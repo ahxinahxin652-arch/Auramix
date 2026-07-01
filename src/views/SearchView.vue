@@ -176,7 +176,7 @@ onMounted(() => {
             <div v-for="track in results.tracks" :key="track.id" class="track-item" :class="{ active: isTrackActive(track) }" @dblclick="playTrack(track)">
               <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
               <div class="track-info">
-                <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
+                <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)"><span class="track-title-text">{{ track.title }}</span><span v-if="track.member === 1" class="vip-badge">VIP</span></div>
                 <div class="track-artist">
                   <span v-for="(art, idx) in track.artists" :key="art.id">
                     <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -239,7 +239,7 @@ onMounted(() => {
         <div v-for="track in results.tracks" :key="track.id" class="track-item" :class="{ active: isTrackActive(track) }" @dblclick="playTrack(track)">
           <img :src="track.coverUrl || 'default_cover.jpg'" class="track-cover" />
           <div class="track-info">
-            <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)">{{ track.title }}</div>
+            <div class="track-title" :class="{ 'active-text': isTrackActive(track) }" @click.stop="$router.push(`/album/${track.albumId}`)"><span class="track-title-text">{{ track.title }}</span><span v-if="track.member === 1" class="vip-badge">VIP</span></div>
             <div class="track-artist">
               <span v-for="(art, idx) in track.artists" :key="art.id">
                 <span class="artist-link" @click.stop="$router.push(`/artist/${art.id}`)">{{ art.name }}</span>
@@ -382,10 +382,34 @@ onMounted(() => {
     line-height: 1;
     margin: 0;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
   .track-title:hover {
     text-decoration: underline;
   }
+
+.track-title-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.vip-badge {
+  border: 1.5px solid #f5a623;
+  color: #f5a623;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 .artist-link {
   cursor: pointer;
