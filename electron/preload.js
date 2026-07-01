@@ -90,6 +90,11 @@ function resolveTrackById(trackId, contextType, contextId, duration, context) {
   return apiFetch(url)
 }
 
+/** 播放结束行为上报 */
+function reportPlaybackEnd(data) {
+  return apiFetch('/api/music/playback-end', { method: 'POST', body: data })
+}
+
 /** 更新曲目信息（编辑歌曲） */
 function updateTrack(trackId, data) {
   return apiFetch(`/api/music/tracks/${encodeURIComponent(trackId)}`, { method: 'PUT', body: data })
@@ -377,6 +382,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importFilesToWarehouseById,
   syncWarehouseById,
   resolveTrackById,
+  reportPlaybackEnd,
   updateTrack,
   deleteTrack,
   getFileMetadata,

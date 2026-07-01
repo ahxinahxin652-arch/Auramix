@@ -217,5 +217,22 @@ module.exports = function(mainWindow) {
     }
   })
 
+  // 播放结束行为上报（代理到 Java 后端）
+  router.post('/playback-end', async (req, res) => {
+    try {
+      let token = getToken(req)
+      // sendBeacon 无法带自定义 header，从 body 中提取 token
+      if (!token && req.body && req.body._token) {
+        token = req.body._token
+      }
+      const remoteApi = require('../dao/remoteApiClient')
+      const result = await remoteApi.reportPlaybackEnd(req.body, token)
+      res.json(result)
+    } catch (err) {
+      console.error('[Express] POST /playback-end error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
   return router
 }
