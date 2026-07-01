@@ -217,7 +217,7 @@ onMounted(() => load(false))
 
 .tab-bar {
   padding: 0 $spacing-md;
-  background: $bg-card;
+  background: $bg-surface;
   border-bottom: 1px solid $border-base;
   margin-bottom: 0;
 
