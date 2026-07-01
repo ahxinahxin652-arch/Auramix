@@ -18,7 +18,7 @@ public class CfSimilarityJob {
 
     private final CfSimilarityService cfSimilarityService;
 
-    @Scheduled(cron = "0 0 0,12 * * ?")
+    @Scheduled(cron = "0 0 * * * ?")
     public void run() {
         log.info("[CfSimilarityJob] 每日定时任务触发，开始计算歌曲相似度矩阵");
         try {
