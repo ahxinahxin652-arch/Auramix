@@ -8,6 +8,7 @@ import com.son.auramix.domain.dto.admin.TrackCreateDTO;
 import com.son.auramix.domain.dto.admin.TrackUpdateDTO;
 import com.son.auramix.mapper.TrackAudioFeatureMapper;
 import com.son.auramix.service.python.AudioFeatureService;
+import com.son.auramix.service.recommend.CfSimilarityService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
@@ -34,13 +35,16 @@ public class AudioAnalysisAspect {
 
     private final AudioFeatureService audioFeatureService;
     private final TrackAudioFeatureMapper trackAudioFeatureMapper;
+    private final CfSimilarityService cfSimilarityService;
     private final Executor reviewTaskExecutor;
 
     public AudioAnalysisAspect(AudioFeatureService audioFeatureService,
                                TrackAudioFeatureMapper trackAudioFeatureMapper,
+                               CfSimilarityService cfSimilarityService,
                                @org.springframework.beans.factory.annotation.Qualifier("reviewTaskExecutor") Executor reviewTaskExecutor) {
         this.audioFeatureService = audioFeatureService;
         this.trackAudioFeatureMapper = trackAudioFeatureMapper;
+        this.cfSimilarityService = cfSimilarityService;
         this.reviewTaskExecutor = reviewTaskExecutor;
     }
 
@@ -61,7 +65,7 @@ public class AudioAnalysisAspect {
             String audioFilePath = extractAudioFilePath(joinPoint);
 
             if (audioFilePath != null && !audioFilePath.isBlank()) {
-                // 有音频路径 -> 创建或更新操作，异步执行音频分析
+                // 有音频路径 -> 创建或更新操作，异步执行音频分析 + 相似推荐
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("[音频分析] 开始异步分析 trackId={}, file={}", trackId, audioFilePath);
@@ -72,7 +76,7 @@ public class AudioAnalysisAspect {
                     }
                 }, reviewTaskExecutor);
             } else {
-                // 无音频路径 -> 删除操作，删除对应的音频特征记录
+                // 无音频路径 -> 删除/下架操作，删除音频特征 + 推荐缓存 + 触发 CF 全量重算
                 CompletableFuture.runAsync(() -> {
                     try {
                         log.info("[音频分析] 开始删除音频特征 trackId={}", trackId);
@@ -82,6 +86,17 @@ public class AudioAnalysisAspect {
                         log.info("[音频分析] 已删除音频特征 trackId={}", trackId);
                     } catch (Exception e) {
                         log.error("[音频分析] 删除音频特征失败 trackId={}", trackId, e);
+                    }
+                }, reviewTaskExecutor);
+
+                // 触发 CF 相似度全量重算
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        log.info("[CF相似度] 歌曲删除/下架触发全量重算 trackId={}", trackId);
+                        cfSimilarityService.computeAndSave();
+                        log.info("[CF相似度] 重算完成 trackId={}", trackId);
+                    } catch (Exception e) {
+                        log.error("[CF相似度] 重算失败 trackId={}", trackId, e);
                     }
                 }, reviewTaskExecutor);
             }

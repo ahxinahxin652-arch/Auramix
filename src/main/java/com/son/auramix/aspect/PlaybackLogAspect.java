@@ -9,7 +9,6 @@ import com.son.auramix.domain.entity.Track;
 import com.son.auramix.mapper.PlaybackHistoryMapper;
 import com.son.auramix.mapper.TrackMapper;
 import com.son.auramix.security.user.UserPrincipal;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
@@ -26,11 +25,16 @@ import java.lang.reflect.Parameter;
 @Slf4j
 @Aspect
 @Component
-@RequiredArgsConstructor
 public class PlaybackLogAspect {
 
     private final PlaybackHistoryMapper playbackHistoryMapper;
     private final TrackMapper trackMapper;
+
+    public PlaybackLogAspect(PlaybackHistoryMapper playbackHistoryMapper,
+                             TrackMapper trackMapper) {
+        this.playbackHistoryMapper = playbackHistoryMapper;
+        this.trackMapper = trackMapper;
+    }
 
     @Pointcut("@annotation(com.son.auramix.annotation.AfterLog)")
     public void afterLogPointcut() {}
