@@ -31,7 +31,7 @@ async function handleSubmit() {
   try {
     await formRef.value.validate()
     await auth.login({ username: form.username, password: form.password })
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/home'
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/analytics/overview'
     await router.push(redirect)
   } catch {
     // 校验失败或登录失败,拦截器已弹 ElMessage
