@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
 import { useLibraryStore } from '../stores/library'
+import { useUserStore } from '../stores/user'
+import { ElMessage } from 'element-plus'
 import AddPlaylistIcon from './AddPlaylistIcon.vue'
 import { Howl } from 'howler'
 
@@ -15,8 +17,57 @@ let currentLyrics = ''
 const player = usePlayerStore()
 const sidebarStore = useSidebarStore()
 const globalLibraryStore = useLibraryStore()
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
+
+// ========== VIP 试听限制（非会员只能试听 30s）==========
+const VIP_PREVIEW_LIMIT = 30
+let vipPreviewTimer = null
+const isVipPreviewing = ref(false)
+
+function startVipPreviewCheck(track) {
+  clearVipPreviewTimer()
+  // 仅当歌曲为会员歌曲 且 当前用户非会员时启用试听限制
+  if (track && track.member === 1 && !userStore.isVip) {
+    // 若歌曲本身时长不超过 30s，则无需限制
+    const dur = track.duration
+    if (typeof dur === 'number' && dur > 0 && dur <= VIP_PREVIEW_LIMIT) {
+      isVipPreviewing.value = false
+      return
+    }
+    isVipPreviewing.value = true
+
+    // 播放时立即提示
+    ElMessage({
+      message: '该歌曲为会员歌曲，可试听 30 秒',
+      type: 'warning',
+      duration: 3000,
+      showClose: true
+    })
+
+    vipPreviewTimer = setTimeout(() => {
+      enforceVipPreviewStop()
+    }, VIP_PREVIEW_LIMIT * 1000)
+  } else {
+    isVipPreviewing.value = false
+  }
+}
+
+function enforceVipPreviewStop() {
+  if (howl) {
+    howl.pause()
+  }
+  clearVipPreviewTimer()
+  // 不重置 isVipPreviewing，提示持续显示直到切歌或充值会员
+}
+
+function clearVipPreviewTimer() {
+  if (vipPreviewTimer) {
+    clearTimeout(vipPreviewTimer)
+    vipPreviewTimer = null
+  }
+}
 
 const parsedArtists = computed(() => {
   const track = player.currentTrack
@@ -94,13 +145,22 @@ watch(() => player.currentTrack, () => {
   checkOverflow()
 })
 
+// 用户充值会员后，立即清除试听提示
+watch(() => userStore.isVip, (vip) => {
+  if (vip && isVipPreviewing.value) {
+    isVipPreviewing.value = false
+    clearVipPreviewTimer()
+  }
+})
+
 function handleSeekTrack(e) {
+  if (!howl || !player.duration) return
   const seekTime = e.detail?.time
   if (typeof seekTime === 'number') {
-    if (howl && player.duration) {
-      howl.seek(seekTime)
-      player.setCurrentTime(seekTime)
-    }
+    // VIP 试听限制：非会员不能跳转到 30s 之后
+    if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) return
+    howl.seek(seekTime)
+    player.setCurrentTime(seekTime)
   }
 }
 
@@ -391,6 +451,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
   })
 
   howl.play()
+
+  // 启动 VIP 试听限制检查（非会员播放会员歌曲时仅可试听 30s）
+  startVipPreviewCheck(currentTrack)
 }
 
 /**
@@ -417,6 +480,8 @@ function handleTrackEnd() {
 }
 
 function stopCurrent() {
+  clearVipPreviewTimer()
+  isVipPreviewing.value = false
   if (howl) {
     howl.unload()
     howl = null
@@ -463,7 +528,11 @@ function seekToByEvent(e) {
   const track = e.currentTarget
   const rect = track.getBoundingClientRect()
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  const seekTime = x * player.duration
+  let seekTime = x * player.duration
+  // VIP 试听限制：非会员不能拖动到 30s 之后
+  if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) {
+    seekTime = VIP_PREVIEW_LIMIT
+  }
   howl.seek(seekTime)
   player.setCurrentTime(seekTime)
 }
@@ -482,7 +551,11 @@ function onProgressDrag(e) {
   if (!track) return
   const rect = track.getBoundingClientRect()
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  const seekTime = x * player.duration
+  let seekTime = x * player.duration
+  // VIP 试听限制：非会员不能拖动到 30s 之后
+  if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) {
+    seekTime = VIP_PREVIEW_LIMIT
+  }
   howl.seek(seekTime)
   player.setCurrentTime(seekTime)
 }
@@ -517,6 +590,12 @@ function startProgressLoop() {
     if (howl && player.isPlaying && !isDragging.value) {
       const t = howl.seek()
       player.setCurrentTime(t)
+      
+      // VIP 试听安全网：进度超过 30s 时强制停止
+      if (isVipPreviewing.value && t >= VIP_PREVIEW_LIMIT) {
+        enforceVipPreviewStop()
+        return
+      }
       
       // 同步给歌词悬浮窗
       if (window.electronAPI && window.electronAPI.sendLyricsStatus) {
@@ -613,6 +692,7 @@ onUnmounted(() => {
     <!-- 中间：播放控制 -->
     <div class="foot-center">
       <div class="controls">
+        <div class="vip-preview-hint" v-if="isVipPreviewing">可试听 30s</div>
         <!-- 随机播放按钮（左侧） -->
         <button
           class="ctrl-btn shuffle-btn"
@@ -767,6 +847,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.vip-preview-hint {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f5a623;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
 .add-to-playlist-btn {
   background: none;
   border: none;

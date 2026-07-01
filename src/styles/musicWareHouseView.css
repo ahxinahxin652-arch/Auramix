@@ -678,6 +678,13 @@
     overflow: hidden;
 }
 
+.track-name-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
 .track-item .track-name {
     font-size: 14px;
     color: var(--text-h);

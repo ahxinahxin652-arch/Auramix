@@ -5,8 +5,14 @@ import { backendFetch } from '../utils/backendApi'
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('auramix_token') || null)
   const profile = ref(JSON.parse(localStorage.getItem('auramix_profile') || 'null'))
+  const membershipActive = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
+  const isVip = computed(() => membershipActive.value)
+
+  function setMembershipActive(val) {
+    membershipActive.value = !!val
+  }
 
   async function sendCode(email) {
     return backendFetch('/api/user/auth/send-code', {
@@ -59,6 +65,7 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = null
     profile.value = null
+    membershipActive.value = false
     localStorage.removeItem('auramix_token')
     localStorage.removeItem('auramix_profile')
     import('../routers/index.js').then(m => m.default.replace('/login'))
@@ -67,7 +74,10 @@ export const useUserStore = defineStore('user', () => {
   return {
     token,
     profile,
+    membershipActive,
     isLoggedIn,
+    isVip,
+    setMembershipActive,
     sendCode,
     register,
     login,

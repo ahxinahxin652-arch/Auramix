@@ -141,7 +141,7 @@ onUnmounted(() => {
           </svg>
         </div>
         <div class="track-info">
-          <div class="track-name">{{ currentTrack.title || currentTrack.name }}</div>
+          <div class="track-name">{{ currentTrack.title || currentTrack.name }}<span v-if="currentTrack.member === 1" class="vip-badge-inline">VIP</span></div>
           <div class="track-artist">
             <template v-if="getArtistsArray(currentTrack).length > 0">
               <span v-for="(a, aIdx) in getArtistsArray(currentTrack)" :key="a.id">
@@ -174,7 +174,7 @@ onUnmounted(() => {
             </svg>
           </div>
           <div class="track-info">
-            <div class="track-name">{{ t.title || t.name }}</div>
+            <div class="track-name">{{ t.title || t.name }}<span v-if="t.member === 1" class="vip-badge-inline">VIP</span></div>
             <div class="track-artist">
               <template v-if="getArtistsArray(t).length > 0">
                 <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">
@@ -203,7 +203,7 @@ onUnmounted(() => {
             </svg>
           </div>
           <div class="track-info">
-            <div class="track-name">{{ t.title || t.name }}</div>
+            <div class="track-name">{{ t.title || t.name }}<span v-if="t.member === 1" class="vip-badge-inline">VIP</span></div>
             <div class="track-artist">
               <template v-if="getArtistsArray(t).length > 0">
                 <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">
@@ -235,7 +235,7 @@ onUnmounted(() => {
             </svg>
           </div>
           <div class="track-info">
-            <div class="track-name">{{ t.title || t.name }}</div>
+            <div class="track-name">{{ t.title || t.name }}<span v-if="t.member === 1" class="vip-badge-inline">VIP</span></div>
             <div class="track-artist">
               <template v-if="getArtistsArray(t).length > 0">
                 <span v-for="(a, aIdx) in getArtistsArray(t)" :key="a.id">

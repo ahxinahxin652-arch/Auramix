@@ -122,7 +122,7 @@ async function getWarehouseTracksById(libraryId, token) {
           }))),
           trackNumber: 1,
           discNumber: 1,
-          member: '',
+          member: t.member ?? 0,
           lyrics: '',
           genres: t.genres || [],
           createdAt: new Date().toISOString(),
@@ -221,6 +221,7 @@ async function resolveTrackById(trackId, token, contextType, contextId, duration
           discNumber: 1,
           lyrics: t.lyricsUrl || '',
           genres: t.genres || [],
+          member: t.member ?? 0,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         }
@@ -249,7 +250,8 @@ async function resolveTrackById(trackId, token, contextType, contextId, duration
                   role: a.role === 1 ? 'Featuring' : (a.role === 2 ? 'Composer/Songwriter' : 'Main Artist')
                 }))),
                 score: st.score,
-                sources: st.sources || []
+                sources: st.sources || [],
+                member: st.member ?? 0
               }
             })
           }

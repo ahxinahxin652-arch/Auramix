@@ -125,6 +125,8 @@ body {
     flex-shrink: 0;
     -webkit-app-region: drag;
     user-select: none;
+    z-index: 100;
+    position: relative;
     gap: 0;
 }
 
@@ -405,6 +407,7 @@ body {
     cursor: pointer;
     transition: background-color 0.2s, color 0.2s, transform 0.1s;
     -webkit-app-region: no-drag;
+    z-index: 10;
 }
 
 .premium-icon-btn.is-member {
@@ -424,14 +427,15 @@ body {
 
 .premium-hover-text {
     position: absolute;
-    bottom: -20px;
+    bottom: -26px;
     left: 50%;
     transform: translateX(-50%) translateY(4px);
-    font-size: 10px;
+    z-index: 200;
+    font-size: 12px;
     font-weight: 500;
     color: #fbbf24;
     background: #1f1f1f;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 4px;
     white-space: nowrap;
     pointer-events: none;
@@ -579,4 +583,22 @@ body {
     grid-template-rows: var(--titlebar-h) 1fr !important;
     grid-template-columns: 1fr !important;
     overflow: hidden;
+}
+
+/* ========== 内联 VIP 标识（列表曲目标题旁）========== */
+.vip-badge-inline {
+    display: inline-block;
+    vertical-align: middle;
+    border: 1.5px solid #f5a623;
+    color: #f5a623;
+    background: transparent;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-left: 6px;
 }
