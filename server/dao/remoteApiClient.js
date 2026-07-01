@@ -222,6 +222,10 @@ async function fetchTrackDetail(trackId, token, contextType, contextId, duration
     return request(url, { token })
 }
 
+async function reportPlaybackEnd(body, token) {
+    return request('/api/user/behavior/playback-end', { method: 'POST', body, token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -235,5 +239,6 @@ module.exports = {
     globalSearch,
     fetchAlbumDetail,
     fetchArtistDetail,
-    fetchTrackDetail
+    fetchTrackDetail,
+    reportPlaybackEnd
 }
