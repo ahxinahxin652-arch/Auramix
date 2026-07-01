@@ -72,6 +72,7 @@ public class UserSearchServiceImpl implements UserSearchService {
             vo.setId(t.getId());
             vo.setTitle(t.getTitle());
             vo.setDuration(t.getDuration());
+            vo.setMember(t.getMember());
             
             Album album = albumMap.get(t.getAlbumId());
             if (album != null) {

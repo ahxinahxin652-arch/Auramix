@@ -11,5 +11,6 @@ public class UserTrackSearchVO {
     private String coverUrl;
     private Long albumId;
     private String albumTitle;
+    private Integer member;
     private List<ArtistInfoVO> artists;
 }

@@ -393,6 +393,7 @@ public class PlaylistServiceImpl implements PlaylistService {
                 if (track != null) {
                     item.setTitle(track.getTitle());
                     item.setDuration(track.getDuration());
+                    item.setMember(track.getMember());
 
                     Album album = albumMap.get(track.getAlbumId());
                     if (album != null) {

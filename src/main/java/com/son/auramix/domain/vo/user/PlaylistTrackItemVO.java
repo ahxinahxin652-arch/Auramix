@@ -14,6 +14,7 @@ public class PlaylistTrackItemVO {
     private String coverUrl;       // 专辑封面
     private String albumTitle;
     private Long albumId;
+    private Integer member;
     private java.util.List<ArtistInfoVO> artists;
     private java.util.List<GenreVO> genres;
     private Integer sortOrder;

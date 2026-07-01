@@ -52,6 +52,7 @@ public class UserTrackServiceImpl implements UserTrackService {
         vo.setId(track.getId());
         vo.setTitle(track.getTitle());
         vo.setDuration(track.getDuration());
+        vo.setMember(track.getMember());
         vo.setLyricsUrl(track.getLyricsUrl());
 
         if (track.getAlbumId() != null) {
