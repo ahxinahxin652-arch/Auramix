@@ -548,40 +548,7 @@ async function seedDatabase(db) {
     console.log(`[DB Seed] Seeded ${seededLocalCount} local tracks.`)
 
     // 2. Seed Online Mock Albums
-    const onlineAlbums = [
-      {
-        title: '1989',
-        artistName: 'Taylor Swift',
-        coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=300&auto=format&fit=crop',
-        releaseDate: new Date('2014-10-27'),
-        albumType: 0, // album
-        tracks: [
-          { title: 'Blank Space', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', bitrate: 128000, size: 3600000n },
-          { title: 'Style', duration: 231000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', bitrate: 128000, size: 3600000n }
-        ]
-      },
-      {
-        title: 'Divide',
-        artistName: 'Ed Sheeran',
-        coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=300&auto=format&fit=crop',
-        releaseDate: new Date('2017-03-03'),
-        albumType: 0, // album
-        tracks: [
-          { title: 'Shape of You', duration: 233000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', bitrate: 128000, size: 3700000n },
-          { title: 'Castle on the Hill', duration: 261000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', bitrate: 128000, size: 4100000n }
-        ]
-      },
-      {
-        title: 'After Hours',
-        artistName: 'The Weeknd',
-        coverUrl: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?q=80&w=300&auto=format&fit=crop',
-        releaseDate: new Date('2020-03-20'),
-        albumType: 0, // album
-        tracks: [
-          { title: 'Blinding Lights', duration: 200000, streamUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', bitrate: 128000, size: 3200000n }
-        ]
-      }
-    ]
+    const onlineAlbums = [] // 禁用示例数据
 
     for (const albumData of onlineAlbums) {
       try {

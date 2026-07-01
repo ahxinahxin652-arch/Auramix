@@ -39,6 +39,14 @@ export const useUserStore = defineStore('user', () => {
       profile.value = data.profile
       localStorage.setItem('auramix_token', data.token)
       localStorage.setItem('auramix_profile', JSON.stringify(data.profile))
+      
+      try {
+        const { useLibraryStore } = await import('./library.js')
+        const libraryStore = useLibraryStore()
+        await libraryStore.forceSync()
+      } catch (err) {
+        console.error('Failed to sync library after login', err)
+      }
     }
     return data
   }
@@ -61,6 +69,15 @@ export const useUserStore = defineStore('user', () => {
     profile.value = null
     localStorage.removeItem('auramix_token')
     localStorage.removeItem('auramix_profile')
+    
+    import('./library.js').then(({ useLibraryStore }) => {
+      const libraryStore = useLibraryStore()
+      libraryStore.playlists = []
+      libraryStore.followedArtists = []
+      libraryStore.subscribedPlaylists = []
+      libraryStore.initialized = false
+    }).catch(err => console.error(err))
+
     import('../routers/index.js').then(m => m.default.replace('/login'))
   }
 
