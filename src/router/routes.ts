@@ -149,6 +149,13 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '登录' },
   },
   {
+    // 投屏大屏: 独立顶层路由, 不走 AdminLayout
+    path: '/cast/overview',
+    name: 'CastOverview',
+    component: () => import('@/views/analytics/cast/OverviewCast.vue'),
+    meta: { requiresAuth: true, title: '数据大屏' },
+  },
+  {
     path: '/404',
     name: 'NotFound',
     component: () => import('@/views/error/404.vue'),
