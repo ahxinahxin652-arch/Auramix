@@ -4,7 +4,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/layouts/AdminLayout.vue'),
-    redirect: '/home',
+    redirect: '/analytics/overview',
     children: [
       {
         path: 'home',
