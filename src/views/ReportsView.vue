@@ -120,31 +120,59 @@ onMounted(() => {
 
 <template>
   <div class="reports-view">
-    <!-- 顶部 Header -->
-    <header class="reports-header">
-      <div class="reports-header__left">
-        <div class="reports-header__icon">
-          <el-icon><Document /></el-icon>
+    <!-- 顶部 Hero -->
+    <section class="reports-hero">
+      <div class="reports-hero__bg" />
+      <div class="reports-hero__corner reports-hero__corner--tl" />
+      <div class="reports-hero__corner reports-hero__corner--tr" />
+      <div class="reports-hero__corner reports-hero__corner--bl" />
+      <div class="reports-hero__corner reports-hero__corner--br" />
+
+      <div class="reports-hero__content">
+        <div class="reports-hero__top">
+          <div class="reports-hero__title">
+            <span class="reports-hero__chip">AI INSIGHT</span>
+            <h1>我的报告</h1>
+            <p>每周一与每月 1 号自动生成, 也可以手动触发</p>
+          </div>
+          <div class="reports-hero__actions">
+            <button class="btn btn-primary" :disabled="generating" @click="handleGenerate(1)">
+              <el-icon><MagicStick /></el-icon>
+              <span>{{ generating ? '提交中...' : '生成本周报告' }}</span>
+            </button>
+            <button class="btn btn-secondary" :disabled="generating" @click="handleGenerate(2)">
+              <el-icon><Calendar /></el-icon>
+              <span>生成本月报告</span>
+            </button>
+            <button class="btn btn-ghost" :disabled="loading" @click="loadData" title="刷新">
+              <el-icon><Refresh :class="{ spinning: loading }" /></el-icon>
+            </button>
+          </div>
         </div>
-        <div>
-          <h1>我的报告</h1>
-          <p>每周一与每月 1 号自动生成, 也可以手动触发</p>
+
+        <div class="reports-hero__stats">
+          <div class="hero-stat">
+            <div class="hero-stat__num">{{ total }}</div>
+            <div class="hero-stat__label">总报告数</div>
+          </div>
+          <div class="hero-stat__divider" />
+          <div class="hero-stat">
+            <div class="hero-stat__num">{{ list.filter(r => r.status === 1).length }}</div>
+            <div class="hero-stat__label">已生成</div>
+          </div>
+          <div class="hero-stat__divider" />
+          <div class="hero-stat">
+            <div class="hero-stat__num">{{ list.filter(r => r.status === 0).length }}</div>
+            <div class="hero-stat__label">生成中</div>
+          </div>
+          <div class="hero-stat__divider" />
+          <div class="hero-stat">
+            <div class="hero-stat__num">{{ list.filter(r => r.status === 2).length }}</div>
+            <div class="hero-stat__label">失败</div>
+          </div>
         </div>
       </div>
-      <div class="reports-header__actions">
-        <button class="btn btn-primary" :disabled="generating" @click="handleGenerate(1)">
-          <el-icon><MagicStick /></el-icon>
-          <span>{{ generating ? '提交中...' : '生成本周报告' }}</span>
-        </button>
-        <button class="btn btn-secondary" :disabled="generating" @click="handleGenerate(2)">
-          <el-icon><Calendar /></el-icon>
-          <span>生成本月报告</span>
-        </button>
-        <button class="btn btn-ghost" :disabled="loading" @click="loadData">
-          <el-icon><Refresh :class="{ spinning: loading }" /></el-icon>
-        </button>
-      </div>
-    </header>
+    </section>
 
     <!-- 过滤栏 -->
     <div class="reports-filter">
@@ -343,7 +371,114 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* ================== Header ================== */
+/* ================== Hero ================== */
+.reports-hero {
+  position: relative;
+  padding: 32px 36px 28px;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.reports-hero__bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 600px 200px at 10% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 600px 200px at 90% 100%, rgba(255, 255, 255, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.reports-hero__corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+}
+.reports-hero__corner--tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.reports-hero__corner--tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.reports-hero__corner--bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.reports-hero__corner--br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+.reports-hero__content {
+  position: relative;
+  z-index: 1;
+}
+
+.reports-hero__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.reports-hero__title h1 {
+  margin: 8px 0 6px;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.reports-hero__title p {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.reports-hero__chip {
+  display: inline-block;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: transparent;
+  border: 1px solid #fff;
+  border-radius: 3px;
+  letter-spacing: 2px;
+}
+
+.reports-hero__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.reports-hero__stats {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #1f1f1f;
+}
+
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-stat__num {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
+.hero-stat__label {
+  font-size: 11px;
+  color: #6b7280;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.hero-stat__divider {
+  width: 1px;
+  height: 36px;
+  background: #1f1f1f;
+}
 .reports-header {
   display: flex;
   justify-content: space-between;
