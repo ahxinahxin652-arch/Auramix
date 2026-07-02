@@ -388,8 +388,7 @@ const sendMessage = async () => {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Internal-Api-Key': 'auramix-desktop-internal-key-2026'
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ messages: history })
     })
