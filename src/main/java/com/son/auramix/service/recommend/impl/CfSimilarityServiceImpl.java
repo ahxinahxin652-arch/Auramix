@@ -22,7 +22,8 @@ import java.util.stream.Collectors;
  * 协同过滤相似度离线计算服务实现
  * <p>
  * 算法：
- * 1. 从 user_behavior_logs 提取正反馈（behaviorType=0 播放 且 behaviorDuration ≥ 30 秒）
+ * 1. 从 user_behavior_logs 提取正反馈（behaviorType=4 完整听完，或 behaviorType=0 播放 且 behaviorDuration ≥ 120 秒）
+ *    提取负反馈（behaviorType=3 跳过，或 behaviorType=0 播放 且 behaviorDuration < 120 秒），冲突对按最近10次行为对比决定
  * 2. 计算歌曲间共现次数 co_occurrence(i,j) = 同时喜欢 i 和 j 的用户数
  * 3. 计算余弦相似度 sim(i,j) = |Ui ∩ Uj| / sqrt(|Ui| · |Uj|)
  * 4. 每首歌保留 TopN 200，写入 cf_similarity_topn 表 + Redis
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
 public class CfSimilarityServiceImpl implements CfSimilarityService {
 
     private static final int TOP_N = 200;
-    private static final int MIN_PLAY_DURATION = 30;
+    private static final int MIN_PLAY_DURATION = 120;
     private static final String REDIS_KEY_PREFIX = "auramix:cf:similar:";
     private static final int BATCH_SIZE = 1000;
 
@@ -52,13 +53,33 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
         log.info("[CF相似度] 开始离线计算");
 
         // ============ 1. 提取正反馈数据 ============
+        // 正反馈: behaviorType=4 (完整听完) 或 (behaviorType=0 播放 且 behaviorDuration ≥ 120 秒)
         List<UserBehaviorLog> positiveLogs = userBehaviorLogMapper.selectList(
                 new LambdaQueryWrapper<UserBehaviorLog>()
-                        .eq(UserBehaviorLog::getBehaviorType, UserBehaviorLog.BEHAVIOR_PLAY)
-                        .ge(UserBehaviorLog::getBehaviorDuration, MIN_PLAY_DURATION)
+                        .and(w -> w
+                                .eq(UserBehaviorLog::getBehaviorType, UserBehaviorLog.BEHAVIOR_FULL_LISTEN)
+                                .or(o -> o
+                                        .eq(UserBehaviorLog::getBehaviorType, UserBehaviorLog.BEHAVIOR_PLAY)
+                                        .ge(UserBehaviorLog::getBehaviorDuration, MIN_PLAY_DURATION)
+                                )
+                        )
                         .select(UserBehaviorLog::getUserId, UserBehaviorLog::getTrackId)
         );
         log.info("[CF相似度] 正反馈记录数: {}", positiveLogs.size());
+
+        // 负反馈: behaviorType=3 (跳过) 或 (behaviorType=0 播放 且 behaviorDuration < 120 秒)
+        List<UserBehaviorLog> negativeLogs = userBehaviorLogMapper.selectList(
+                new LambdaQueryWrapper<UserBehaviorLog>()
+                        .and(w -> w
+                                .eq(UserBehaviorLog::getBehaviorType, UserBehaviorLog.BEHAVIOR_SKIP)
+                                .or(o -> o
+                                        .eq(UserBehaviorLog::getBehaviorType, UserBehaviorLog.BEHAVIOR_PLAY)
+                                        .lt(UserBehaviorLog::getBehaviorDuration, MIN_PLAY_DURATION)
+                                )
+                        )
+                        .select(UserBehaviorLog::getUserId, UserBehaviorLog::getTrackId)
+        );
+        log.info("[CF相似度] 负反馈记录数: {}", negativeLogs.size());
 
         if (positiveLogs.isEmpty()) {
             log.info("[CF相似度] 无正反馈数据，清空旧数据后结束");
@@ -68,18 +89,99 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
         }
 
         // ============ 2. 构建 用户->歌曲集合 & 歌曲->用户集合 ============
+        // 正反馈: 用户 -> 喜欢的歌曲集合
         Map<Long, Set<Long>> userTracks = new HashMap<>();
-        Map<Long, Set<Long>> trackUsers = new HashMap<>();
         for (UserBehaviorLog log : positiveLogs) {
             if (log.getUserId() == null || log.getTrackId() == null) {
                 continue;
             }
             userTracks.computeIfAbsent(log.getUserId(), k -> new HashSet<>())
                       .add(log.getTrackId());
-            trackUsers.computeIfAbsent(log.getTrackId(), k -> new HashSet<>())
-                      .add(log.getUserId());
         }
-        log.info("[CF相似度] 活跃用户数: {}, 涉及歌曲数: {}", userTracks.size(), trackUsers.size());
+
+        // ============ 2.5. 负反馈过滤：冲突对按最近10次行为对比决定 ============
+        // 收集负反馈的 (userId, trackId) 对
+        Set<String> negativePairSet = new HashSet<>();
+        for (UserBehaviorLog log : negativeLogs) {
+            if (log.getUserId() != null && log.getTrackId() != null) {
+                negativePairSet.add(log.getUserId() + ":" + log.getTrackId());
+            }
+        }
+
+        // 找出同时出现在正反馈和负反馈中的冲突对
+        List<long[]> conflictPairs = new ArrayList<>();
+        for (Map.Entry<Long, Set<Long>> entry : userTracks.entrySet()) {
+            Long userId = entry.getKey();
+            for (Long trackId : entry.getValue()) {
+                if (negativePairSet.contains(userId + ":" + trackId)) {
+                    conflictPairs.add(new long[]{userId, trackId});
+                }
+            }
+        }
+        log.info("[CF相似度] 冲突对（正反馈∩负反馈）数量: {}", conflictPairs.size());
+
+        int removedCount = 0;
+        int keptCount = 0;
+        if (!conflictPairs.isEmpty()) {
+            // 查询冲突用户的所有行为记录（类型0/3/4），按时间倒序
+            Set<Long> conflictUserIds = conflictPairs.stream()
+                    .map(p -> Long.valueOf(p[0]))
+                    .collect(Collectors.toSet());
+
+            List<UserBehaviorLog> recentLogs = userBehaviorLogMapper.selectList(
+                    new LambdaQueryWrapper<UserBehaviorLog>()
+                            .in(UserBehaviorLog::getUserId, conflictUserIds)
+                            .in(UserBehaviorLog::getBehaviorType,
+                                    UserBehaviorLog.BEHAVIOR_PLAY,
+                                    UserBehaviorLog.BEHAVIOR_SKIP,
+                                    UserBehaviorLog.BEHAVIOR_FULL_LISTEN)
+                            .orderByDesc(UserBehaviorLog::getCreatedAt)
+                            .select(UserBehaviorLog::getUserId, UserBehaviorLog::getTrackId,
+                                    UserBehaviorLog::getBehaviorType, UserBehaviorLog::getBehaviorDuration)
+            );
+
+            // 按 (userId:trackId) 分组
+            Map<String, List<UserBehaviorLog>> pairLogs = recentLogs.stream()
+                    .filter(l -> l.getUserId() != null && l.getTrackId() != null)
+                    .collect(Collectors.groupingBy(l -> l.getUserId() + ":" + l.getTrackId()));
+
+            for (long[] pair : conflictPairs) {
+                Long userId = pair[0];
+                Long trackId = pair[1];
+                String pairKey = userId + ":" + trackId;
+
+                List<UserBehaviorLog> logs = pairLogs.getOrDefault(pairKey, Collections.emptyList());
+                // 取最近10次，统计正/负反馈次数
+                int posCount = 0, negCount = 0, checked = 0;
+                for (UserBehaviorLog log : logs) {
+                    if (checked >= 10) break;
+                    if (isPositiveFeedback(log)) posCount++;
+                    else negCount++;
+                    checked++;
+                }
+
+                if (negCount > posCount) {
+                    Set<Long> posSet = userTracks.get(userId);
+                    if (posSet != null && posSet.remove(trackId)) {
+                        removedCount++;
+                    }
+                } else {
+                    keptCount++;
+                }
+            }
+        }
+        // 移除正反馈集合为空的用户
+        userTracks.entrySet().removeIf(e -> e.getValue().isEmpty());
+
+        // 构建 歌曲 -> 用户集合
+        Map<Long, Set<Long>> trackUsers = new HashMap<>();
+        for (Map.Entry<Long, Set<Long>> entry : userTracks.entrySet()) {
+            for (Long trackId : entry.getValue()) {
+                trackUsers.computeIfAbsent(trackId, k -> new HashSet<>()).add(entry.getKey());
+            }
+        }
+        log.info("[CF相似度] 负反馈过滤完成（最近10次对比）：移除 {} 首，保留 {} 首，活跃用户数: {}, 涉及歌曲数: {}",
+                removedCount, keptCount, userTracks.size(), trackUsers.size());
 
         // ============ 2.5. 过滤已下架/删除的歌曲 ============
         Set<Long> activeTrackIds = trackMapper.selectList(
@@ -223,6 +325,20 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
             }
         }
         log.info("[CF相似度] Redis 写入完成，共 {} 个 key", redisCount);
+    }
+
+    /**
+     * 判断一条行为记录是否为正反馈
+     * <p>
+     * 正反馈: behaviorType=4 (完整听完) 或 (behaviorType=0 播放 且 duration ≥ 120 秒)
+     */
+    private boolean isPositiveFeedback(UserBehaviorLog log) {
+        if (log.getBehaviorType() == null) return false;
+        if (log.getBehaviorType() == UserBehaviorLog.BEHAVIOR_FULL_LISTEN) return true;
+        if (log.getBehaviorType() == UserBehaviorLog.BEHAVIOR_PLAY
+                && log.getBehaviorDuration() != null
+                && log.getBehaviorDuration() >= MIN_PLAY_DURATION) return true;
+        return false;
     }
 
     /**
