@@ -310,7 +310,8 @@ const formatMessage = (content) => {
   html = html.replace(/<Action>(.*?)<\/Action>/g, '<div class="ai-action-indicator"><span class="spinner"></span>$1</div>')
   
   // 2. 解析 [Song: id=xxx, title=yyy, artists=zzz, cover=www]
-  html = html.replace(/\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*artists=(.*?))?(?:,\s*cover=(.*?))?\]/g, (match, id, title, artists, cover) => {
+  // 前面可选匹配列表符号例如 - 或 1. 
+  html = html.replace(/(?:[-*]|\d+\.)?\s*\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*artists=(.*?))?(?:,\s*cover=(.*?))?\]/g, (match, id, title, artists, cover) => {
     const coverSrc = cover && cover !== 'null' ? cover : 'https://picsum.photos/seed/music/60/60'
     const artistText = artists && artists !== 'null' ? artists : 'Unknown Artist'
     return `<div class="ai-song-card" data-action="play-song" data-id="${id}">
@@ -323,7 +324,7 @@ const formatMessage = (content) => {
   })
 
   // 3. 解析 [Playlist: id=xxx, name=yyy]
-  html = html.replace(/\[Playlist:\s*id=(\d+),\s*name=(.*?)\]/g, (match, id, name) => {
+  html = html.replace(/(?:[-*]|\d+\.)?\s*\[Playlist:\s*id=(\d+),\s*name=(.*?)\]/g, (match, id, name) => {
     return `<div class="ai-playlist-card" data-action="open-playlist" data-id="${id}">
       <svg class="ai-playlist-icon" viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
       <div class="ai-playlist-info">
