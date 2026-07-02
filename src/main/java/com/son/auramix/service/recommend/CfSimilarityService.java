@@ -14,7 +14,7 @@ public interface CfSimilarityService {
      * 1. 从 user_behavior_logs 提取正反馈（behaviorType=4 完整听完，或 behaviorType=0 播放 且 behaviorDuration ≥ 120 秒）
      *    提取负反馈（behaviorType=3 跳过，或 behaviorType=0 播放 且 behaviorDuration < 120 秒），冲突对按最近10次行为对比决定
      * 2. 计算歌曲间共现次数
-     * 3. 计算余弦相似度
+     * 3. 计算 Jaccard 相似度 Jaccard(i,j) = |Ui ∩ Uj| / |Ui ∪ Uj|
      * 4. 每首歌保留 TopN 200，写入 MySQL + Redis
      */
     void computeAndSave();

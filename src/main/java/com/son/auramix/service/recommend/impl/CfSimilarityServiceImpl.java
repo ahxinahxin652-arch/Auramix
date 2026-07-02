@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  * 1. 从 user_behavior_logs 提取正反馈（behaviorType=4 完整听完，或 behaviorType=0 播放 且 behaviorDuration ≥ 120 秒）
  *    提取负反馈（behaviorType=3 跳过，或 behaviorType=0 播放 且 behaviorDuration < 120 秒），冲突对按最近10次行为对比决定
  * 2. 计算歌曲间共现次数 co_occurrence(i,j) = 同时喜欢 i 和 j 的用户数
- * 3. 计算余弦相似度 sim(i,j) = |Ui ∩ Uj| / sqrt(|Ui| · |Uj|)
+ * 3. 计算 Jaccard 相似度 Jaccard(i,j) = |Ui ∩ Uj| / |Ui ∪ Uj|
  * 4. 每首歌保留 TopN 200，写入 cf_similarity_topn 表 + Redis
  *
  * @author auramix
@@ -125,7 +125,7 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
         if (!conflictPairs.isEmpty()) {
             // 查询冲突用户的所有行为记录（类型0/3/4），按时间倒序
             Set<Long> conflictUserIds = conflictPairs.stream()
-                    .map(p -> Long.valueOf(p[0]))
+                    .map(p -> p[0])
                     .collect(Collectors.toSet());
 
             List<UserBehaviorLog> recentLogs = userBehaviorLogMapper.selectList(
@@ -232,8 +232,8 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
         }
         log.info("[CF相似度] 共现矩阵构建完成，涉及歌曲对数: {}", coOccurrence.size());
 
-        // ============ 4. 计算余弦相似度 + TopN 筛选 ============
-        // sim(i,j) = |Ui ∩ Uj| / sqrt(|Ui| * |Uj|)
+        // ============ 4. 计算 Jaccard 相似度 + TopN 筛选 ============
+        // Jaccard(i,j) = |Ui ∩ Uj| / |Ui ∪ Uj| = coCount / (sizeI + sizeJ - coCount)
         List<CfSimilarityTopn> allRecords = new ArrayList<>();
         for (Map.Entry<Long, Map<Long, Integer>> entry : coOccurrence.entrySet()) {
             Long trackI = entry.getKey();
@@ -248,7 +248,7 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
                 int sizeJ = trackUsers.getOrDefault(trackJ, Collections.emptySet()).size();
                 if (sizeJ == 0) continue;
 
-                double similarity = coCount / Math.sqrt((double) sizeI * sizeJ);
+                double similarity = coCount / (double) (sizeI + sizeJ - coCount);
                 candidates.add(new double[]{trackJ, similarity});
             }
 
@@ -335,10 +335,9 @@ public class CfSimilarityServiceImpl implements CfSimilarityService {
     private boolean isPositiveFeedback(UserBehaviorLog log) {
         if (log.getBehaviorType() == null) return false;
         if (log.getBehaviorType() == UserBehaviorLog.BEHAVIOR_FULL_LISTEN) return true;
-        if (log.getBehaviorType() == UserBehaviorLog.BEHAVIOR_PLAY
+        return log.getBehaviorType() == UserBehaviorLog.BEHAVIOR_PLAY
                 && log.getBehaviorDuration() != null
-                && log.getBehaviorDuration() >= MIN_PLAY_DURATION) return true;
-        return false;
+                && log.getBehaviorDuration() >= MIN_PLAY_DURATION;
     }
 
     /**
