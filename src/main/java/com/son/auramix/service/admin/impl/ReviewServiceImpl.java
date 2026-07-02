@@ -116,8 +116,21 @@ public class ReviewServiceImpl implements ReviewService {
                             .eq(TrackReviewRecord::getTrackId, trackId)
                             .orderByDesc(TrackReviewRecord::getCreatedAt)
                             .last("LIMIT 1"));
-            if (existing != null) {
-                // 重置原有记录，进入新一轮审核
+            if (existing != null && existing.getStatus() != null && existing.getStatus() == 4) {
+                // 管理员已人工确认(status=4)的记录不可重置，新建一条记录进入新一轮审核，
+                // 保留管理员确认痕迹
+                record = new TrackReviewRecord();
+                record.setTrackId(trackId);
+                record.setTrackTitle(track.getTitle());
+                record.setArtistNames(artistNames);
+                record.setAlbumTitle(albumTitle);
+                record.setVerdict(0);
+                record.setConfidence(0);
+                record.setStatus(0);
+                reviewRecordMapper.insert(record);
+                log.info("[AI审核] trackId={} 原记录已人工确认(status=4)，新建审核记录 recordId={}", trackId, record.getId());
+            } else if (existing != null) {
+                // 重置原有记录，进入新一轮审核（仅在记录未被人工确认时才重置）
                 record = existing;
                 record.setTrackTitle(track.getTitle());
                 record.setArtistNames(artistNames);
@@ -183,8 +196,8 @@ public class ReviewServiceImpl implements ReviewService {
                     .reviewType("TEXT_ONLY")
                     .build();
 
-            // 执行审核流水线
-            ReviewOrchestrator.PipelineResult pipeline = orchestrator.execute(ctx, record.getId());
+            // 执行审核流水线（传入 triggerReview 持有的状态机实例，消除双状态机问题）
+            ReviewOrchestrator.PipelineResult pipeline = orchestrator.execute(ctx, record.getId(), sm);
             List<AgentResult> dimensionResults = pipeline.getDimensionResults();
             AgentResult finalResult = pipeline.getFinalResult();
 
@@ -244,8 +257,12 @@ public class ReviewServiceImpl implements ReviewService {
 
         } catch (Exception e) {
             log.error("[AI审核] trackId={} 审核流程异常", trackId, e);
-            // 状态机标记失败
-            sm.fire(ReviewTransition.FAIL);
+            // 状态机标记失败（防御性 try-catch：若状态机已处于终态则 fire 会抛 IllegalStateException）
+            try {
+                sm.fire(ReviewTransition.FAIL);
+            } catch (IllegalStateException ex) {
+                log.warn("[AI审核] trackId={} 状态机已处于非流水线状态，跳过 FAIL 转换", trackId);
+            }
             // 将已落库的审核记录标记为失败/异常(status=5)，避免永久卡在 status=0
             if (record != null && record.getId() != null) {
                 try {

@@ -16,7 +16,8 @@ import java.util.List;
  * 注意：此 agent 不实现 ReviewAgent 接口，因为其方法签名不同。
  * <p>
  * 优化点：
- * 1) buildPrompt 把各维度 analysis 分析过程 + 原始内容传给裁决 agent，使其能做语义级"过度敏感纠偏"；
+ * 1) buildPrompt 把各维度 analysis 正向分析 + counterArgument 反面论证 + 原始内容传给裁决 agent，
+ *    使其能做语义级"过度敏感纠偏"（参考反面论证判断豁免是否成立）；
  * 2) retry 1 次后仍失败 → 降级为 PENDING 转人工（而非 FAIL）；
  * 3) 任一维度 PENDING → 整体直接 PENDING，跳过裁决；
  *    实际短路在 ReviewOrchestrator 完成，这里在 buildPrompt 阶段仍会收到完整列表作兜底。
@@ -105,6 +106,9 @@ public class ReviewJudgeAgent {
             }
             if (ar.getAnalysis() != null) {
                 sb.append("  analysis=").append(ar.getAnalysis()).append("\n");
+            }
+            if (ar.getCounterArgument() != null) {
+                sb.append("  counterArgument=").append(ar.getCounterArgument()).append("\n");
             }
             sb.append("\n");
         }

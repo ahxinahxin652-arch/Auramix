@@ -26,8 +26,11 @@ public class AgentResult {
     /** 不通过原因（PASS 时为 null） */
     private String reason;
 
-    /** 思维链分析过程：逐条对照审核标准的分析，引用原文片段。供 judge agent 跨维度纠偏参考。 */
+    /** 思维链分析过程：逐条对照审核标准的正向分析，引用原文片段。供 judge agent 跨维度纠偏参考。 */
     private String analysis;
+
+    /** 反面论证（Chain-of-Verification）：尝试为内容辩护，思考豁免/艺术表达/语境正当等可能。供 judge agent 纠偏参考。 */
+    private String counterArgument;
 
     public boolean isFail() {
         return "FAIL".equalsIgnoreCase(verdict);

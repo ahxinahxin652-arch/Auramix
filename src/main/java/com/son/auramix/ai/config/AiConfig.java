@@ -8,7 +8,8 @@ import org.springframework.context.annotation.Configuration;
  * 5 个 ChatClient bean，每个 agent 一个独立 ChatClient，独立 system prompt + temperature
  * <p>
  * Prompt 设计原则（提升文本审核能力，不改对外接口）：
- * 1) 思维链输出：先 analysis 逐条分析、引用原文，再下 verdict，减少跳判；
+ * 1) Chain-of-Verification 双重论证：先 analysis 逐条正向分析、引用原文，再 counterArgument 反面论证
+ *    （思考豁免/语境正当性），最后综合两者下 verdict，减少跳判与过度敏感；
  * 2) Few-shot 边界案例：每个维度塞 1 个明显 PASS（含敏感词但语境正常）、1 个明显 FAIL、1 个边界，
  *    收敛 LLM 判定尺度，缓解"歌名/艺术表达被过度敏感"问题；
  * 3) confidence 语义统一：把握度而非严重度。内容与本维度完全无关时给 100（很有把握无违规）；
@@ -21,22 +22,27 @@ public class AiConfig {
     private static final String OUTPUT_FORMAT =
             "请严格按以下 JSON 格式输出（不要输出任何 JSON 之外的内容）：\n" +
             "{\n" +
-            "  \"analysis\": \"逐条对照审核标准分析，必须引用原文片段作为证据，并说明是否命中及为何命中/不命中\",\n" +
+            "  \"analysis\": \"正向分析：逐条对照审核标准分析，必须引用原文片段作为证据，说明是否命中及为何命中/不命中\",\n" +
+            "  \"counterArgument\": \"反面论证：尝试为内容辩护——思考是否存在豁免情形（医学/历史/文学/艺术/反讽）、语境正当性、或过度联想的可能。若确实无任何豁免空间则说明原因\",\n" +
             "  \"matchedCriteria\": [命中的审核条目编号，未命中则为空数组],\n" +
             "  \"verdict\": \"PASS|FAIL\",\n" +
             "  \"confidence\": 0-100整数,\n" +
             "  \"reason\": \"简短结论。PASS 时必须填写：若内容与本维度无关填'无{维度名}相关内容，{维度名}审核通过'；若命中豁免则说明豁免类型。FAIL 时填写违规摘要\"\n" +
             "}\n" +
-            "必须先写 analysis 再下 verdict。confidence 是你对判断的把握度（不是严重度）：" +
+            "必须先写 analysis 正向分析，再写 counterArgument 反面论证，最后综合两者下 verdict。" +
+            "confidence 是你对判断的把握度（不是严重度）：" +
             "内容与本维度完全无关，很有把握无违规 → 100；" +
-            "证据充分 80-100；证据一般 50-79；把握不足 0-49。";
+            "证据充分 80-100；证据一般 50-79；把握不足 0-49。" +
+            "反面论证后若发现豁免成立则修正为 PASS；若反面论证无法成立则维持原判断。";
 
     private static final String COMMON_RULES =
-            "审核原则：\n" +
+            "审核原则（Chain-of-Verification 双重论证）：\n" +
+            "- 先做正向分析（analysis），再做反面论证（counterArgument），最后综合两者下结论；\n" +
             "- 仅审核音乐内容本身（歌词、标题、歌手署名），不审核元信息如曲风、乐器、语种；\n" +
             "- 关注直接表达与明确暗示，不做过度的隐喻联想；\n" +
             "- 艺术表达、文学引用、历史叙事、医学/科普语境、反讽批判（批判对象为不良现象本身）属豁免情形，不算命中；\n" +
             "- 歌名/专辑名含敏感字眼但语境正常（如历史题材、情感隐喻）不应直接判 FAIL，需结合歌词综合判断；\n" +
+            "- 反面论证时必须认真考虑豁免可能，不能走形式；若反面论证成立则修正判断；\n" +
             "- confidence 语义为【把握度】而非严重度：当待审内容与本维度审核标准完全无关时" +
             "（如一首纯情歌对政治敏感维度、纯励志歌曲对色情低俗维度），" +
             "判 PASS 且 confidence=100，表示很有把握本维度无违规；" +
@@ -129,11 +135,12 @@ public class AiConfig {
     @Bean("judgeChatClient")
     public ChatClient judgeChatClient(ChatClient.Builder builder) {
         return builder
-                .defaultSystem("你是音乐内容审核终审裁决官。你将收到 4 个维度审核 agent 的输出结果（含各自的 analysis 分析过程）与原始内容。\n\n" +
+                .defaultSystem("你是音乐内容审核终审裁决官。你将收到 4 个维度审核 agent 的输出结果（含各自的正向分析 analysis 与反面论证 counterArgument）与原始内容。\n\n" +
                         "裁决规则：\n" +
                         "- 一票否决：任一维度报 FAIL 且证据充分（confidence≥70）则整体 FAIL；\n" +
-                        "- 过度敏感纠偏：若某维度判 FAIL 但其 analysis 显示仅凭隐喻联想、艺术表达或歌名过敏，" +
+                        "- 过度敏感纠偏：若某维度判 FAIL 但其 counterArgument 反面论证显示仅凭隐喻联想、艺术表达或歌名过敏，" +
                         "  你有权下调该维度权重，避免单维度过度敏感导致整体误杀；\n" +
+                        "- 反面论证参考：若某维度的 counterArgument 提出了合理的豁免依据，应在裁决分析中予以考量；\n" +
                         "- 多维度共振：≥2 个维度 FAIL 且各自 confidence≥60 → 整体 FAIL；\n" +
                         "- 全 PASS：整体 PASS，confidence 取最低；\n" +
                         "- 任一维度 PENDING（异常待人工）：整体直接 PENDING，confidence=0，转人工确认；\n" +

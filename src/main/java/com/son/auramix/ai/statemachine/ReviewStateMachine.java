@@ -54,20 +54,22 @@ public class ReviewStateMachine {
 
     /**
      * 触发状态转换。
+     * <p>
+     * 非法转换时抛出 {@link IllegalStateException}，而非静默忽略，
+     * 确保调用方能感知状态流转异常并及时处理。
      *
      * @param transition 转换事件
-     * @return true=转换成功，false=转换非法（当前状态不匹配）
+     * @throws IllegalStateException 当前状态不允许该转换
      */
-    public boolean fire(ReviewTransition transition) {
+    public void fire(ReviewTransition transition) {
         if (!canFire(transition)) {
-            log.warn("[状态机] 非法转换: current={}, transition={}", currentStatus, transition);
-            return false;
+            throw new IllegalStateException(
+                "非法状态转换: current=" + currentStatus + ", transition=" + transition);
         }
         ReviewStatus from = currentStatus;
         currentStatus = transition.getTarget();
-        log.debug("[状态机] 转换: {} → {} ({} )", from, currentStatus, transition.getDescription());
+        log.debug("[状态机] 转换: {} → {} ({})", from, currentStatus, transition.getDescription());
         notifyListeners(from, currentStatus, transition);
-        return true;
     }
 
     /**
