@@ -318,7 +318,6 @@ const formatMessage = (content) => {
       <div class="ai-song-info">
         <div class="ai-song-title">${title}</div>
         <div class="ai-song-artist" style="font-size: 12px; color: #b3b3b3; margin-bottom: 4px;">${artistText}</div>
-        <div class="ai-song-action">点击播放</div>
       </div>
     </div>`
   })
@@ -334,7 +333,7 @@ const formatMessage = (content) => {
     </div>`
   })
 
-  return html.replace(/\n/g, '<br/>')
+  return html.replace(/\n/g, '')
 }
 
 const handleMessageClick = async (e) => {
@@ -746,14 +745,14 @@ const sendMessage = async () => {
 /* AI Song Card */
 :deep(.ai-song-card) {
   display: flex;
-  align-items: center;
+  width: 100%;
+  align-items: flex-start;
   background: #282828;
   padding: 8px;
   border-radius: 8px;
   margin: 8px 0;
   cursor: pointer;
   transition: background 0.2s;
-  width: 260px;
 }
 :deep(.ai-song-card:hover) {
   background: #333;
@@ -768,16 +767,12 @@ const sendMessage = async () => {
 :deep(.ai-song-info) {
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 :deep(.ai-song-title) {
   font-size: 14px;
   font-weight: 500;
   color: #fff;
-  margin-bottom: 4px;
-}
-:deep(.ai-song-action) {
-  font-size: 12px;
-  color: #1db954;
 }
 
 /* AI Playlist Card */
