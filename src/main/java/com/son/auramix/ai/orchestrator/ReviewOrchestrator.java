@@ -49,10 +49,14 @@ public class ReviewOrchestrator {
     /**
      * 执行审核流水线，返回完整结果（维度结果 + 最终裁决 + agent_results JSON）。
      * <p>
+     * 状态机由调用方（ReviewServiceImpl.triggerReview）统一创建并传入，
+     * 消除双状态机实例问题：triggerReview 已驱动 PENDING→FETCH_LYRICS→DIMENSION_REVIEW，
+     * 本方法在此状态下继续推进。
+     * <p>
      * 状态机驱动流程：
      * <ol>
-     *   <li>创建状态机（初始状态 PENDING）</li>
-     *   <li>初始化进度骨架 → 转入 DIMENSION_REVIEW</li>
+     *   <li>接收外部状态机（当前状态应为 DIMENSION_REVIEW）</li>
+     *   <li>初始化进度骨架</li>
      *   <li>4 维度并行执行 → 汇合结果</li>
      *   <li>PENDING 短路：有异常维度则 DIMENSION_PENDING_SHORT_CIRCUIT → MANUAL_REVIEW</li>
      *   <li>高置信度 FAIL 短路：任一维度 FAIL+confidence>=90 则 DIMENSION_HIGH_CONF_FAIL → AUTO_RESULT</li>
@@ -61,11 +65,8 @@ public class ReviewOrchestrator {
      * 注意：AUTO_RESULT/MANUAL_REVIEW 的实际 DB status 写入由 ReviewServiceImpl.triggerReview 负责，
      * 这里只返回 PipelineResult 让调用方决定终态。
      */
-    public PipelineResult execute(ReviewContext ctx, Long recordId) {
+    public PipelineResult execute(ReviewContext ctx, Long recordId, ReviewStateMachine sm) {
         log.info("[AI审核] trackId={} 流水线开始（状态机驱动，4维度并行）", ctx.getTrackId());
-
-        // 0) 创建状态机（初始状态 PENDING）
-        ReviewStateMachine sm = ReviewStateMachine.create(ReviewStatus.PENDING);
 
         // 0.1) 防御性排序
         List<DimensionAgent> sortedAgents = sorter.sort(dimensionAgents);
@@ -79,8 +80,44 @@ public class ReviewOrchestrator {
             log.warn("[AI审核] trackId={} initProgress/STARTED 异常，继续执行", ctx.getTrackId(), e);
         }
 
-        // 1) PENDING → DIMENSION_REVIEW
-        sm.fire(ReviewTransition.LYRICS_FETCHED);  // 歌词已在 triggerReview 中拉取完毕，直接进入维度审核
+        // 1) 此时状态机应已处于 DIMENSION_REVIEW（由 triggerReview 驱动 LYRICS_FETCHED 转入）
+
+        // 1.1) 无歌词短路：跳过 4 维度 LLM 调用 + judge，直接 PASS confidence=100
+        if (!ctx.isHasLyrics()) {
+            log.info("[AI审核] trackId={} 无歌词，短路跳过 LLM 调用", ctx.getTrackId());
+            List<AgentResult> skipDims = buildNoLyricsSkipResults(sortedAgents);
+            // 推送各维度 DONE 事件（让前端进度条正常完成）
+            for (AgentResult r : skipDims) {
+                try {
+                    progressStore.dimensionDone(recordId, r);
+                    sseRegistry.send(recordId, ProgressEvent.dimensionDone(recordId, ctx.getTrackId(), r));
+                } catch (Exception ex) {
+                    log.warn("[AI审核] trackId={} 无歌词短路 dimensionDone 推送异常", ctx.getTrackId(), ex);
+                }
+            }
+            // 高置信度 PASS → AUTO_RESULT
+            sm.fire(ReviewTransition.DIMENSION_HIGH_CONF_FAIL); // DIMENSION_REVIEW → AUTO_RESULT
+            AgentResult finalResult = AgentResult.builder()
+                    .agentName("ReviewJudge")
+                    .verdict("PASS")
+                    .confidence(100)
+                    .reason("无歌词，仅元信息审核，各维度默认通过")
+                    .analysis("短路：无歌词，跳过 LLM 调用")
+                    .build();
+            try {
+                progressStore.judgeDone(recordId, finalResult);
+                sseRegistry.send(recordId, ProgressEvent.judgeDone(recordId, ctx.getTrackId(), finalResult));
+            } catch (Exception ex) {
+                log.warn("[AI审核] trackId={} 无歌词短路 judgeDone 推送异常", ctx.getTrackId(), ex);
+            }
+            String agentResultsJson;
+            try {
+                agentResultsJson = aggregator.build(skipDims, finalResult);
+            } catch (Exception e) {
+                agentResultsJson = "{}";
+            }
+            return new PipelineResult(skipDims, finalResult, agentResultsJson);
+        }
 
         // 2) 4 维度并行执行
         List<AgentResult> dims = executeDimensionReview(ctx, recordId, sortedAgents, sm);
@@ -139,7 +176,7 @@ public class ReviewOrchestrator {
     }
 
     /**
-     * 执行维度审核阶段：4 维度并行，单个 agent 异常转 FAIL 占位。
+     * 执行维度审核阶段：4 维度并行，单个 agent 异常转 PENDING 占位。
      */
     private List<AgentResult> executeDimensionReview(ReviewContext ctx, Long recordId,
                                                       List<DimensionAgent> sortedAgents,
@@ -166,10 +203,10 @@ public class ReviewOrchestrator {
                         log.info("[AI审核] trackId={} agent={} 完成 verdict={} confidence={}",
                             ctx.getTrackId(), r.getAgentName(), r.getVerdict(), r.getConfidence());
                     } catch (Exception e) {
-                        log.error("[AI审核] trackId={} agent={} review 异常，转 FAIL 占位", ctx.getTrackId(), name, e);
+                        log.error("[AI审核] trackId={} agent={} review 异常，转 PENDING 占位", ctx.getTrackId(), name, e);
                         r = AgentResult.builder()
                             .agentName(name)
-                            .verdict("FAIL")
+                            .verdict("PENDING")
                             .confidence(0)
                             .reason("agent调用异常: " + e.getClass().getSimpleName() + " - " + e.getMessage())
                             .build();
@@ -190,6 +227,29 @@ public class ReviewOrchestrator {
         List<AgentResult> results = new ArrayList<>();
         for (CompletableFuture<AgentResult> f : futures) {
             results.add(f.join());
+        }
+        return results;
+    }
+
+    /**
+     * 无歌词时构建 4 维度 PASS 占位结果，不调用 LLM。
+     */
+    private List<AgentResult> buildNoLyricsSkipResults(List<DimensionAgent> sortedAgents) {
+        List<AgentResult> results = new ArrayList<>();
+        for (DimensionAgent agent : sortedAgents) {
+            String name;
+            try {
+                name = agent.getName();
+            } catch (Exception ignored) {
+                name = agent.getClass().getSimpleName();
+            }
+            results.add(AgentResult.builder()
+                    .agentName(name)
+                    .verdict("PASS")
+                    .confidence(100)
+                    .reason("无歌词，仅元信息审核，本维度默认通过")
+                    .analysis("短路：无歌词，跳过 LLM 调用")
+                    .build());
         }
         return results;
     }

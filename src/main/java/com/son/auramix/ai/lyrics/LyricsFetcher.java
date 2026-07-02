@@ -14,7 +14,9 @@ public class LyricsFetcher {
     private static final int TIMEOUT_MS = 10_000;
 
     /**
-     * 拉取歌词内容，失败返回 null
+     * 拉取歌词内容，失败返回 null。
+     * <p>
+     * 返回前会清洗 LRC 时间标签/元信息标签，避免无效内容污染 LLM prompt。
      */
     public String fetch(String lyricsUrl) {
         if (lyricsUrl == null || lyricsUrl.isBlank()) {
@@ -25,11 +27,21 @@ public class LyricsFetcher {
             if (content == null || content.isBlank()) {
                 return null;
             }
-            return content;
+            return cleanLrcTags(content);
         } catch (Exception e) {
             log.warn("[AI审核] 歌词拉取失败 url={} err={}", lyricsUrl, e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * 移除 LRC 时间标签和元信息标签，保留纯文本歌词。
+     */
+    private String cleanLrcTags(String content) {
+        return content
+                .replaceAll("\\[\\w+:.*?]", "")
+                .replaceAll("\\[\\d{2}:\\d{2}\\.?\\d*]", "")
+                .trim();
     }
 
     /**
