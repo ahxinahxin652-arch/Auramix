@@ -24,6 +24,10 @@ public class AiChatService {
         this.chatClient = chatClientBuilder.build();
     }
 
+    static {
+        reactor.core.publisher.Hooks.enableAutomaticContextPropagation();
+    }
+
     public Flux<String> streamChat(AiChatRequest request) {
         Long currentUserId = null;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -51,33 +55,16 @@ public class AiChatService {
             }
         }
 
-        // DashScope streaming tool call is known to freeze. 
-        // We use synchronous call().content() as used in AI Audit, then wrap it in a Flux to maintain SSE compatibility.
-        return reactor.core.publisher.Mono.fromCallable(() -> {
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            try {
-                return chatClient.prompt()
-                        .messages(promptMessages)
-                        .toolNames("updateUserProfileTool", "readUserProfileTool", "searchSongsByGenreTool", "getRecentPlaybackAndGenresTool", "createPlaylistAndAddSongsTool")
-                        .call()
-                        .content();
-            } finally {
-                SecurityContextHolder.clearContext();
-            }
-        })
-        .timeout(java.time.Duration.ofSeconds(30))
-        .onErrorResume(e -> {
-            if (e instanceof java.util.concurrent.TimeoutException) {
-                return reactor.core.publisher.Mono.just("\n[请求超时，请重试]");
-            }
-            return reactor.core.publisher.Mono.just("\n[系统异常: " + e.getMessage() + "]");
-        })
-        .flatMapMany(response -> {
-            // Split into single characters to simulate a typing stream effect
-            String[] parts = response.split("");
-            return Flux.fromArray(parts)
-                       .delayElements(java.time.Duration.ofMillis(20));
-        })
-        .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic());
+        return chatClient.prompt()
+                .messages(promptMessages)
+                .toolNames("updateUserProfileTool", "readUserProfileTool", "searchSongsByGenreTool", "getRecentPlaybackAndGenresTool", "createPlaylistAndAddSongsTool")
+                .stream().content()
+                .contextWrite(org.springframework.security.core.context.ReactiveSecurityContextHolder.withAuthentication(auth))
+                .onErrorResume(e -> {
+                    if (e instanceof java.util.concurrent.TimeoutException) {
+                        return reactor.core.publisher.Flux.just("\n[请求超时，请重试]");
+                    }
+                    return reactor.core.publisher.Flux.just("\n[系统异常: " + e.getMessage() + "]");
+                });
     }
 }
