@@ -83,7 +83,7 @@ public abstract class AbstractDimensionAgent implements DimensionAgent {
         if (ctx.isHasLyrics()) {
             sb.append("歌词: ").append(ctx.getLyricsContent()).append("\n");
         } else {
-            sb.append("歌词: 无歌词，仅审核元信息（confidence 不超过 60）\n");
+            sb.append("歌词: 无歌词，仅审核元信息，若与本维度无关则 confidence=100\n");
         }
         sb.append("\n请从以下维度进行判断：\n");
         sb.append(getCriteria());

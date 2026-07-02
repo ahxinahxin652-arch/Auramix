@@ -131,6 +131,10 @@ public class ReviewJudgeAgent {
                     ? node.get("failReasons").asText() : null;
             String analysis = node.has("analysis") && !node.get("analysis").isNull()
                     ? node.get("analysis").asText() : null;
+            // 兜底：PASS 时 LLM 仍可能返回 null failReasons，补上默认描述
+            if ("PASS".equals(verdict) && (failReasons == null || failReasons.isBlank())) {
+                failReasons = "各维度审核均通过，内容正常";
+            }
             return AgentResult.builder()
                     .agentName("ReviewJudge")
                     .verdict(verdict)

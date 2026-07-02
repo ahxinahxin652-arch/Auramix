@@ -12,6 +12,9 @@ import com.son.auramix.ai.progress.ProgressEvent;
 import com.son.auramix.ai.progress.ReviewProgressSseRegistry;
 import com.son.auramix.ai.progress.ReviewProgressStore;
 import com.son.auramix.ai.progress.ReviewProgressVO;
+import com.son.auramix.ai.statemachine.ReviewStateMachine;
+import com.son.auramix.ai.statemachine.ReviewStatus;
+import com.son.auramix.ai.statemachine.ReviewTransition;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
@@ -69,6 +72,7 @@ public class ReviewServiceImpl implements ReviewService {
     public void triggerReview(Long trackId) {
         log.info("[AI审核] trackId={} 开始触发审核", trackId);
         TrackReviewRecord record = null;
+        ReviewStateMachine sm = ReviewStateMachine.create(ReviewStatus.PENDING);
         try {
             Track track = trackMapper.selectById(trackId);
             if (track == null) {
@@ -106,18 +110,47 @@ public class ReviewServiceImpl implements ReviewService {
                 }
             }
 
-            // 先创建审核记录（status=0, AI审核中），尽早落库以保证失败也能留痕
-            record = new TrackReviewRecord();
-            record.setTrackId(trackId);
-            record.setTrackTitle(track.getTitle());
-            record.setArtistNames(artistNames);
-            record.setAlbumTitle(albumTitle);
-            record.setVerdict(0);
-            record.setConfidence(0);
-            record.setStatus(0);
-            reviewRecordMapper.insert(record);
+            // 查询是否已有该歌曲的审核记录：修改歌曲时应更新原记录而非新增
+            TrackReviewRecord existing = reviewRecordMapper.selectOne(
+                    new LambdaQueryWrapper<TrackReviewRecord>()
+                            .eq(TrackReviewRecord::getTrackId, trackId)
+                            .orderByDesc(TrackReviewRecord::getCreatedAt)
+                            .last("LIMIT 1"));
+            if (existing != null) {
+                // 重置原有记录，进入新一轮审核
+                record = existing;
+                record.setTrackTitle(track.getTitle());
+                record.setArtistNames(artistNames);
+                record.setAlbumTitle(albumTitle);
+                record.setLyricsContent(null);
+                record.setVerdict(0);
+                record.setConfidence(0);
+                record.setFailReasons(null);
+                record.setAgentResults(null);
+                record.setProgressJson(null);
+                record.setStatus(0);
+                record.setAdminId(null);
+                record.setAdminVerdict(null);
+                record.setAdminNote(null);
+                record.setReviewedAt(null);
+                reviewRecordMapper.updateById(record);
+                log.info("[AI审核] trackId={} 更新原有审核记录 recordId={}", trackId, record.getId());
+            } else {
+                // 首次审核，创建新记录（status=0, AI审核中），尽早落库以保证失败也能留痕
+                record = new TrackReviewRecord();
+                record.setTrackId(trackId);
+                record.setTrackTitle(track.getTitle());
+                record.setArtistNames(artistNames);
+                record.setAlbumTitle(albumTitle);
+                record.setVerdict(0);
+                record.setConfidence(0);
+                record.setStatus(0);
+                reviewRecordMapper.insert(record);
+                log.info("[AI审核] trackId={} 创建新审核记录 recordId={}", trackId, record.getId());
+            }
 
-            // 拉取歌词（可能抛异常，已落库 record 故 catch 中可更新失败状态）
+            // 拉取歌词（PENDING → FETCH_LYRICS → DIMENSION_REVIEW）
+            sm.fire(ReviewTransition.START_FETCH_LYRICS);
             // 推 LYRICS_FETCHING 事件：让前端展示"正在拉取歌词..."（此时 progress_json 尚未初始化，
             // progressStore.update 会跳过，事件仅走 SSE 实时通道，不入快照——可接受，歌词阶段短暂）
             try {
@@ -130,6 +163,7 @@ public class ReviewServiceImpl implements ReviewService {
             boolean hasLyrics = lyricsFetcher.hasValidLyrics(lyricsContent);
             record.setLyricsContent(lyricsContent);
             reviewRecordMapper.updateById(record);
+            sm.fire(ReviewTransition.LYRICS_FETCHED);
             // 推 LYRICS_DONE 事件：告知前端歌词拉取完成及是否拿到有效歌词
             try {
                 sseRegistry.send(record.getId(),
@@ -210,6 +244,8 @@ public class ReviewServiceImpl implements ReviewService {
 
         } catch (Exception e) {
             log.error("[AI审核] trackId={} 审核流程异常", trackId, e);
+            // 状态机标记失败
+            sm.fire(ReviewTransition.FAIL);
             // 将已落库的审核记录标记为失败/异常(status=5)，避免永久卡在 status=0
             if (record != null && record.getId() != null) {
                 try {
@@ -338,14 +374,15 @@ public class ReviewServiceImpl implements ReviewService {
         if (record == null) {
             throw new BusinessException(ResultCode.REVIEW_NOT_FOUND);
         }
-        // 允许对任何状态的记录进行人工确认（admin override）：
-        // - status=0 (AI审核中)：管理员可强制覆盖 AI 审核结果
-        // - status=1 (高置信度待自动处理)：管理员可提前确认立即上架/下架
-        // - status=2 (已自动处理)：管理员可重新确认以覆盖自动处理结果
-        // - status=3 (低置信度待人工确认)：正常的人工确认流程
-        // - status=4 (人工已确认)：管理员可更新之前的决定
-        // - status=5 (失败/异常)：管理员可手动确认以覆盖失败结果
-        // 防止 AI 审核覆盖管理员决定：triggerReview 中已加条件更新（仅当 status=0 时才更新）
+        // 状态机校验：从 DB status 反查当前状态，校验 ADMIN_CONFIRM 转换是否合法
+        // ADMIN_CONFIRM 可从任何非 ADMIN_DONE 状态转入（管理员可覆盖任何非终态决定）
+        ReviewStatus currentStatus = ReviewStatus.fromDbStatus(record.getStatus());
+        ReviewStateMachine sm = ReviewStateMachine.create(currentStatus);
+        if (!sm.canFire(ReviewTransition.ADMIN_CONFIRM)) {
+            throw new BusinessException(ResultCode.FORBIDDEN, "该审核记录已人工确认，不可重复确认");
+        }
+        sm.fire(ReviewTransition.ADMIN_CONFIRM);
+        log.info("[AI审核] recordId={} 状态转换: {} → ADMIN_DONE (人工确认)", recordId, currentStatus);
 
         // 2) 仅把"两个 UPDATE"放进极短事务：行锁持有窗口从"整个方法执行时间"压缩到几毫秒，
         //    消除与异步 AI 审核的事务互相等待触发 lock_wait_timeout 的链路
