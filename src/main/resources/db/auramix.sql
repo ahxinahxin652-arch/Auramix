@@ -11,7 +11,7 @@
  Target Server Version : 80046 (8.0.46)
  File Encoding         : 65001
 
- Date: 29/06/2026 11:56:05
+ Date: 01/07/2026 21:53:00
 */
 
 SET NAMES utf8mb4;
@@ -92,6 +92,21 @@ CREATE TABLE `artists`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `artists_name_key`(`name` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for cf_similarity_topn
+-- ----------------------------
+DROP TABLE IF EXISTS `cf_similarity_topn`;
+CREATE TABLE `cf_similarity_topn`  (
+  `source_track_id` bigint NOT NULL,
+  `target_track_id` bigint NOT NULL,
+  `sim_cf` double NOT NULL,
+  `rank` int NOT NULL,
+  `created_at` datetime NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`source_track_id`, `target_track_id`) USING BTREE,
+  INDEX `idx_source_rank`(`source_track_id` ASC, `rank` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for genres
@@ -205,11 +220,13 @@ CREATE TABLE `playback_history`  (
   `user_id` bigint NOT NULL,
   `track_id` bigint NOT NULL,
   `played_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `context_type` int NULL DEFAULT NULL COMMENT '播放来源类型: 0为歌单(playlist), 1为专辑(album), 2为歌手页(artist)',
+  `context_type` int NULL DEFAULT NULL COMMENT '0为歌单(playlist), 1为专辑(album), 2为歌手页(artist), 3为今日推荐(daily_recommendation), 4为AI生成歌单(ai_generated), 5为场景化推荐(scenario), 6为发现模块(discovery), 7为相似推荐(similar)',
   `context_id` bigint NULL DEFAULT NULL COMMENT '对应的来源ID',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `playback_history_user_id_idx`(`user_id` ASC) USING BTREE,
-  INDEX `playback_history_track_id_idx`(`track_id` ASC) USING BTREE
+  INDEX `playback_history_track_id_idx`(`track_id` ASC) USING BTREE,
+  INDEX `idx_track_played`(`track_id` ASC, `played_at` ASC) USING BTREE,
+  INDEX `idx_track_context`(`track_id` ASC, `context_type` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -257,6 +274,43 @@ CREATE TABLE `playlists`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for report_feedback
+-- ----------------------------
+DROP TABLE IF EXISTS `report_feedback`;
+CREATE TABLE `report_feedback`  (
+  `id` bigint NOT NULL COMMENT '雪花 ID',
+  `report_id` bigint NOT NULL COMMENT '报告 ID',
+  `user_id` bigint NOT NULL COMMENT '用户 ID',
+  `rating` tinyint NULL DEFAULT NULL COMMENT '1=赞 2=踩',
+  `comment` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '文字反馈',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_report`(`report_id` ASC) USING BTREE,
+  INDEX `idx_user`(`user_id` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '报告用户反馈' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for scene_tags
+-- ----------------------------
+DROP TABLE IF EXISTS `scene_tags`;
+CREATE TABLE `scene_tags`  (
+  `id` bigint NOT NULL COMMENT '雪花算法唯一ID',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '场景名称 (如\"工作专注\")',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '场景描述（给运营看）',
+  `icon` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '场景图标URL/名称',
+  `scene_type` int NOT NULL DEFAULT 0 COMMENT '场景类型: 0=时间型, 1=活动型, 2=天气型',
+  `conditions_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '触发条件JSON',
+  `timezone_offset` int NOT NULL DEFAULT 8 COMMENT '时区偏移（小时），默认东八区',
+  `priority` int NOT NULL DEFAULT 0 COMMENT '优先级（数字越大越优先）',
+  `display_order` int NOT NULL DEFAULT 0 COMMENT '前端展示排序（升序）',
+  `status` int NOT NULL DEFAULT 1 COMMENT '状态: 0=禁用, 1=启用',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_status_display`(`status` ASC, `display_order` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for track_artists
 -- ----------------------------
 DROP TABLE IF EXISTS `track_artists`;
@@ -268,6 +322,32 @@ CREATE TABLE `track_artists`  (
   INDEX `track_artists_track_id_idx`(`track_id` ASC) USING BTREE,
   INDEX `track_artists_artist_id_idx`(`artist_id` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for track_audio_features
+-- ----------------------------
+DROP TABLE IF EXISTS `track_audio_features`;
+CREATE TABLE `track_audio_features`  (
+  `track_id` bigint NOT NULL COMMENT '关联单曲ID (tracks.id)',
+  `tempo` decimal(6, 2) NULL DEFAULT NULL COMMENT '速度/节拍 (BPM, 如 120.50)',
+  `musical_key` int NULL DEFAULT NULL COMMENT '调性 (0=C, 1=C#, 2=D, 3=D#, 4=E, 5=F, 6=F#, 7=G, 8=G#, 9=A, 10=A#, 11=B)',
+  `musical_mode` int NULL DEFAULT NULL COMMENT '调式: 0=大调(明亮/欢快), 1=小调(阴暗/忧郁)',
+  `time_signature` int NULL DEFAULT NULL COMMENT '拍号 (如 3, 4, 6，代表 3/4, 4/4, 6/8 拍)',
+  `valence` decimal(4, 3) NULL DEFAULT NULL COMMENT '愉悦度 (0.000~1.000, 越高兴越接近1)',
+  `arousal` decimal(4, 3) NULL DEFAULT NULL COMMENT '唤醒度 (0.000~1.000, 越激烈越接近1)',
+  `energy` decimal(4, 3) NULL DEFAULT NULL COMMENT '能量值 (0.000~1.000, 响度/噪音占比综合)',
+  `danceability` decimal(4, 3) NULL DEFAULT NULL COMMENT '舞曲感 (0.000~1.000, 节奏稳定性+节拍强度)',
+  `acousticness` decimal(4, 3) NULL DEFAULT NULL COMMENT '原声程度 (0.000~1.000, 1=纯原声乐器, 0=电子合成)',
+  `instrumentalness` decimal(4, 3) NULL DEFAULT NULL COMMENT '纯器乐程度 (0.000~1.000, 1=纯音乐无人声)',
+  `mfcc_vector` json NULL COMMENT 'MFCC特征向量 (JSON数组, 12-20维, V1方案使用)',
+  `audio_vector_id` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '向量数据库中的embedding ID (V2方案, 如Milvus/Pinecone)',
+  `version` int NOT NULL DEFAULT 1 COMMENT '特征版本: 1=Librosa/MFCC, 2=MERT/768d, 3=CLAP',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`track_id`) USING BTREE,
+  INDEX `idx_mode_tempo`(`musical_mode` ASC, `tempo` ASC) USING BTREE COMMENT '加速粗筛: WHERE musical_mode=? AND tempo BETWEEN',
+  INDEX `idx_energy`(`energy` ASC) USING BTREE COMMENT '加速场景过滤: WHERE energy >= ?',
+  INDEX `idx_version`(`version` ASC) USING BTREE COMMENT '版本过滤: WHERE version = ?'
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '歌曲音频特征表（AI推荐核心数据源）' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for track_audio_resources
@@ -313,6 +393,7 @@ CREATE TABLE `track_review_records`  (
   `confidence` int NOT NULL DEFAULT 0 COMMENT '最终置信度 0-100',
   `fail_reasons` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '不通过原因(各fail agent拼接)',
   `agent_results` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '4+1个agent的完整JSON输出',
+  `progress_json` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT 'AI审核过程进度轨迹JSON；审核中实时增量更新，完成后保留供事后回放',
   `status` int NOT NULL DEFAULT 0 COMMENT '处理状态: 0=AI审核中, 1=AI审核完成待自动处理, 2=已自动处理, 3=待人工确认, 4=人工已确认',
   `admin_id` bigint NULL DEFAULT NULL COMMENT '人工确认的管理员ID',
   `admin_verdict` int NULL DEFAULT NULL COMMENT '管理员裁决: 1=通过, -1=不通过',
@@ -364,8 +445,56 @@ CREATE TABLE `tracks`  (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `member` int NOT NULL DEFAULT 0 COMMENT '歌曲是否为会员歌曲，0-非会员，1-会员',
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `tracks_album_id_idx`(`album_id` ASC) USING BTREE
+  INDEX `tracks_album_id_idx`(`album_id` ASC) USING BTREE,
+  INDEX `idx_status`(`status` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for user_behavior_logs
+-- ----------------------------
+DROP TABLE IF EXISTS `user_behavior_logs`;
+CREATE TABLE `user_behavior_logs`  (
+  `id` bigint NOT NULL COMMENT '雪花算法唯一ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `track_id` bigint NULL DEFAULT NULL COMMENT '关联单曲ID(可为null, 如搜索行为无具体歌曲)',
+  `behavior_type` int NOT NULL COMMENT '行为类型: 0=播放, 1=收藏, 2=取消收藏, 3=跳过, 4=完整听完, 5=搜索, 6=分享, 7=添加到歌单',
+  `context` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '行为上下文 (如来源页面: home/recommend/discover/playlist/search)',
+  `behavior_duration` int NULL DEFAULT NULL COMMENT '行为持续时长(秒), 如收听时长',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_user_created`(`user_id` ASC, `created_at` ASC) USING BTREE,
+  INDEX `idx_user_behavior`(`user_id` ASC, `behavior_type` ASC) USING BTREE,
+  INDEX `idx_track_behavior_created`(`track_id` ASC, `behavior_type` ASC, `created_at` ASC) USING BTREE,
+  INDEX `idx_created_at`(`created_at` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for user_listening_stats
+-- ----------------------------
+DROP TABLE IF EXISTS `user_listening_stats`;
+CREATE TABLE `user_listening_stats`  (
+  `id` bigint NOT NULL COMMENT '雪花 ID',
+  `user_id` bigint NOT NULL COMMENT '用户 ID',
+  `period_type` tinyint NOT NULL COMMENT '1=周报 2=月报',
+  `period_start` date NOT NULL COMMENT '周期起始日',
+  `period_end` date NOT NULL COMMENT '周期结束日',
+  `total_plays` int NOT NULL DEFAULT 0 COMMENT '总播放次数',
+  `total_duration_sec` bigint NOT NULL DEFAULT 0 COMMENT '总听歌时长(秒)',
+  `unique_tracks` int NOT NULL DEFAULT 0 COMMENT '去重歌曲数',
+  `top_tracks` json NULL COMMENT 'TOP 歌曲 JSON 数组',
+  `top_artists` json NULL COMMENT 'TOP 歌手 JSON 数组',
+  `top_genres` json NULL COMMENT 'TOP 流派 JSON 数组',
+  `top_albums` json NULL COMMENT 'TOP 专辑 JSON 数组',
+  `hourly_distribution` json NULL COMMENT '24 长度数组, 每小时播放量',
+  `weekday_distribution` json NULL COMMENT '7 长度数组, 每周各天播放量',
+  `peak_day` date NULL DEFAULT NULL COMMENT '听歌峰值日期',
+  `liked_count` int NOT NULL DEFAULT 0 COMMENT '周期内新增红心数',
+  `report_id` bigint NULL DEFAULT NULL COMMENT '关联的报告 ID',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_stats`(`user_id` ASC, `period_type` ASC, `period_start` ASC) USING BTREE,
+  INDEX `idx_user`(`user_id` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户周期听歌统计缓存' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for user_memberships
@@ -388,6 +517,32 @@ CREATE TABLE `user_memberships`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
+-- Table structure for user_periodic_reports
+-- ----------------------------
+DROP TABLE IF EXISTS `user_periodic_reports`;
+CREATE TABLE `user_periodic_reports`  (
+  `id` bigint NOT NULL COMMENT '雪花 ID',
+  `user_id` bigint NOT NULL COMMENT '用户 ID',
+  `period_type` tinyint NOT NULL COMMENT '1=周报 2=月报',
+  `period_start` date NOT NULL COMMENT '周期起始日(周报=周一,月报=1号)',
+  `period_end` date NOT NULL COMMENT '周期结束日(周报=周日,月报=月末)',
+  `stats_snapshot` json NOT NULL COMMENT '统计快照 JSON(冗余,避免统计层变更影响历史报告)',
+  `llm_summary` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL COMMENT 'LLM 生成的总结文本',
+  `mood_tags` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '心情标签, 逗号分隔',
+  `highlights` json NULL COMMENT '重点时刻 JSON',
+  `recommendations` json NULL COMMENT '推荐收听 JSON',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '0=生成中 1=已生成 2=失败 3=无数据',
+  `error_message` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL COMMENT '失败原因',
+  `generated_at` datetime NULL DEFAULT NULL COMMENT 'LLM 生成完成时间',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE INDEX `uk_user_period`(`user_id` ASC, `period_type` ASC, `period_start` ASC) USING BTREE,
+  INDEX `idx_user`(`user_id` ASC) USING BTREE,
+  INDEX `idx_period`(`period_type` ASC, `period_start` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户周期总结报告' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
 -- Table structure for users
 -- ----------------------------
 DROP TABLE IF EXISTS `users`;
@@ -405,5 +560,19 @@ CREATE TABLE `users`  (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `users_email_key`(`email` ASC) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for user_profiles
+-- ----------------------------
+DROP TABLE IF EXISTS `user_profiles`;
+CREATE TABLE `user_profiles` (
+  `user_id` bigint NOT NULL COMMENT '用户ID主键',
+  `favorite_genres` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '喜欢的流派(逗号分隔)',
+  `favorite_artists` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '喜欢的歌手(逗号分隔)',
+  `summary` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT 'Agent维护的用户偏好详细总结',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Agent智能对话-用户画像表' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;
