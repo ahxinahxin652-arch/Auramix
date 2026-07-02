@@ -134,10 +134,15 @@
             rows="1"
             ref="inputArea"
           ></textarea>
-          <button class="send-btn" @click="sendMessage" :disabled="!inputText.trim() || isStreaming">
+          <button v-if="!isGeneratingChat" class="send-btn" @click="sendMessage" :disabled="!inputText.trim()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"></line>
               <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+          <button v-else class="send-btn stop-btn" @click="stopMessage">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect>
             </svg>
           </button>
         </div>
@@ -151,15 +156,29 @@ import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import { usePlayerStore } from '../stores/player'
+import { useMusicLibraryStore } from '../stores/musicLibrary'
+import { useLibraryStore } from '../stores/library'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
 const userStore = useUserStore()
+const musicLibraryStore = useMusicLibraryStore()
+const libraryStore = useLibraryStore()
 const sessions = ref([])
 const currentSessionId = ref(null)
 const messages = ref([])
 const inputText = ref('')
-const isStreaming = ref(false)
+const isStreaming = ref(false) // 用于控制 typing-indicator
+const isGeneratingChat = ref(false) // 用于控制发送/停止按钮状态
+let abortController = null
+
+const stopMessage = () => {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
+  }
+}
+
 const messagesContainer = ref(null)
 const inputArea = ref(null)
 
@@ -454,7 +473,7 @@ const handleMessageClick = async (e) => {
 
 const sendMessage = async () => {
   const text = inputText.value.trim()
-  if (!text || isStreaming.value) return
+  if (!text || isGeneratingChat.value) return
   
   if (!currentSessionId.value) {
     await startNewSession()
@@ -482,6 +501,8 @@ const sendMessage = async () => {
 
   // 显示 typing-indicator（isStreaming=true），等拿到第一个 chunk 后关闭
   isStreaming.value = true
+  isGeneratingChat.value = true
+  abortController = new AbortController()
   
   // 准备发送到后端的数据（提取历史记录）
   const history = messages.value.map(m => ({ role: m.role, content: m.content }))
@@ -494,7 +515,8 @@ const sendMessage = async () => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ messages: history })
+      body: JSON.stringify({ messages: history }),
+      signal: abortController.signal
     })
 
     if (!response.ok) {
@@ -536,7 +558,15 @@ const sendMessage = async () => {
         aiContent += dataStr
         // ✅ 通过响应式数组下标赋值，Vue Proxy 能感知变化，实现实时渲染
         messages.value[aiIndex].content = aiContent
-        scrollToBottom()
+        
+        // Smart scroll to bottom
+        const el = messagesContainer.value
+        if (el) {
+          const isAtBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 50
+          if (isAtBottom) {
+            scrollToBottom()
+          }
+        }
       }
     }
 
@@ -552,6 +582,14 @@ const sendMessage = async () => {
         }
         aiContent += dataStr
         messages.value[aiIndex].content = aiContent
+        
+        const el = messagesContainer.value
+        if (el) {
+          const isAtBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 50
+          if (isAtBottom) {
+            scrollToBottom()
+          }
+        }
       }
     }
 
@@ -564,6 +602,12 @@ const sendMessage = async () => {
       messages.value.push({ role: 'ai', content: '（AI 未返回任何内容，请稍后重试）' })
     }
     
+    // 如果 AI 消息中包含歌单创建标签，则刷新本地和远端歌单库
+    if (aiContent.includes('[Playlist:')) {
+      if (libraryStore.forceSync) libraryStore.forceSync()
+      if (musicLibraryStore.loadWarehouses) musicLibraryStore.loadWarehouses()
+    }
+    
     // 2. 保存 AI 回复到本地 SQLite
     await fetch(`${LOCAL_API}/sessions/${sessionId}/messages`, {
       method: 'POST',
@@ -572,10 +616,20 @@ const sendMessage = async () => {
     })
     
   } catch (err) {
-    console.error('Chat stream error', err)
-    messages.value.push({ role: 'ai', content: '网络出错了，请稍后再试。' })
+    if (err.name === 'AbortError') {
+      console.log('Chat stream aborted by user')
+      // If we aborted and already have an index, just mark it as not generating
+      if (messages.value.length > 0 && messages.value[messages.value.length - 1].isGenerating) {
+        messages.value[messages.value.length - 1].isGenerating = false
+      }
+    } else {
+      console.error('Chat stream error', err)
+      messages.value.push({ role: 'ai', content: '网络出错了，请稍后再试。' })
+    }
   } finally {
     isStreaming.value = false
+    isGeneratingChat.value = false
+    abortController = null
     scrollToBottom()
   }
 }
@@ -1036,6 +1090,15 @@ textarea::-webkit-scrollbar-thumb:hover {
   background: #333333;
   color: #888;
   cursor: not-allowed;
+}
+
+.stop-btn {
+  background: #333333;
+  color: #ffffff;
+}
+.stop-btn:hover {
+  background: #ff4d4f;
+  transform: scale(1.05);
 }
 
 :deep(.ai-tool-result.has-details) {
