@@ -291,7 +291,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\server\\generated\\prisma-client",
+      "value": "D:\\shixun\\pjl\\auramix_desktop\\server\\generated\\prisma-client",
       "fromEnvVar": null
     },
     "config": {
@@ -305,7 +305,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\Code\\Project\\Java\\Auramix\\Auramix_desktop\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\shixun\\pjl\\auramix_desktop\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -340,7 +340,7 @@ if (!fs.existsSync(path.join(__dirname, 'schema.prisma'))) {
     "server/generated/prisma-client",
     "generated/prisma-client",
   ]
-  
+
   const alternativePath = alternativePaths.find((altPath) => {
     return fs.existsSync(path.join(process.cwd(), altPath, 'schema.prisma'))
   }) ?? alternativePaths[0]
