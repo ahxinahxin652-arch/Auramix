@@ -59,6 +59,13 @@ public class AiChatToolConfig {
         this.userTrackService = userTrackService;
     }
 
+    private void emitToolEvent(String event) {
+        reactor.core.publisher.Sinks.Many<String> sink = ToolEventSinkAccessor.SINK.get();
+        if (sink != null) {
+            sink.tryEmitNext(event);
+        }
+    }
+
     // Helper to get current user securely
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -77,6 +84,7 @@ public class AiChatToolConfig {
     @Description("Updates the user's music profile/preferences based on their chat input.")
     public Function<UpdateProfileRequest, String> updateUserProfileTool() {
         return request -> {
+            emitToolEvent("\n<Action>正在更新您的偏好数据...</Action>");
             System.out.println("========== [TOOL CALL] updateUserProfileTool invoked ==========");
             System.out.println("Request: " + request);
             
@@ -85,6 +93,7 @@ public class AiChatToolConfig {
                 userId = getCurrentUserId();
             } catch (BusinessException e) {
                 System.out.println("Tool returning error: User not authenticated.");
+                emitToolEvent("\n<ToolResult>更新失败: 未登录</ToolResult>\n");
                 return "Error: User not authenticated.";
             }
             System.out.println("Current UserId resolved as: " + userId);
@@ -107,9 +116,12 @@ public class AiChatToolConfig {
                     userProfileMapper.updateById(profile);
                     log.info("Updated existing user profile: {}", profile);
                 }
-                return "Success: User profile updated.";
+                String result = "Success: User profile updated.";
+                emitToolEvent("\n<ToolResult>" + result + "</ToolResult>\n");
+                return result;
             } catch (Exception e) {
                 log.error("Exception in updateUserProfileTool: {}", e.getMessage(), e);
+                emitToolEvent("\n<ToolResult>更新失败: " + e.getMessage() + "</ToolResult>\n");
                 return "Error updating user profile: " + e.getMessage();
             }
         };
@@ -122,19 +134,24 @@ public class AiChatToolConfig {
     @Description("Reads the current user's music profile/preferences.")
     public Function<ReadProfileRequest, String> readUserProfileTool() {
         return request -> {
+            emitToolEvent("\n<Action>正在读取您的偏好数据...</Action>");
             try {
                 Long userId = getCurrentUserId();
                 UserProfile profile = userProfileMapper.selectById(userId);
                 if (profile == null) {
                     log.info("readUserProfileTool result: No profile found for userId {}", userId);
-                    return "No user profile found. Please ask the user about their preferences.";
+                    String result = "No user profile found. Please ask the user about their preferences.";
+                    emitToolEvent("\n<ToolResult>获取结果: 暂无偏好数据</ToolResult>\n");
+                    return result;
                 }
                 String result = String.format("Favorite Genres: %s, Favorite Artists: %s, Summary: %s", 
                     profile.getFavoriteGenres(), profile.getFavoriteArtists(), profile.getSummary());
                 log.info("readUserProfileTool result for userId {}: {}", userId, result);
+                emitToolEvent("\n<ToolResult>获取结果: " + result + "</ToolResult>\n");
                 return result;
             } catch (Exception e) {
                 log.error("Exception in readUserProfileTool: {}", e.getMessage(), e);
+                emitToolEvent("\n<ToolResult>读取失败: " + e.getMessage() + "</ToolResult>\n");
                 return "Error reading user profile: " + e.getMessage();
             }
         };
@@ -149,6 +166,7 @@ public class AiChatToolConfig {
     @Description("Searches for songs by keyword or genre. Returns a plaintext list of matching songs.")
     public Function<SearchSongsRequest, String> searchSongsByGenreTool() {
         return request -> {
+            emitToolEvent("\n<Action>正在根据关键字搜索歌曲: " + request.keyword() + "</Action>");
             try {
                 int limit = request.limit() > 0 ? request.limit() : 5;
                 String keyword = request.keyword() != null ? request.keyword() : "";
@@ -178,9 +196,11 @@ public class AiChatToolConfig {
                 
                 List<Track> tracks = trackMapper.selectList(wrapper);
                 
-                if (tracks.isEmpty()) return "No songs found for: " + keyword;
-                
-                
+                if (tracks.isEmpty()) {
+                    String res = "No songs found for: " + keyword;
+                    emitToolEvent("\n<ToolResult>搜索结果: 未找到匹配歌曲</ToolResult>\n");
+                    return res;
+                }
                 
                 String resultText = tracks.stream()
                     .map(t -> {
@@ -204,9 +224,11 @@ public class AiChatToolConfig {
                     .collect(Collectors.joining("\n"));
                 
                 log.info("searchSongsByGenreTool result for keyword '{}': found {} tracks. Data: \n{}", keyword, tracks.size(), resultText);
+                emitToolEvent("\n<ToolResult>搜索结果: 找到 " + tracks.size() + " 首歌曲</ToolResult>\n");
                 return resultText;
             } catch (Exception e) {
                 log.error("Exception in searchSongsByGenreTool: {}", e.getMessage(), e);
+                emitToolEvent("\n<ToolResult>搜索失败: " + e.getMessage() + "</ToolResult>\n");
                 return "Error searching songs: " + e.getMessage();
             }
         };
@@ -220,6 +242,7 @@ public class AiChatToolConfig {
     @Description("Gets the user's recently played songs to analyze their current mood/taste.")
     public Function<RecentPlaybackRequest, String> getRecentPlaybackAndGenresTool() {
         return request -> {
+            emitToolEvent("\n<Action>正在读取您的最近播放记录...</Action>");
             try {
                 Long userId = getCurrentUserId();
                 
@@ -230,14 +253,18 @@ public class AiChatToolConfig {
                   .last("LIMIT " + limit);
                   
                 List<PlaybackHistory> history = playbackHistoryMapper.selectList(hw);
-                if(history.isEmpty()) return "No recent play history.";
+                if(history.isEmpty()) {
+                    emitToolEvent("\n<ToolResult>读取结果: 暂无播放记录</ToolResult>\n");
+                    return "No recent play history.";
+                }
                 
                 List<Long> trackIds = history.stream().map(PlaybackHistory::getTrackId).distinct().toList();
-                if (trackIds.isEmpty()) return "No recent play history.";
+                if (trackIds.isEmpty()) {
+                    emitToolEvent("\n<ToolResult>读取结果: 暂无播放记录</ToolResult>\n");
+                    return "No recent play history.";
+                }
                 
                 List<Track> tracks = trackMapper.selectBatchIds(trackIds);
-                
-                
                 
                 String resultText = tracks.stream()
                     .map(t -> {
@@ -261,9 +288,11 @@ public class AiChatToolConfig {
                     .collect(Collectors.joining("\n"));
                 
                 log.info("getRecentPlaybackAndGenresTool result for userId '{}': found {} tracks. Data: \n{}", userId, tracks.size(), resultText);
+                emitToolEvent("\n<ToolResult>读取结果: 找到 " + tracks.size() + " 首最近播放歌曲</ToolResult>\n");
                 return resultText;
             } catch (Exception e) {
                 log.error("Exception in getRecentPlaybackAndGenresTool: {}", e.getMessage(), e);
+                emitToolEvent("\n<ToolResult>读取失败: " + e.getMessage() + "</ToolResult>\n");
                 return "Error retrieving recent playback: " + e.getMessage();
             }
         };
@@ -279,6 +308,7 @@ public class AiChatToolConfig {
     @Description("Creates a new playlist for the user and adds the specified songs to it.")
     public Function<CreatePlaylistRequest, String> createPlaylistAndAddSongsTool() {
         return request -> {
+            emitToolEvent("\n<Action>正在为您创建专属歌单: " + request.playlistName() + "</Action>");
             try {
                 Long userId = getCurrentUserId();
                 
@@ -302,9 +332,11 @@ public class AiChatToolConfig {
                 }
                 String resultStr = String.format("Successfully created playlist: id=%d, name='%s'", playlist.getId(), playlist.getName());
                 log.info("createPlaylistAndAddSongsTool result: added {} tracks. Data: {}", request.trackIds() != null ? request.trackIds().size() : 0, resultStr);
+                emitToolEvent("\n<ToolResult>创建结果: 成功创建歌单并添加了 " + (request.trackIds() != null ? request.trackIds().size() : 0) + " 首歌曲</ToolResult>\n");
                 return resultStr;
             } catch (Exception e) {
                 log.error("Exception in createPlaylistAndAddSongsTool: {}", e.getMessage(), e);
+                emitToolEvent("\n<ToolResult>创建失败: " + e.getMessage() + "</ToolResult>\n");
                 return "Error creating playlist: " + e.getMessage();
             }
         };

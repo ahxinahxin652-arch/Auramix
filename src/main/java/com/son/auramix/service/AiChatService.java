@@ -26,6 +26,7 @@ public class AiChatService {
 
     static {
         reactor.core.publisher.Hooks.enableAutomaticContextPropagation();
+        io.micrometer.context.ContextRegistry.getInstance().registerThreadLocalAccessor(new com.son.auramix.ai.tool.ToolEventSinkAccessor());
     }
 
     public Flux<String> streamChat(AiChatRequest request) {
@@ -55,7 +56,9 @@ public class AiChatService {
             }
         }
 
-        return chatClient.prompt()
+        reactor.core.publisher.Sinks.Many<String> toolEvents = reactor.core.publisher.Sinks.many().unicast().onBackpressureBuffer();
+
+        Flux<String> llmStream = chatClient.prompt()
                 .messages(promptMessages)
                 .toolNames("updateUserProfileTool", "readUserProfileTool", "searchSongsByGenreTool", "getRecentPlaybackAndGenresTool", "createPlaylistAndAddSongsTool")
                 .stream().content()
@@ -65,6 +68,10 @@ public class AiChatService {
                         return reactor.core.publisher.Flux.just("\n[请求超时，请重试]");
                     }
                     return reactor.core.publisher.Flux.just("\n[系统异常: " + e.getMessage() + "]");
-                });
+                })
+                .doFinally(sig -> toolEvents.tryEmitComplete());
+
+        return reactor.core.publisher.Flux.merge(toolEvents.asFlux(), llmStream)
+                .contextWrite(ctx -> ctx.put(com.son.auramix.ai.tool.ToolEventSinkAccessor.KEY, toolEvents));
     }
 }
