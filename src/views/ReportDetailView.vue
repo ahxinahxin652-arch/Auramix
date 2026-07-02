@@ -44,37 +44,32 @@ const topArtists = computed(() => (stats.value?.topArtists ?? []).slice(0, 8))
 const maxHourly = computed(() => Math.max(1, ...hourly.value))
 const maxWeekday = computed(() => Math.max(1, ...weekday.value))
 
-// 24 小时柱状图 path
-const hourlyBars = computed(() => {
-  const w = 100
-  const h = 60
-  return hourly.value.map((v, i) => {
-    const barH = (v / maxHourly.value) * h
-    const x = (i / 24) * w + 0.4
-    const y = h - barH
+const hourlyBars = computed(() =>
+  hourly.value.map((v, i) => {
+    const barH = (v / maxHourly.value) * 60
+    const x = (i / 24) * 100 + 0.4
+    const y = 60 - barH
     return { x, y, h: barH, v, label: i }
-  })
-})
-
-// 周柱状图 path
+  }),
+)
 const weekdayBars = computed(() => {
   const labels = ['一', '二', '三', '四', '五', '六', '日']
   return weekday.value.map((v, i) => {
-    const h = 60
-    const barH = (v / maxWeekday.value) * h
+    const barH = (v / maxWeekday.value) * 60
     const barWidth = 12
     const x = i * (100 / 7) + 2
-    return { x, y: h - barH, w: barWidth, h: barH, v, label: labels[i] }
+    return { x, y: 60 - barH, w: barWidth, h: barH, v, label: labels[i] }
   })
 })
 
-// ===== 加载 =====
 async function load() {
   loading.value = true
   try {
+    console.log('[ReportDetail] load id:', reportId.value)
     report.value = await getReport(reportId.value)
+    console.log('[ReportDetail] loaded:', report.value)
   } catch (err) {
-    console.error('加载报告失败:', err)
+    console.error('[ReportDetail] load error:', err)
     ElMessage.error(err.message || '加载失败')
   } finally {
     loading.value = false
@@ -104,7 +99,6 @@ function stopPolling() {
   }
 }
 
-// ===== 反馈 =====
 async function handleFeedback() {
   if (!feedbackRating.value) {
     ElMessage.warning('请先选择赞/踩')
@@ -122,7 +116,6 @@ async function handleFeedback() {
   }
 }
 
-// ===== 下载 =====
 function handleDownload() {
   if (!report.value) return
   const text = formatReportAsText(report.value, stats.value)
@@ -192,7 +185,6 @@ function back() {
 onMounted(async () => {
   await load()
   startPollingIfNeeded()
-  // 标记为已读 (清掉顶栏红点)
   if (report.value && report.value.status === 1) {
     markReportRead(report.value.id)
   }
@@ -203,7 +195,6 @@ onUnmounted(stopPolling)
 
 <template>
   <div class="report-detail" v-loading="loading">
-    <!-- 顶部 -->
     <div class="report-detail__top">
       <el-button :icon="ArrowLeft" link @click="back" class="back-btn">返回列表</el-button>
       <el-button
@@ -211,28 +202,24 @@ onUnmounted(stopPolling)
         type="primary"
         :icon="Download"
         @click="handleDownload"
-      >
-        下载报告
-      </el-button>
+      >下载报告</el-button>
     </div>
 
     <div v-if="report" class="report-detail__content">
       <!-- 头部 -->
       <div class="report-header">
-        <div>
-          <h1 class="report-header__title">
-            {{ report.periodTypeLabel }} ({{ report.periodStart }} ~ {{ report.periodEnd }})
-          </h1>
-          <p class="report-header__meta">
-            <el-tag :type="report.status === 1 ? 'success' : report.status === 0 ? 'warning' : 'info'" size="small" effect="dark">
-              {{ statusLabel(report.status) }}
-            </el-tag>
-            <span v-if="report.generatedAt">生成于 {{ report.generatedAt }}</span>
-            <span v-else-if="isGenerating" class="report-header__pending">
-              <el-icon class="is-loading"><MagicStick /></el-icon> 正在生成, 自动刷新中...
-            </span>
-          </p>
+        <div class="report-header__meta">
+          <el-tag :type="report.status === 1 ? 'success' : report.status === 0 ? 'warning' : 'info'" size="small" effect="dark">
+            {{ statusLabel(report.status) }}
+          </el-tag>
+          <span class="report-header__type">{{ periodTypeLabel(report.periodType) }}</span>
+          <span class="report-header__date">{{ report.periodStart }} ~ {{ report.periodEnd }}</span>
         </div>
+        <h1 class="report-header__title">{{ report.title || '听歌报告' }}</h1>
+        <p v-if="report.generatedAt" class="report-header__time">生成于 {{ report.generatedAt }}</p>
+        <p v-else-if="isGenerating" class="report-header__time report-header__time--pending">
+          <el-icon class="is-loading"><MagicStick /></el-icon> 正在生成, 自动刷新中...
+        </p>
       </div>
 
       <!-- 生成中 -->
@@ -250,13 +237,13 @@ onUnmounted(stopPolling)
       <!-- 无数据 -->
       <div v-else-if="isNoData" class="status-block status-block--empty">
         <h3>本周期暂无听歌数据</h3>
-        <p>先在「音乐库」里听点歌, 下个周期再来查看吧。</p>
+        <p>先在「音乐库」里听点歌, 下个周期再来查看。</p>
       </div>
 
       <!-- 已生成 -->
       <template v-else-if="isReady">
         <!-- AI 总结 -->
-        <section class="detail-section">
+        <section class="detail-section detail-section--lead">
           <h2 class="detail-section__title">AI 总结</h2>
           <p class="summary-text">{{ report.summary }}</p>
           <div v-if="report.moodTags && report.moodTags.length > 0" class="mood-tags">
@@ -286,13 +273,13 @@ onUnmounted(stopPolling)
           </section>
         </div>
 
-        <!-- SVG 图表: 时段 + 周分布 -->
+        <!-- 图表: 时段 + 周分布 -->
         <div class="row-2">
           <section class="detail-section">
             <h2 class="detail-section__title">时段分布（24h）</h2>
             <div class="chart-wrap">
               <svg viewBox="0 0 100 72" preserveAspectRatio="none" class="chart-svg">
-                <line x1="0" y1="60" x2="100" y2="60" stroke="rgba(255,255,255,0.2)" stroke-width="0.2" />
+                <line x1="0" y1="60" x2="100" y2="60" stroke="#1f1f1f" stroke-width="0.2" />
                 <rect
                   v-for="(b, i) in hourlyBars"
                   :key="i"
@@ -300,15 +287,9 @@ onUnmounted(stopPolling)
                   :y="b.y"
                   width="3.3"
                   :height="b.h"
-                  fill="url(#hourlyGrad)"
-                  rx="0.4"
+                  fill="#fff"
+                  rx="0.3"
                 />
-                <defs>
-                  <linearGradient id="hourlyGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#60a5fa" />
-                    <stop offset="100%" stop-color="#60a5fa" stop-opacity="0.2" />
-                  </linearGradient>
-                </defs>
               </svg>
               <div class="chart-axis">
                 <span v-for="i in [0, 6, 12, 18, 23]" :key="i">{{ i }}:00</span>
@@ -320,7 +301,7 @@ onUnmounted(stopPolling)
             <h2 class="detail-section__title">周分布</h2>
             <div class="chart-wrap">
               <svg viewBox="0 0 100 72" preserveAspectRatio="none" class="chart-svg">
-                <line x1="0" y1="60" x2="100" y2="60" stroke="rgba(255,255,255,0.2)" stroke-width="0.2" />
+                <line x1="0" y1="60" x2="100" y2="60" stroke="#1f1f1f" stroke-width="0.2" />
                 <rect
                   v-for="(b, i) in weekdayBars"
                   :key="i"
@@ -328,15 +309,9 @@ onUnmounted(stopPolling)
                   :y="b.y"
                   :width="b.w"
                   :height="b.h"
-                  fill="url(#weekGrad)"
+                  fill="#9ca3af"
                   rx="1"
                 />
-                <defs>
-                  <linearGradient id="weekGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#c084fc" />
-                    <stop offset="100%" stop-color="#c084fc" stop-opacity="0.2" />
-                  </linearGradient>
-                </defs>
               </svg>
               <div class="chart-axis">
                 <span v-for="(b, i) in weekdayBars" :key="i">周{{ b.label }}</span>
@@ -370,7 +345,7 @@ onUnmounted(stopPolling)
         </div>
 
         <!-- 反馈 -->
-        <section class="detail-section feedback-section">
+        <section class="detail-section">
           <h2 class="detail-section__title">报告反馈</h2>
           <div class="feedback-row">
             <span class="feedback-label">这份报告怎么样？</span>
@@ -398,9 +373,7 @@ onUnmounted(stopPolling)
             :disabled="!feedbackRating"
             @click="handleFeedback"
             class="feedback-submit"
-          >
-            提交反馈
-          </el-button>
+          >提交反馈</el-button>
         </section>
       </template>
     </div>
@@ -408,11 +381,13 @@ onUnmounted(stopPolling)
 </template>
 
 <style scoped>
+/* ================== 黑色主调 ================== */
 .report-detail {
-  padding: 24px 32px;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  color: #e0e7ff;
+  position: relative;
+  min-height: 100%;
+  padding: 24px 40px 40px;
+  background: #000;
+  color: #e5e7eb;
 }
 
 .report-detail__top {
@@ -422,43 +397,64 @@ onUnmounted(stopPolling)
 }
 
 .back-btn {
-  color: rgba(224, 231, 255, 0.7);
+  color: #9ca3af;
   font-size: 14px;
 }
+
+.back-btn:hover { color: #fff; }
 
 .report-detail__content {
   max-width: 1100px;
   margin: 0 auto;
 }
 
+/* 头部 */
 .report-header {
-  padding: 28px 32px;
-  background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(192, 132, 252, 0.15));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
+  padding: 32px 36px;
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 8px;
   margin-bottom: 20px;
 }
 
-.report-header__title {
-  margin: 0 0 10px 0;
-  font-size: 24px;
-  font-weight: 600;
-  background: linear-gradient(90deg, #60a5fa, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
 .report-header__meta {
-  margin: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: rgba(224, 231, 255, 0.6);
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
-.report-header__pending {
-  color: #fbbf24;
+.report-header__type {
+  font-size: 12px;
+  color: #6b7280;
+  padding: 2px 8px;
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+}
+
+.report-header__date {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Consolas', monospace;
+}
+
+.report-header__title {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.report-header__time {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.report-header__time--pending {
+  color: #f59e0b;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -473,45 +469,47 @@ onUnmounted(stopPolling)
   to { transform: rotate(360deg); }
 }
 
+/* 状态块 */
 .status-block {
-  padding: 48px 24px;
+  padding: 60px 24px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 8px;
   margin-bottom: 20px;
 }
 
 .status-block h3 {
   margin: 12px 0 8px;
   font-size: 18px;
-  color: #e0e7ff;
+  color: #fff;
 }
 
 .status-block p {
   margin: 0;
-  color: rgba(224, 231, 255, 0.6);
+  color: #9ca3af;
   font-size: 13px;
 }
 
 .status-block--pending {
-  border-color: rgba(251, 191, 36, 0.4);
-  color: #fbbf24;
+  border-color: #f59e0b;
+  color: #f59e0b;
   font-size: 32px;
 }
 
 .status-block--failed {
-  border-color: rgba(248, 113, 113, 0.4);
-  color: #f87171;
+  border-color: #ef4444;
+  color: #ef4444;
   font-size: 32px;
 }
 
 .status-block--empty {
-  border-color: rgba(96, 165, 250, 0.3);
-  color: #60a5fa;
+  border-color: #4b5563;
+  color: #9ca3af;
   font-size: 32px;
 }
 
+/* 2 列网格 */
 .row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -519,20 +517,25 @@ onUnmounted(stopPolling)
   margin-bottom: 16px;
 }
 
+/* 区段 */
 .detail-section {
   padding: 22px 26px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.detail-section--lead {
+  border-color: #fff;
 }
 
 .detail-section__title {
   margin: 0 0 14px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
-  color: rgba(224, 231, 255, 0.85);
-  letter-spacing: 1.5px;
+  color: #9ca3af;
+  letter-spacing: 2px;
   text-transform: uppercase;
   display: flex;
   align-items: center;
@@ -541,18 +544,17 @@ onUnmounted(stopPolling)
 .detail-section__title::before {
   content: '';
   display: inline-block;
-  width: 4px;
-  height: 14px;
-  background: linear-gradient(180deg, #60a5fa, #c084fc);
+  width: 12px;
+  height: 2px;
+  background: #fff;
   margin-right: 8px;
-  border-radius: 2px;
 }
 
 .summary-text {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.8;
-  color: #e0e7ff;
+  color: #e5e7eb;
   white-space: pre-wrap;
 }
 
@@ -563,6 +565,13 @@ onUnmounted(stopPolling)
   margin-top: 12px;
 }
 
+:deep(.mood-tags .el-tag) {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+/* 列表 */
 .bullet-list {
   margin: 0;
   padding: 0;
@@ -573,10 +582,10 @@ onUnmounted(stopPolling)
   position: relative;
   padding: 10px 14px 10px 28px;
   margin-bottom: 8px;
-  background: rgba(96, 165, 250, 0.08);
-  border-left: 3px solid #60a5fa;
-  border-radius: 0 6px 6px 0;
-  color: #e0e7ff;
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  color: #e5e7eb;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -586,10 +595,11 @@ onUnmounted(stopPolling)
   position: absolute;
   left: 10px;
   top: 10px;
-  color: #c084fc;
-  font-size: 12px;
+  color: #fff;
+  font-size: 10px;
 }
 
+/* 图表 */
 .chart-wrap {
   position: relative;
 }
@@ -605,7 +615,7 @@ onUnmounted(stopPolling)
   justify-content: space-between;
   padding: 0 4px;
   font-size: 11px;
-  color: rgba(224, 231, 255, 0.5);
+  color: #6b7280;
   margin-top: 4px;
 }
 
@@ -614,6 +624,7 @@ onUnmounted(stopPolling)
   text-align: center;
 }
 
+/* TOP 榜 */
 .rank-list {
   list-style: none;
   margin: 0;
@@ -628,13 +639,14 @@ onUnmounted(stopPolling)
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 6px;
+  background: #111;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
   transition: background 0.15s;
 }
 
 .rank-list li:hover {
-  background: rgba(96, 165, 250, 0.08);
+  background: #1a1a1a;
 }
 
 .rank-num {
@@ -643,8 +655,8 @@ onUnmounted(stopPolling)
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(96, 165, 250, 0.15);
-  color: rgba(224, 231, 255, 0.7);
+  background: #1a1a1a;
+  color: #6b7280;
   font-size: 12px;
   font-weight: 700;
   font-family: 'Consolas', monospace;
@@ -653,14 +665,14 @@ onUnmounted(stopPolling)
 }
 
 .rank-num.is-top {
-  background: linear-gradient(135deg, #60a5fa, #c084fc);
-  color: #fff;
+  background: #fff;
+  color: #000;
 }
 
 .rank-label {
   flex: 1;
   font-size: 13px;
-  color: #e0e7ff;
+  color: #e5e7eb;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -669,15 +681,12 @@ onUnmounted(stopPolling)
 .rank-value {
   font-size: 13px;
   font-weight: 700;
-  color: #60a5fa;
+  color: #fff;
   font-family: 'Consolas', monospace;
   flex-shrink: 0;
 }
 
-.feedback-section {
-  margin-top: 16px;
-}
-
+/* 反馈 */
 .feedback-row {
   display: flex;
   align-items: center;
@@ -687,11 +696,33 @@ onUnmounted(stopPolling)
 
 .feedback-label {
   font-size: 13px;
-  color: rgba(224, 231, 255, 0.7);
+  color: #9ca3af;
 }
 
 .feedback-textarea {
   margin-bottom: 12px;
+}
+
+:deep(.feedback-textarea .el-textarea__inner) {
+  background: #111;
+  border-color: #1f1f1f;
+  color: #e5e7eb;
+}
+
+:deep(.feedback-textarea .el-textarea__inner:focus) {
+  border-color: #fff;
+}
+
+:deep(.feedback-row .el-radio-button__inner) {
+  background: #111;
+  border-color: #1f1f1f;
+  color: #9ca3af;
+}
+
+:deep(.feedback-row .el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
 }
 
 .feedback-submit {
