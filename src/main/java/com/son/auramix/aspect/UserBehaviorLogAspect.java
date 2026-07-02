@@ -108,9 +108,19 @@ public class UserBehaviorLogAspect {
         if (context != null && !context.isBlank()) {
             entry.setContext(context);
         }
-        if (duration != null && duration > 0) {
-            entry.setBehaviorDuration(duration);
+        // 行为持续时长策略:
+        //   behavior_type 0 (播放) → 固定为 0（刚开始播放）
+        //   behavior_type 1,2,5,6,7 → 设 null（收藏/取消收藏/搜索/分享/添加到歌单，无持续时长概念）
+        //   behavior_type 3,4    → 保留原有逻辑（跳过/完整听完，由 playback-end 上报设置）
+        if (behaviorType == UserBehaviorLog.BEHAVIOR_PLAY) {
+            entry.setBehaviorDuration(0);
+        } else if (behaviorType == UserBehaviorLog.BEHAVIOR_SKIP
+                || behaviorType == UserBehaviorLog.BEHAVIOR_FULL_LISTEN) {
+            if (duration != null && duration > 0) {
+                entry.setBehaviorDuration(duration);
+            }
         }
+        // behaviorType 1,2,5,6,7: 不设置 behaviorDuration，保持 null
         return entry;
     }
 
