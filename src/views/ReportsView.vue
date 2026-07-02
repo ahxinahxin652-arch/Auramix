@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, computed, reactive } from 'vue'
+import { onMounted, ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, MagicStick, Calendar, Refresh, View } from '@element-plus/icons-vue'
@@ -19,25 +19,26 @@ const generating = ref(false)
 const pageNum = ref(1)
 const pageSize = ref(10)
 
-const filter = reactive({
-  periodType: undefined,
-})
-
-const hasAny = computed(() => list.value.length > 0)
+const filter = reactive({ periodType: undefined })
 
 async function loadData() {
   loading.value = true
   try {
-    const res = await listMyReports({
+    const params = {
       periodType: filter.periodType,
       pageNum: pageNum.value,
       pageSize: pageSize.value,
-    })
-    list.value = res.records || []
-    total.value = Number(res.total) || 0
+    }
+    console.log('[Reports] loadData params:', params)
+    const res = await listMyReports(params)
+    console.log('[Reports] loadData response:', res)
+    list.value = res && res.records ? res.records : []
+    total.value = Number(res && res.total) || 0
   } catch (err) {
-    console.error('加载报告失败:', err)
+    console.error('[Reports] loadData error:', err)
     ElMessage.error(err.message || '加载报告失败')
+    list.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -63,17 +64,16 @@ async function handleGenerate(periodType) {
   generating.value = true
   try {
     const reportId = await generateReport(periodType)
+    console.log('[Reports] generateReport returned id:', reportId)
     ElMessage.success('已提交生成任务')
     if (reportId) {
-      // 直接跳详情页, 让用户看到「生成中」轮询
-      setTimeout(() => {
-        router.push(`/reports/${reportId}`)
-      }, 800)
+      await nextTick()
+      router.push(`/reports/${reportId}`)
     } else {
       await loadData()
     }
   } catch (err) {
-    console.error('生成失败:', err)
+    console.error('[Reports] generate error:', err)
     ElMessage.error(err.message || '生成失败')
   } finally {
     generating.value = false
@@ -84,40 +84,39 @@ function handleView(row) {
   router.push(`/reports/${row.id}`)
 }
 
-onMounted(loadData)
+onMounted(() => {
+  console.log('[Reports] onMounted, route:', router.currentRoute.value)
+  loadData()
+})
 </script>
 
 <template>
   <div class="reports-view">
-    <!-- 顶部 header 卡片 -->
+    <div class="reports-bg" />
+
     <div class="reports-header">
       <div class="reports-header__title">
-        <el-icon class="reports-header__icon"><Document /></el-icon>
+        <div class="reports-header__icon">
+          <el-icon><Document /></el-icon>
+        </div>
         <div>
           <h1>我的报告</h1>
           <p>每周一与每月 1 号自动生成, 也可以手动触发</p>
         </div>
       </div>
       <div class="reports-header__actions">
-        <el-button
-          type="primary"
-          :icon="MagicStick"
-          :loading="generating"
-          @click="handleGenerate(1)"
-        >生成本周报告</el-button>
-        <el-button
-          type="success"
-          :icon="Calendar"
-          :loading="generating"
-          @click="handleGenerate(2)"
-        >生成本月报告</el-button>
+        <el-button type="primary" :icon="MagicStick" :loading="generating" @click="handleGenerate(1)">
+          生成本周报告
+        </el-button>
+        <el-button type="success" :icon="Calendar" :loading="generating" @click="handleGenerate(2)">
+          生成本月报告
+        </el-button>
         <el-button :icon="Refresh" @click="loadData">刷新</el-button>
       </div>
     </div>
 
-    <!-- 过滤栏 -->
     <div class="reports-filter">
-      <span class="reports-filter__label">周期类型</span>
+      <span class="reports-filter__label">周期</span>
       <el-radio-group v-model="filter.periodType" @change="loadData">
         <el-radio-button :value="undefined">全部</el-radio-button>
         <el-radio-button :value="1">周报</el-radio-button>
@@ -125,29 +124,27 @@ onMounted(loadData)
       </el-radio-group>
     </div>
 
-    <!-- 列表 -->
     <div class="reports-list" v-loading="loading">
-      <el-empty
-        v-if="!loading && !hasAny"
-        description="还没有报告, 点上方按钮生成第一份"
-      />
+      <div v-if="!loading && list.length === 0" class="empty-state">
+        <el-icon class="empty-state__icon"><Document /></el-icon>
+        <h2>还没有报告</h2>
+        <p>点击上方按钮生成你的第一份听歌报告</p>
+        <el-button type="primary" :icon="MagicStick" :loading="generating" @click="handleGenerate(1)">
+          立即生成
+        </el-button>
+      </div>
+
       <div
         v-for="row in list"
         :key="row.id"
         class="report-card"
         @click="handleView(row)"
       >
-        <div class="report-card__cover">
-          <el-icon><Document /></el-icon>
-        </div>
+        <div class="report-card__index">#{{ row.id.toString().slice(-4) }}</div>
         <div class="report-card__body">
           <div class="report-card__title">
-            {{ row.title }}
-            <el-tag
-              :type="row.periodType === 1 ? 'primary' : 'success'"
-              size="small"
-              effect="dark"
-            >
+            <span>{{ row.title }}</span>
+            <el-tag :type="row.periodType === 1 ? 'primary' : 'success'" size="small" effect="dark">
               {{ periodTypeLabel(row.periodType) }}
             </el-tag>
             <el-tag :type="statusType(row.status)" size="small">
@@ -157,7 +154,6 @@ onMounted(loadData)
           <div class="report-card__meta">
             <span v-if="row.generatedAt">生成于 {{ row.generatedAt }}</span>
             <span v-else class="report-card__pending">生成中...</span>
-            <span class="report-card__id">ID: {{ row.id }}</span>
           </div>
         </div>
         <el-button type="primary" link :icon="View" @click.stop="handleView(row)">
@@ -166,8 +162,7 @@ onMounted(loadData)
       </div>
     </div>
 
-    <!-- 分页 -->
-    <div v-if="hasAny" class="reports-pagination">
+    <div v-if="list.length > 0" class="reports-pagination">
       <el-pagination
         v-model:current-page="pageNum"
         v-model:page-size="pageSize"
@@ -182,23 +177,38 @@ onMounted(loadData)
 </template>
 
 <style scoped>
+/* ================== 黑色主调 ================== */
 .reports-view {
-  padding: 24px 32px;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  color: #e0e7ff;
+  position: relative;
+  min-height: 100%;
+  padding: 32px 40px;
+  background: #000;
+  color: #e5e7eb;
+  overflow: hidden;
 }
 
+/* 极淡的径向发光 (点缀) */
+.reports-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255, 255, 255, 0.02) 0%, transparent 60%);
+}
+
+/* ================== Header ================== */
 .reports-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 28px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  margin-bottom: 20px;
-  backdrop-filter: blur(10px);
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 8px;
 }
 
 .reports-header__title {
@@ -207,32 +217,41 @@ onMounted(loadData)
   gap: 16px;
 }
 
+.reports-header__icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #000;
+  border-radius: 8px;
+  font-size: 28px;
+}
+
 .reports-header__title h1 {
   margin: 0 0 4px 0;
   font-size: 22px;
-  font-weight: 600;
-  background: linear-gradient(90deg, #60a5fa, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
 }
 
 .reports-header__title p {
   margin: 0;
   font-size: 13px;
-  color: rgba(224, 231, 255, 0.6);
-}
-
-.reports-header__icon {
-  font-size: 36px;
-  color: #c084fc;
+  color: #6b7280;
 }
 
 .reports-header__actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* ================== Filter ================== */
 .reports-filter {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -242,10 +261,25 @@ onMounted(loadData)
 
 .reports-filter__label {
   font-size: 13px;
-  color: rgba(224, 231, 255, 0.7);
+  color: #6b7280;
 }
 
+:deep(.reports-filter .el-radio-button__inner) {
+  background: #0a0a0a;
+  border-color: #1f1f1f;
+  color: #9ca3af;
+}
+
+:deep(.reports-filter .el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+}
+
+/* ================== 列表卡片 ================== */
 .reports-list {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -254,32 +288,27 @@ onMounted(loadData)
 .report-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 18px 22px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
 }
 
 .report-card:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(192, 132, 252, 0.4);
+  border-color: #fff;
+  background: #111;
   transform: translateX(4px);
 }
 
-.report-card__cover {
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #60a5fa, #c084fc);
-  border-radius: 12px;
-  font-size: 28px;
-  color: #fff;
+.report-card__index {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #4b5563;
+  min-width: 60px;
   flex-shrink: 0;
 }
 
@@ -292,31 +321,71 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #e0e7ff;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
   margin-bottom: 6px;
 }
 
+.report-card__title > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .report-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
   font-size: 12px;
-  color: rgba(224, 231, 255, 0.5);
+  color: #6b7280;
 }
 
 .report-card__pending {
-  color: #fbbf24;
+  color: #f59e0b;
 }
 
-.report-card__id {
-  font-family: 'Consolas', monospace;
+/* ================== 空状态 ================== */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  background: #0a0a0a;
+  border: 1px dashed #1f1f1f;
+  border-radius: 8px;
 }
 
+.empty-state__icon {
+  font-size: 48px;
+  color: #4b5563;
+  margin-bottom: 16px;
+}
+
+.empty-state h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #e5e7eb;
+}
+
+.empty-state p {
+  margin: 0 0 24px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+/* ================== 分页 ================== */
 .reports-pagination {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: center;
   margin-top: 24px;
+}
+
+:deep(.reports-pagination .el-pagination) {
+  --el-pagination-bg-color: #0a0a0a;
+  --el-pagination-text-color: #9ca3af;
+  --el-pagination-button-bg-color: #0a0a0a;
+  --el-pagination-button-color: #9ca3af;
+  --el-pagination-button-disabled-bg-color: #050505;
+  --el-pagination-hover-color: #fff;
 }
 </style>
