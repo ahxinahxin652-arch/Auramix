@@ -73,6 +73,8 @@ public class SecurityConfig {
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/playlists/followed").authenticated()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/playlists/{id}").permitAll()
                     .requestMatchers("/api/user/**").authenticated()
+                    // 智能推荐
+                    .requestMatchers("/api/intelligent/**").authenticated()
                     // 其他
                     .anyRequest().permitAll())
             .addFilterBefore(adminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

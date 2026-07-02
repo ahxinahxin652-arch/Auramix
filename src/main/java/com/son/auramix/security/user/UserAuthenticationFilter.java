@@ -38,6 +38,7 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     private static final String HEADER = "Authorization";
     private static final String PREFIX = "Bearer ";
     private static final String PATH_PREFIX = "/api/user/";
+    private static final String INTELLIGENT_PATH_PREFIX = "/api/intelligent/";
     private static final String INTERNAL_KEY_HEADER = "X-Internal-Api-Key";
 
     /** 普通用户权限 */
@@ -53,7 +54,8 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(PATH_PREFIX);
+        String uri = request.getRequestURI();
+        return !uri.startsWith(PATH_PREFIX) && !uri.startsWith(INTELLIGENT_PATH_PREFIX);
     }
 
     @Override

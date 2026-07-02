@@ -486,6 +486,7 @@ public class TrackRecommendServiceImpl implements TrackRecommendService {
             vo.setTrackId(tid);
             vo.setTitle(track.getTitle());
             vo.setDuration(track.getDuration());
+            vo.setMember(track.getMember());
 
             Album album = albumMap.get(track.getAlbumId());
             if (album != null) {

@@ -18,6 +18,8 @@ public class RecommendTrackVO {
     private Integer duration;
     private List<ArtistInfoVO> artists;
     private String audioUrl;
+    /** 0=非会员可听 1=仅会员可听 */
+    private Integer member;
     private Double score;
     private List<String> sources;
 }
