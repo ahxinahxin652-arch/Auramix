@@ -3,8 +3,8 @@ import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMusicLibraryStore } from '../stores/musicLibrary.js'
 import { ElMessage } from 'element-plus'
-import { Document, MagicStick, Calendar, View, Headset, Unlock, Brush, ChatLineRound, GoldMedal, Search, Refresh } from '@element-plus/icons-vue'
-import { listMyReports, statusLabel, periodTypeLabel, type ReportListItem } from '../api/reports'
+import { Document, View, Headset, ChatLineRound } from '@element-plus/icons-vue'
+import { listMyReports, statusLabel, periodTypeLabel } from '../api/reports'
 
 const library = useMusicLibraryStore()
 const router = useRouter()
