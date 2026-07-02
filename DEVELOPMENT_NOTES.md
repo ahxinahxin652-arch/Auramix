@@ -90,3 +90,36 @@ const data = await backendFetch('/api/user/something', { method: 'POST', body: {
 1. 先看 `<script setup>` 是 JS 还是 TS
 2. 后端报错看 Java stacktrace (`target/logs/spring.log` 或 IDE)
 3. 前端报错看 vite 控制台 (TS 类型错 → JS 语法错)
+
+---
+
+## 7. Element Plus 图标避坑
+
+**`@element-plus/icons-vue` 并不是所有图标都有**。常见"我以为有但其实没有"的:
+
+| ❌ 不要用 | ✅ 用什么 |
+|---|---|
+| `ThumbsUp` | `Star` / `StarFilled` (本仓库没用 赞图标, 直接用 Star) |
+| `Camera` (在 mobile 主题) | `CameraFilled` 或 `VideoCamera` |
+| `Heart` (本仓库) | 不存在, 用 `Goods` 替代 |
+
+**写代码前**先 grep 一下:
+```bash
+Select-String -Path "node_modules\@element-plus\icons-vue\dist\global.cjs" -Pattern "你的图标名"
+```
+
+或者直接看 dist 目录导出的所有名字, 找最接近的。
+
+**为什么这个错会"看起来"没反应**: Vite ESM 加载模块失败 → 路由跳转时 `component()` reject → Vue Router catch 但组件没渲染 → 用户看到的是**白屏或原页面**。**控制台会有 `does not provide an export named 'xxx'` 错误**。
+
+---
+
+## 8. 调试桌面端
+
+桌面端默认**不开启 DevTools**, 按 F12 没用.
+
+`electron/main.js` 里已经绑定了快捷键:
+- **F12**: 打开/关闭 DevTools
+- **Ctrl+Shift+I** (Mac: **Cmd+Opt+I**)
+
+调试时先按 F12 → 看到 console 标签 → 复制报错信息.
