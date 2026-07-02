@@ -18,4 +18,5 @@ public class PlaylistTrackItemVO {
     private java.util.List<ArtistInfoVO> artists;
     private java.util.List<GenreVO> genres;
     private Integer sortOrder;
+    private java.time.LocalDateTime addedAt;
 }
