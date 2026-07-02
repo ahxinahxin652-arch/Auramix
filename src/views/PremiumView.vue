@@ -15,6 +15,9 @@ const selectedPayType = ref(0) // 0=微信支付, 1=支付宝
 const confirmPaymentLoading = ref(false)
 const cancelOrderLoading = ref(false)
 
+// 选中卡片（点击可转移高亮）
+const selectedPlanId = ref(null)
+
 // 支付弹窗状态
 const showPayment = ref(false)
 const orderInfo = ref(null)
@@ -110,6 +113,18 @@ function isRecommended(plan) {
   if (hasActiveMembership.value) return false
   if (plan.level === userLevel.value) return false
   return plan.level === maxLevel.value
+}
+
+function isSelected(plan) {
+  if (selectedPlanId.value !== null) {
+    return plan.id === selectedPlanId.value
+  }
+  // 默认选中推荐卡片，无推荐则选第一个可购买的
+  return isRecommended(plan)
+}
+
+function selectPlan(plan) {
+  selectedPlanId.value = plan.id
 }
 
 function formatDuration(months) {
@@ -314,9 +329,11 @@ function goPay() {
           :key="plan.id"
           class="plan-card"
           :class="{
-            recommended: isRecommended(plan),
-            'current-plan': isCurrentPlan(plan)
+            recommended: isRecommended(plan) && selectedPlanId === null,
+            'current-plan': isCurrentPlan(plan),
+            selected: isSelected(plan) && !isCurrentPlan(plan)
           }"
+          @click="selectPlan(plan)"
         >
           <!-- 标签 -->
           <div class="plan-badge" v-if="isCurrentPlan(plan)">{{ hasActiveMembership ? '当前会员方案' : '当前方案' }}</div>
@@ -412,7 +429,7 @@ function goPay() {
           <button
             v-else
             class="plan-btn"
-            :class="isRecommended(plan) ? 'btn-primary' : 'btn-outline'"
+            :class="isSelected(plan) ? 'btn-primary' : 'btn-outline'"
             :disabled="subscribeLoading === plan.id"
             @click="handleSubscribe(plan)"
           >

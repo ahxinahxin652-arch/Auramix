@@ -101,8 +101,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
-    minWidth: 800,
     minHeight: 600,
+    minWidth: 920,
     backgroundColor: '#0d0e11',
     titleBarStyle: 'hidden',
     frame: false,
@@ -227,9 +227,11 @@ function startExpressServer() {
   const lyricsDecryptController = require('../server/controller/lyricsDecryptController')
   const libraryController = require('../server/controller/libraryController')
   const aiChatController = require('../server/controller/aiChatController')
+  const intelligentController = require('../server/controller/intelligentController')
 
   // ---- 挂载路由 ----
   expressApp.use('/api/music', musicController(mainWindow))
+  expressApp.use('/api/intelligent', intelligentController(mainWindow))
   expressApp.use('/api/convert', convertController(mainWindow))
   expressApp.use('/api/decrypt', decryptController(mainWindow))
   expressApp.use('/api/lyrics-decrypt', lyricsDecryptController(mainWindow))

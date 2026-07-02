@@ -226,6 +226,15 @@ async function reportPlaybackEnd(body, token) {
     return request('/api/user/behavior/playback-end', { method: 'POST', body, token })
 }
 
+/**
+ * 获取相似歌曲
+ * @param {string} trackId
+ * @param {string} token
+ */
+async function fetchSimilarTracks(trackId, token) {
+    return request(`/api/intelligent/recommend/similar/${encodeURIComponent(trackId)}`, { token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -240,5 +249,6 @@ module.exports = {
     fetchAlbumDetail,
     fetchArtistDetail,
     fetchTrackDetail,
-    reportPlaybackEnd
+    reportPlaybackEnd,
+    fetchSimilarTracks
 }

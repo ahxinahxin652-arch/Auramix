@@ -90,6 +90,11 @@ function resolveTrackById(trackId, contextType, contextId, duration, context) {
   return apiFetch(url)
 }
 
+/** 获取相似歌曲列表 */
+function fetchSimilarTracks(trackId) {
+  return apiFetch(`/api/intelligent/recommend/similar/${encodeURIComponent(trackId)}`)
+}
+
 /** 播放结束行为上报 */
 function reportPlaybackEnd(data) {
   return apiFetch('/api/music/playback-end', { method: 'POST', body: data })
@@ -382,6 +387,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importFilesToWarehouseById,
   syncWarehouseById,
   resolveTrackById,
+  fetchSimilarTracks,
   reportPlaybackEnd,
   updateTrack,
   deleteTrack,

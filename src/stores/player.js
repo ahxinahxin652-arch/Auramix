@@ -29,8 +29,9 @@ export const usePlayerStore = defineStore('player', () => {
   const currentLyrics = ref('')          // 当前歌词
   const lyricsUrl = ref('')              // 歌词文件 URL
   const playbackSource = ref(null)       // 播放来源 context: { type: 'playlist'|'album'|'artist'|'search', id: string, name: string, route: string }
-  const similarTracks = ref([])           // 相似推荐曲目列表（由后端播放响应返回）
+  const similarTracks = ref([])           // 相似推荐曲目列表
   const similarPlaylists = ref([])        // 相似推荐歌单列表（当无相似曲目时展示）
+  const similarLoading = ref(false)       // 相似推荐加载中
 
   // 随机播放历史（用于随机模式下的"上一首"功能）
   const shuffleHistory = ref([])
@@ -127,6 +128,43 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setSimilarPlaylists(playlists) {
     similarPlaylists.value = Array.isArray(playlists) ? playlists : []
+  }
+
+  /**
+   * 调用后端接口获取相似歌曲
+   * @param {string} trackId
+   */
+  async function fetchSimilarTracks(trackId) {
+    if (!trackId) return
+    similarLoading.value = true
+    try {
+      const res = await window.electronAPI.fetchSimilarTracks(trackId)
+      if (res.success && Array.isArray(res.data)) {
+        // 将后端字段映射为前端统一字段
+        similarTracks.value = res.data.map(t => ({
+          id: String(t.trackId),
+          trackId: String(t.trackId),
+          title: t.title || '',
+          name: t.title || '',
+          artist: (t.artists || []).map(a => a.name).join(' / '),
+          artists: t.artists || [],
+          album: t.albumTitle || '',
+          cover: t.coverUrl || '',
+          coverUrl: t.coverUrl || '',
+          duration: t.duration || 0,
+          path: t.audioUrl || '',
+          audioUrl: t.audioUrl || '',
+          member: t.member ?? 0,
+          score: t.score,
+          sources: t.sources || [],
+        }))
+        similarPlaylists.value = []
+      }
+    } catch (e) {
+      console.warn('获取相似歌曲失败:', e)
+    } finally {
+      similarLoading.value = false
+    }
   }
 
   /**
@@ -359,6 +397,7 @@ export const usePlayerStore = defineStore('player', () => {
     currentLyrics.value = ''
     similarTracks.value = []
     similarPlaylists.value = []
+    similarLoading.value = false
     shuffleHistory.value = []
     shuffleHistoryIndex.value = -1
   }
@@ -381,6 +420,7 @@ export const usePlayerStore = defineStore('player', () => {
     playbackSource,
     similarTracks,
     similarPlaylists,
+    similarLoading,
     // 计算属性
     hasPrev,
     hasNext,
@@ -405,5 +445,6 @@ export const usePlayerStore = defineStore('player', () => {
     setLyricsUrl,
     setSimilarTracks,
     setSimilarPlaylists,
+    fetchSimilarTracks,
   }
 })
