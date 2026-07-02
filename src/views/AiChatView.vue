@@ -309,6 +309,9 @@ const formatMessage = (content) => {
   // 1. 解析 <Action>...</Action>
   html = html.replace(/<Action>(.*?)<\/Action>/g, '<div class="ai-action-indicator"><span class="spinner"></span>$1</div>')
   
+  // 1.5 解析 <ToolResult>...</ToolResult>
+  html = html.replace(/<ToolResult>(.*?)<\/ToolResult>/g, '<div class="ai-tool-result"><svg class="ai-tool-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>$1</div>')
+  
   // 2. 解析 [Song: id=xxx, title=yyy, artists=zzz, cover=www]
   // 前面可选匹配列表符号例如 - 或 1. 
   html = html.replace(/(?:[-*]|\d+\.)?\s*\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*artists=(.*?))?(?:,\s*cover=(.*?))?\]/g, (match, id, title, artists, cover) => {
@@ -726,6 +729,25 @@ const sendMessage = async () => {
   font-size: 13px;
   margin: 4px 0;
   border: 1px solid rgba(29, 185, 84, 0.2);
+}
+
+:deep(.ai-tool-result) {
+  display: block;
+  background: rgba(255, 255, 255, 0.05);
+  color: #b3b3b3;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 6px 0;
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+:deep(.ai-tool-icon) {
+  margin-right: 6px;
+  color: #1db954;
+  vertical-align: middle;
 }
 
 :deep(.spinner) {
