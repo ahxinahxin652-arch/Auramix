@@ -8,7 +8,6 @@ import {
   generateReport,
   statusLabel,
   periodTypeLabel,
-  type ReportListItem,
 } from '../api/reports'
 
 const router = useRouter()
