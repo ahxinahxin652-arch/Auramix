@@ -1,6 +1,9 @@
 package com.son.auramix.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.son.auramix.ai.statemachine.ReviewStateMachine;
+import com.son.auramix.ai.statemachine.ReviewStatus;
+import com.son.auramix.ai.statemachine.ReviewTransition;
 import com.son.auramix.domain.entity.Track;
 import com.son.auramix.domain.entity.TrackReviewRecord;
 import com.son.auramix.mapper.TrackMapper;
@@ -84,9 +87,18 @@ public class ReviewScheduleJob {
 
         for (TrackReviewRecord record : pending) {
             try {
+                // 状态机校验：仅 AUTO_RESULT(status=1) 可 AUTO_PROCESS → AUTO_DONE
+                ReviewStateMachine sm = ReviewStateMachine.create(ReviewStatus.fromDbStatus(record.getStatus()));
+                if (!sm.canFire(ReviewTransition.AUTO_PROCESS)) {
+                    log.warn("[定时审核] recordId={} 当前状态 {} 不允许自动处理，跳过",
+                            record.getId(), sm.getCurrentStatus());
+                    continue;
+                }
+
                 Track track = trackMapper.selectById(record.getTrackId());
                 if (track == null) {
                     log.warn("[定时审核] trackId={} 不存在，跳过", record.getTrackId());
+                    sm.forceTransition(ReviewTransition.AUTO_PROCESS); // 标记为已处理
                     record.setStatus(2);
                     reviewRecordMapper.updateById(record);
                     continue;
@@ -101,10 +113,12 @@ public class ReviewScheduleJob {
                 }
                 trackMapper.updateById(track);
 
+                sm.fire(ReviewTransition.AUTO_PROCESS);
                 record.setStatus(2);
                 reviewRecordMapper.updateById(record);
 
-                log.info("[定时审核] trackId={} 自动处理完成 Track.status={}", record.getTrackId(), track.getStatus());
+                log.info("[定时审核] trackId={} 自动处理完成 Track.status={} state={}",
+                        record.getTrackId(), track.getStatus(), sm.getCurrentStatus());
 
             } catch (Exception e) {
                 log.error("[定时审核] trackId={} 处理异常", record.getTrackId(), e);
@@ -178,6 +192,9 @@ public class ReviewScheduleJob {
      * 异步审核可能因 LLM 调用异常、线程池拒绝等导致记录永久停在 status=0，
      * 这里将超时的卡死记录<b>直接删除</b>（旧记录本身未产出任何业务结果，保留只会造成数据堆积），
      * 并对该 track 重新触发审核（triggerReview 会新插入一条 status=0 的记录）。
+     * <p>
+     * 状态机语义：卡死记录处于活跃流水线状态(dbStatus=0)，先经 FAIL → FAILED，
+     * 再由 RETRY → PENDING（新记录由 triggerReview 创建，状态机在新流程中重新初始化）。
      * <p>
      * 同一 trackId 的多条卡死记录只触发一次重试（分组后只调一次 triggerReview），
      * 避免对同一首歌重复插入多条新记录。
