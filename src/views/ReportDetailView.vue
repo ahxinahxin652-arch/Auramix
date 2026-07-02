@@ -16,6 +16,7 @@ import {
   statusLabel,
   periodTypeLabel,
 } from '../api/reports'
+import { markReportRead } from '../services/reportNotice'
 
 const route = useRoute()
 const router = useRouter()
@@ -191,6 +192,10 @@ function back() {
 onMounted(async () => {
   await load()
   startPollingIfNeeded()
+  // 标记为已读 (清掉顶栏红点)
+  if (report.value && report.value.status === 1) {
+    markReportRead(report.value.id)
+  }
 })
 
 onUnmounted(stopPolling)
