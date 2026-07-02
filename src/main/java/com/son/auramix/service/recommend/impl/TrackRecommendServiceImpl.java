@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -31,6 +32,7 @@ public class TrackRecommendServiceImpl implements TrackRecommendService {
     // ===== Redis Key =====
     private static final String RECOMMEND_REDIS_PREFIX = "auramix:recommend:similar:";
     private static final String CF_REDIS_PREFIX = "auramix:cf:similar:";
+    private static final Duration RECOMMEND_TTL = Duration.ofHours(24);
 
     // ===== 最终输出 =====
     private static final int FINAL_TOP_N = 20;
@@ -295,6 +297,9 @@ public class TrackRecommendServiceImpl implements TrackRecommendService {
                     count++;
                 }
             }
+            for(Map.Entry<Long, Double> a : scores.entrySet()){
+                log.info("[协同推荐]:SIM:{}", a.getValue());
+            }
             return scores;
         } catch (Exception e) {
             log.error("[推荐] 解析CF缓存失败 trackId={}", trackId, e);
@@ -553,7 +558,7 @@ public class TrackRecommendServiceImpl implements TrackRecommendService {
     }
 
     /**
-     * 写入 Redis，记录每首歌的来源
+     * 写入 Redis，记录每首歌的主要来源（按三路加权得分最高者判定）
      */
     private void saveToRedis(Long userId, Long trackId, Map<Long, Double> finalScores,
                              Map<Long, Double> content, Map<Long, Double> cf,
@@ -563,19 +568,30 @@ public class TrackRecommendServiceImpl implements TrackRecommendService {
         stringRedisTemplate.delete(key);
         List<Map<String, Object>> valueList = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : finalScores.entrySet()) {
+            Long tid = entry.getKey();
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("trackId", entry.getKey());
+            m.put("trackId", tid);
             m.put("score", entry.getValue());
-            List<String> sources = new ArrayList<>();
-            if (content.containsKey(entry.getKey())) sources.add("content");
-            if (cf.containsKey(entry.getKey())) sources.add("cf");
-            if (culture.containsKey(entry.getKey())) sources.add("culture");
-            m.put("sources", sources);
+
+            // 计算三路加权得分，取最大者作为唯一来源
+            double contentScore = content.getOrDefault(tid, 0.0) * W_CONTENT;
+            double cfScore = cf.getOrDefault(tid, 0.0) * W_CF;
+            double cultureScore = culture.getOrDefault(tid, 0.0) * W_CULTURE;
+
+            String source;
+            if (contentScore >= cfScore && contentScore >= cultureScore) {
+                source = "content";
+            } else if (cfScore >= cultureScore) {
+                source = "cf";
+            } else {
+                source = "culture";
+            }
+            m.put("sources", List.of(source));
             valueList.add(m);
         }
         try {
             String json = objectMapper.writeValueAsString(valueList);
-            stringRedisTemplate.opsForValue().set(key, json);
+            stringRedisTemplate.opsForValue().set(key, json, RECOMMEND_TTL);
         } catch (Exception e) {
             log.error("[推荐] Redis写入失败 key={}", key, e);
         }
