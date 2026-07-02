@@ -74,7 +74,7 @@
               <path d="M12 7v4"></path>
             </svg>
           </div>
-          <div class="message-content" v-html="formatMessage(msg.content)"></div>
+          <div class="message-content" v-html="formatMessage(msg.content, msg.isGenerating)"></div>
           <div class="message-avatar" v-if="msg.role === 'user'">
             <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" />
             <div v-else class="avatar-placeholder">{{ userStore.profile?.displayName?.charAt(0).toUpperCase() || 'U' }}</div>
@@ -96,6 +96,33 @@
         </div>
       </div>
       
+      <!-- 工具详细结果弹窗 -->
+      <div v-if="toolDetailsModalVisible" class="tool-details-overlay" @click="toolDetailsModalVisible = false">
+        <div class="tool-details-modal" @click.stop>
+          <div class="tool-details-header">
+            <h4>详细结果</h4>
+            <button class="close-btn" @click="toolDetailsModalVisible = false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="tool-details-body">
+            <template v-if="parsedSongs.length > 0">
+              <div v-for="song in parsedSongs" :key="song.id" class="ai-song-card" data-action="play-song" :data-id="song.id" @click="handleMessageClick({ target: $event.currentTarget })">
+                <img :src="song.cover" alt="cover" class="ai-song-cover" />
+                <div class="ai-song-info">
+                  <div class="ai-song-title">{{ song.title }}</div>
+                  <div class="ai-song-artist" style="font-size: 12px; color: #b3b3b3; margin-bottom: 4px;">{{ song.artists }}</div>
+                  <div class="ai-song-artist" style="font-size: 12px; color: #888;">{{ song.genres }}</div>
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <pre>{{ toolDetailsContent }}</pre>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <!-- 输入区域 -->
       <div class="chat-input-area">
         <div class="input-container">
@@ -135,7 +162,36 @@ const inputText = ref('')
 const isStreaming = ref(false)
 const messagesContainer = ref(null)
 const inputArea = ref(null)
+
+const toolDetailsModalVisible = ref(false)
+const toolDetailsContent = ref('')
+
+
 const containerRef = ref(null)
+
+import { computed } from 'vue'
+
+const parsedSongs = computed(() => {
+  if (!toolDetailsContent.value) return []
+  const text = toolDetailsContent.value
+  const songs = []
+  const regex = /id:\s*(\d+),\s*title:\s*(.*?),\s*artists:\s*(.*?),\s*genres:\s*(.*?),\s*cover:\s*(.*?)(?=\s*id:|$)/gis
+  let match
+  while ((match = regex.exec(text)) !== null) {
+    let coverUrl = match[5].trim()
+    if (coverUrl === 'null' || !coverUrl) {
+      coverUrl = 'https://picsum.photos/seed/music/60/60'
+    }
+    songs.push({
+      id: match[1].trim(),
+      title: match[2].trim(),
+      artists: match[3].trim(),
+      genres: match[4].trim(),
+      cover: coverUrl
+    })
+  }
+  return songs
+})
 
 // ===== 响应式：是否显示左侧对话框 =====
 // 当中心区域（ai-chat-container）宽度小于阈值时隐藏左侧对话框
@@ -302,15 +358,40 @@ watch(inputText, () => {
   })
 })
 
-const formatMessage = (content) => {
+const formatMessage = (content, isGenerating = false) => {
   if (!content) return ''
   let html = content
   
   // 1. 解析 <Action>...</Action>
-  html = html.replace(/<Action>(.*?)<\/Action>/g, '<div class="ai-action-indicator"><span class="spinner"></span>$1</div>')
+  html = html.replace(/<Action>(.*?)<\/Action>/g, (match, p1, offset, string) => {
+    const hasResult = string.indexOf('<ToolResult>', offset) !== -1
+    const isDone = hasResult || !isGenerating
+    if (isDone) {
+      return `<div class="ai-action-indicator success"><svg class="ai-tool-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>${p1}</div>`
+    } else {
+      return `<div class="ai-action-indicator"><span class="spinner"></span>${p1}</div>`
+    }
+  })
   
   // 1.5 解析 <ToolResult>...</ToolResult>
-  html = html.replace(/<ToolResult>(.*?)<\/ToolResult>/g, '<div class="ai-tool-result"><svg class="ai-tool-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>$1</div>')
+  html = html.replace(/<ToolResult>(.*?)<\/ToolResult>/gs, (match, innerContent) => {
+    let summaryMatch = innerContent.match(/<Summary>(.*?)<\/Summary>/s)
+    let detailsMatch = innerContent.match(/<Details>(.*?)<\/Details>/s)
+    
+    let summary = summaryMatch ? summaryMatch[1] : innerContent
+    let details = detailsMatch ? detailsMatch[1] : ''
+    
+    if (details) {
+      let escapedDetails = encodeURIComponent(details.trim())
+      return `<div class="ai-tool-result has-details" data-details="${escapedDetails}">
+        <svg class="ai-tool-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>${summary}
+      </div>`
+    } else {
+      return `<div class="ai-tool-result">
+        <svg class="ai-tool-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none"><polyline points="20 6 9 17 4 12"></polyline></svg>${summary}
+      </div>`
+    }
+  })
   
   // 2. 解析 [Song: id=xxx, title=yyy, artists=zzz, cover=www]
   // 前面可选匹配列表符号例如 - 或 1. 
@@ -361,6 +442,13 @@ const handleMessageClick = async (e) => {
     const id = playlistCard.dataset.id
     console.log('Open playlist:', id)
     router.push(`/warehouse/${id}`)
+  }
+
+  const toolResult = e.target.closest('.ai-tool-result.has-details')
+  if (toolResult) {
+    const details = decodeURIComponent(toolResult.dataset.details)
+    toolDetailsContent.value = details
+    toolDetailsModalVisible.value = true
   }
 }
 
@@ -440,7 +528,7 @@ const sendMessage = async () => {
         // 收到第一个有效 chunk：推入占位气泡并关闭 typing-indicator，避免双气泡
         if (!placeholderPushed) {
           isStreaming.value = false
-          messages.value.push({ role: 'ai', content: '' })
+          messages.value.push({ role: 'ai', content: '', isGenerating: true })
           aiIndex = messages.value.length - 1
           placeholderPushed = true
         }
@@ -458,13 +546,17 @@ const sendMessage = async () => {
       if (dataStr && dataStr !== '[DONE]') {
         if (!placeholderPushed) {
           isStreaming.value = false
-          messages.value.push({ role: 'ai', content: '' })
+          messages.value.push({ role: 'ai', content: '', isGenerating: true })
           aiIndex = messages.value.length - 1
           placeholderPushed = true
         }
         aiContent += dataStr
         messages.value[aiIndex].content = aiContent
       }
+    }
+
+    if (placeholderPushed && messages.value[aiIndex]) {
+      messages.value[aiIndex].isGenerating = false
     }
 
     // 如果流为空（没有任何 chunk），给出提示
@@ -944,5 +1036,80 @@ textarea::-webkit-scrollbar-thumb:hover {
   background: #333333;
   color: #888;
   cursor: not-allowed;
+}
+
+:deep(.ai-tool-result.has-details) {
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+:deep(.ai-tool-result.has-details:hover) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tool-details-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.tool-details-modal {
+  background: #181818;
+  border: 1px solid #282828;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+  max-height: 80%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.tool-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #282828;
+}
+
+.tool-details-header h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #fff;
+}
+
+.tool-details-header .close-btn {
+  background: transparent;
+  border: none;
+  color: #b3b3b3;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.tool-details-header .close-btn:hover {
+  color: #fff;
+}
+
+.tool-details-body {
+  padding: 16px;
+  overflow-y: auto;
+  color: #e0e0e0;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tool-details-body pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>
