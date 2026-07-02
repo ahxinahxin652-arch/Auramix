@@ -37,6 +37,7 @@ public class AiChatToolConfig {
     private final com.son.auramix.mapper.TrackGenreMapper trackGenreMapper;
     private final com.son.auramix.mapper.PlaylistMapper playlistMapper;
     private final com.son.auramix.mapper.PlaylistTrackMapper playlistTrackMapper;
+    private final com.son.auramix.service.user.UserTrackService userTrackService;
 
     public AiChatToolConfig(UserProfileMapper userProfileMapper, 
                             PlaylistService playlistService, 
@@ -45,7 +46,8 @@ public class AiChatToolConfig {
                             com.son.auramix.mapper.GenreMapper genreMapper,
                             com.son.auramix.mapper.TrackGenreMapper trackGenreMapper,
                             com.son.auramix.mapper.PlaylistMapper playlistMapper,
-                            com.son.auramix.mapper.PlaylistTrackMapper playlistTrackMapper) {
+                            com.son.auramix.mapper.PlaylistTrackMapper playlistTrackMapper,
+                            com.son.auramix.service.user.UserTrackService userTrackService) {
         this.userProfileMapper = userProfileMapper;
         this.playlistService = playlistService;
         this.trackMapper = trackMapper;
@@ -54,6 +56,7 @@ public class AiChatToolConfig {
         this.trackGenreMapper = trackGenreMapper;
         this.playlistMapper = playlistMapper;
         this.playlistTrackMapper = playlistTrackMapper;
+        this.userTrackService = userTrackService;
     }
 
     // Helper to get current user securely
@@ -180,10 +183,24 @@ public class AiChatToolConfig {
                 
                 
                 String resultText = tracks.stream()
-                    .map(t -> String.format("id: %d, title: %s, duration: %d", 
-                        t.getId(), 
-                        t.getTitle() != null ? t.getTitle() : "Unknown", 
-                        t.getDuration() != null ? t.getDuration() : 0))
+                    .map(t -> {
+                        try {
+                            com.son.auramix.domain.vo.user.UserTrackDetailVO detail = userTrackService.getTrackDetail(t.getId());
+                            String artists = detail.getArtists() != null ? 
+                                detail.getArtists().stream().map(a -> a.getName()).collect(Collectors.joining(", ")) : "Unknown";
+                            String genresList = detail.getGenres() != null ? 
+                                detail.getGenres().stream().map(g -> g.getName()).collect(Collectors.joining(", ")) : "Unknown";
+                            return String.format("id: %d, title: %s, artists: %s, genres: %s, cover: %s", 
+                                detail.getId(), 
+                                detail.getTitle() != null ? detail.getTitle() : "Unknown",
+                                artists,
+                                genresList,
+                                detail.getCoverUrl() != null ? detail.getCoverUrl() : "null");
+                        } catch (Exception ex) {
+                            return String.format("id: %d, title: %s, artists: Unknown, genres: Unknown, cover: null", 
+                                t.getId(), t.getTitle() != null ? t.getTitle() : "Unknown");
+                        }
+                    })
                     .collect(Collectors.joining("\n"));
                 
                 log.info("searchSongsByGenreTool result for keyword '{}': found {} tracks. Data: \n{}", keyword, tracks.size(), resultText);
@@ -223,9 +240,24 @@ public class AiChatToolConfig {
                 
                 
                 String resultText = tracks.stream()
-                    .map(t -> String.format("id: %d, title: %s", 
-                        t.getId(), 
-                        t.getTitle() != null ? t.getTitle() : "Unknown"))
+                    .map(t -> {
+                        try {
+                            com.son.auramix.domain.vo.user.UserTrackDetailVO detail = userTrackService.getTrackDetail(t.getId());
+                            String artists = detail.getArtists() != null ? 
+                                detail.getArtists().stream().map(a -> a.getName()).collect(Collectors.joining(", ")) : "Unknown";
+                            String genresList = detail.getGenres() != null ? 
+                                detail.getGenres().stream().map(g -> g.getName()).collect(Collectors.joining(", ")) : "Unknown";
+                            return String.format("id: %d, title: %s, artists: %s, genres: %s, cover: %s", 
+                                detail.getId(), 
+                                detail.getTitle() != null ? detail.getTitle() : "Unknown",
+                                artists,
+                                genresList,
+                                detail.getCoverUrl() != null ? detail.getCoverUrl() : "null");
+                        } catch (Exception ex) {
+                            return String.format("id: %d, title: %s, artists: Unknown, genres: Unknown, cover: null", 
+                                t.getId(), t.getTitle() != null ? t.getTitle() : "Unknown");
+                        }
+                    })
                     .collect(Collectors.joining("\n"));
                 
                 log.info("getRecentPlaybackAndGenresTool result for userId '{}': found {} tracks. Data: \n{}", userId, tracks.size(), resultText);

@@ -37,7 +37,7 @@ public class AiChatService {
                 "You are helpful, friendly, and knowledgeable about music.\n" +
                 "IMPORTANT RULES:\n" +
                 "1. When you need to call a tool, call it DIRECTLY. Do NOT output any conversational text or action indicators before the tool call. Just emit the tool call.\n" +
-                "2. When recommending songs, output them strictly in this format: [Song: id=102, title=Song Name, cover=Cover URL]. Provide actual data returned from tools.\n" +
+                "2. When recommending songs, output them strictly in this format: [Song: id=xxx, title=Song Name, artists=Artist Name, cover=Cover URL]. Provide actual data returned from tools. You MUST copy the exact cover URL from the tool output. Do NOT make up or shorten the cover URL.\n" +
                 "3. When creating a playlist and recommending it, output it strictly in this format: [Playlist: id=50, name=今日推荐歌单]\n" +
                 "4. When the user explicitly states their preferences or favorite genres/artists, you MUST call `updateUserProfileTool` to save this information. Do NOT call `getRecentPlaybackAndGenresTool` unless the user explicitly asks for song recommendations.\n";
 
