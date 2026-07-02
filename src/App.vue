@@ -6,13 +6,14 @@ import { useSidebarStore } from './stores/sidebar'
 import { useLeftSidebarStore } from './stores/leftSidebar.js'
 import { useLocalStorageStore } from './stores/localStorage'
 import { useUserStore } from './stores/user'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { backendFetch } from './utils/backendApi'
 import FootBar from './components/FootBar.vue'
 import RightSideBar from './components/RightSideBar.vue'
 import LeftSideBar from './components/LeftSideBar.vue'
 import PlaylistSelectorModal from './components/PlaylistSelectorModal.vue'
 import { useLibraryStore } from './stores/library'
+import { checkUnreadReport } from './services/reportNotice'
 
 const userStore = useUserStore()
 const globalLibraryStore = useLibraryStore()
@@ -72,6 +73,9 @@ const canForward = ref(false)
 const refreshing = ref(false)
 const routerKey = ref(0)
 const isGlobalSyncing = ref(false)
+
+// 报告未读状态
+const hasUnreadReport = ref(false)
 
 function refreshPage() {
   if (refreshing.value) return
@@ -137,6 +141,8 @@ onMounted(() => {
   // 获取会员标识（已登录才执行）
   if (userStore.isLoggedIn) {
     fetchMembershipBadge()
+    // 启动时检查报告未读
+    refreshReportUnread()
   }
 
   // 初始化媒体库同步
@@ -169,11 +175,53 @@ onMounted(() => {
 watch(() => userStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
     fetchMembershipBadge()
+    refreshReportUnread()
   } else {
     membershipBadge.value = ''
     isMembershipActive.value = false
+    hasUnreadReport.value = false
   }
 })
+
+// 路由变化时也刷新未读 (从报告详情页返回后应清掉红点)
+router.afterEach((to) => {
+  if (to.path.startsWith('/reports')) {
+    refreshReportUnread()
+  }
+})
+
+async function refreshReportUnread() {
+  const res = await checkUnreadReport()
+  hasUnreadReport.value = res.hasUnread
+  // 如果有未读且当前不在报告页, 弹一次启动通知
+  if (res.hasUnread && res.latest && !currentRoute.value?.startsWith?.('Reports') && !currentRoute.value?.startsWith?.('ReportDetail')) {
+    showReportNotification(res.latest)
+  }
+}
+
+function showReportNotification(latest) {
+  // 用 sessionStorage 标记本次 session 已弹过, 避免每次路由都重弹
+  try {
+    const key = `auramix_report_notif_${latest.id}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+  } catch {
+    // ignore
+  }
+  ElNotification({
+    title: '📊 你的最新报告出炉了',
+    message: `${latest.title}，点击查看 AI 为你生成的听歌总结`,
+    type: 'success',
+    duration: 6000,
+    onClick: () => {
+      router.push('/reports')
+    },
+  })
+}
+
+function goToReports() {
+  router.push('/reports')
+}
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
@@ -401,6 +449,29 @@ function onSidebarAfterLeave() {
           <span class="premium-hover-text">会员</span>
         </div>
 
+        <!-- 我的报告入口 -->
+        <el-badge
+          :value="hasUnreadReport ? 1 : 0"
+          :max="99"
+          :hidden="!hasUnreadReport"
+          class="report-badge"
+        >
+          <button
+            class="ai-chat-btn report-btn"
+            :class="{ 'has-unread': hasUnreadReport }"
+            @click="goToReports"
+            :title="hasUnreadReport ? '你有未读报告' : '我的报告'"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="9" y1="13" x2="15" y2="13"/>
+              <line x1="9" y1="17" x2="15" y2="17"/>
+              <line x1="9" y1="9" x2="13" y2="9"/>
+            </svg>
+          </button>
+        </el-badge>
+
         <!-- AI 聊天机器人入口 -->
         <button class="ai-chat-btn" @click="router.push('/ai-chat')" title="AI 助手">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -480,7 +551,7 @@ function onSidebarAfterLeave() {
   </div>
 
   <!-- 全局挂载：歌单选择弹窗 -->
-  <PlaylistSelectorModal 
+  <PlaylistSelectorModal
     v-if="globalLibraryStore.selectorVisible"
     :track-id="globalLibraryStore.selectorTrackId"
     :x="globalLibraryStore.selectorX"
@@ -489,3 +560,28 @@ function onSidebarAfterLeave() {
     @update:visible="globalLibraryStore.closeSelector()"
   />
 </template>
+
+<style scoped>
+/* 我的报告按钮：与 AI 按钮同款 SVG 按钮, 加红点提示 */
+.report-badge {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 2px;
+}
+
+.report-badge :deep(.el-badge__content) {
+  transform: translate(2px, -2px);
+}
+
+.report-btn {
+  position: relative;
+}
+
+.report-btn.has-unread {
+  color: #c084fc;
+}
+
+.report-btn.has-unread svg {
+  filter: drop-shadow(0 0 4px rgba(192, 132, 252, 0.6));
+}
+</style>
