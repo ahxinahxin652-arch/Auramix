@@ -46,7 +46,7 @@
 
     <!-- 右侧聊天主区域 -->
     <div class="ai-main">
-      <div class="chat-messages" ref="messagesContainer">
+      <div class="chat-messages" ref="messagesContainer" @click="handleMessageClick">
         <!-- 欢迎页 -->
         <div v-if="messages.length === 0" class="welcome-screen">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#b3b3b3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -300,7 +300,52 @@ watch(inputText, () => {
 
 const formatMessage = (content) => {
   if (!content) return ''
-  return content.replace(/\n/g, '<br/>')
+  let html = content
+  
+  // 1. 解析 <Action>...</Action>
+  html = html.replace(/<Action>(.*?)<\/Action>/g, '<div class="ai-action-indicator"><span class="spinner"></span>$1</div>')
+  
+  // 2. 解析 [Song: id=xxx, title=yyy, cover=zzz]
+  html = html.replace(/\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*cover=(.*?))?\]/g, (match, id, title, cover) => {
+    const coverSrc = cover && cover !== 'null' ? cover : 'https://picsum.photos/seed/music/60/60'
+    return `<div class="ai-song-card" data-action="play-song" data-id="${id}">
+      <img src="${coverSrc}" alt="cover" class="ai-song-cover" />
+      <div class="ai-song-info">
+        <div class="ai-song-title">${title}</div>
+        <div class="ai-song-action">点击播放</div>
+      </div>
+    </div>`
+  })
+
+  // 3. 解析 [Playlist: id=xxx, name=yyy]
+  html = html.replace(/\[Playlist:\s*id=(\d+),\s*name=(.*?)\]/g, (match, id, name) => {
+    return `<div class="ai-playlist-card" data-action="open-playlist" data-id="${id}">
+      <svg class="ai-playlist-icon" viewBox="0 0 24 24" width="30" height="30" stroke="currentColor" stroke-width="2" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+      <div class="ai-playlist-info">
+        <div class="ai-playlist-title">${name}</div>
+        <div class="ai-playlist-action">查看歌单</div>
+      </div>
+    </div>`
+  })
+
+  return html.replace(/\n/g, '<br/>')
+}
+
+const handleMessageClick = (e) => {
+  const songCard = e.target.closest('.ai-song-card')
+  if (songCard) {
+    const id = songCard.dataset.id
+    console.log('Play song:', id)
+    // 假设使用事件总线或类似机制通知播放器，这里暂时给个提醒
+    alert(`即将播放单曲 ID: ${id}`)
+  }
+  
+  const playlistCard = e.target.closest('.ai-playlist-card')
+  if (playlistCard) {
+    const id = playlistCard.dataset.id
+    console.log('Open playlist:', id)
+    alert(`即将跳转歌单详情 ID: ${id}`)
+  }
 }
 
 const sendMessage = async () => {
@@ -373,10 +418,9 @@ const sendMessage = async () => {
       lineBuffer = lines.pop()
 
       for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed.startsWith('data:')) continue
-        const dataStr = trimmed.slice(5).trim()
-        if (!dataStr || dataStr === '[DONE]') continue
+        if (!line.startsWith('data:')) continue
+        const dataStr = line.slice(5)
+        if (dataStr === '[DONE]') continue
 
         // 收到第一个有效 chunk：推入占位气泡并关闭 typing-indicator，避免双气泡
         if (!placeholderPushed) {
@@ -650,6 +694,113 @@ const sendMessage = async () => {
 .avatar-placeholder {
   font-size: 14px;
   color: #e0e0e0;
+}
+
+.message-wrapper:not(.is-user) .message-content :deep(p) {
+  margin: 0 0 8px 0;
+}
+.message-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* AI Tool Action Indicator */
+:deep(.ai-action-indicator) {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(29, 185, 84, 0.1);
+  color: #1db954;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin: 4px 0;
+  border: 1px solid rgba(29, 185, 84, 0.2);
+}
+
+:deep(.spinner) {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid rgba(29, 185, 84, 0.3);
+  border-top-color: #1db954;
+  border-radius: 50%;
+  animation: ai-spin 1s linear infinite;
+}
+
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* AI Song Card */
+:deep(.ai-song-card) {
+  display: flex;
+  align-items: center;
+  background: #282828;
+  padding: 8px;
+  border-radius: 8px;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 260px;
+}
+:deep(.ai-song-card:hover) {
+  background: #333;
+}
+:deep(.ai-song-cover) {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  margin-right: 12px;
+  object-fit: cover;
+}
+:deep(.ai-song-info) {
+  display: flex;
+  flex-direction: column;
+}
+:deep(.ai-song-title) {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin-bottom: 4px;
+}
+:deep(.ai-song-action) {
+  font-size: 12px;
+  color: #1db954;
+}
+
+/* AI Playlist Card */
+:deep(.ai-playlist-card) {
+  display: flex;
+  align-items: center;
+  background: #282828;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 260px;
+  border-left: 4px solid #1db954;
+}
+:deep(.ai-playlist-card:hover) {
+  background: #333;
+}
+:deep(.ai-playlist-icon) {
+  margin-right: 12px;
+  color: #b3b3b3;
+}
+:deep(.ai-playlist-info) {
+  display: flex;
+  flex-direction: column;
+}
+:deep(.ai-playlist-title) {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+:deep(.ai-playlist-action) {
+  font-size: 12px;
+  color: #1db954;
 }
 
 .message-wrapper:not(.is-user) .message-avatar {

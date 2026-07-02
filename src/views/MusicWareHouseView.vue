@@ -122,31 +122,28 @@ async function loadTracks() {
       return
     }
 
-    const isRemote = route.query.remote === '1' || route.query.remote === 'true'
-    let result
-    if (isRemote) {
-      result = await window.electronAPI.getRemotePlaylistDetail(libraryId.value)
-    } else {
-      result = await window.electronAPI.getWarehouseTracksById(libraryId.value)
-    }
+    // 统一调用获取远端歌单接口
+    const result = await window.electronAPI.getRemotePlaylistDetail(libraryId.value)
 
     if (result.success && result.data) {
-      if (isRemote) {
-        const data = result.data
-        tracks.value = data.tracks || []
-        warehouseInfo.value = {
-          id: libraryId.value,
-          name: data.name,
-          description: data.description,
-          coverPath: data.coverUrl,
-          coverUrl: data.coverUrl,
-          isOwner: data.isOwner
-        }
-      } else {
-        tracks.value = result.data.tracks || []
-        if (result.data.warehouse) {
-          warehouseInfo.value = result.data.warehouse
-        }
+      const data = result.data
+      
+      // 映射新接口的数据字段以兼容原有的模板渲染
+      tracks.value = (data.tracks || []).map(t => ({
+        ...t,
+        id: t.trackId || t.id,
+        cover: t.coverUrl || t.cover,
+        album: t.albumTitle || t.album,
+        artist: (t.artists && Array.isArray(t.artists)) ? t.artists.map(a => a.name).join(', ') : t.artist
+      }))
+      
+      warehouseInfo.value = {
+        id: libraryId.value,
+        name: data.name,
+        description: data.description,
+        coverPath: data.coverUrl,
+        coverUrl: data.coverUrl,
+        isOwner: data.isOwner
       }
     }
   } catch (err) {
@@ -772,7 +769,9 @@ function parseArtists(track) {
                 </svg>
               </div>
               <div class="track-text">
-                <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span>
+                <div class="track-name-row">
+                  <span class="track-name" :title="track.title || track.name">{{ track.title || track.name }}</span><span v-if="track.member === 1" class="vip-badge-inline">VIP</span>
+                </div>
                 <span class="track-artists-links">
                   <template v-if="parseArtists(track).length > 0">
                     <span v-for="(tArt, tIdx) in parseArtists(track)" :key="tArt.id || tIdx">

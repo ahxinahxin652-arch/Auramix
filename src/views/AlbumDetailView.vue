@@ -453,7 +453,9 @@ async function handleSaveEdit() {
             <!-- 歌曲标题与歌手 -->
             <span class="col-title">
               <div class="title-details">
-                <span class="track-title-text">{{ track.title }}</span>
+                <div class="track-title-row">
+                  <span class="track-title-text">{{ track.title }}</span><span v-if="track.member === 1" class="vip-badge-inline">VIP</span>
+                </div>
                 <span class="track-artists-links">
                   <span v-for="(tArt, tIdx) in parseArtists(track)" :key="tArt.id || tIdx">
                     <span class="artist-link-small" @click.stop="goToArtist(tArt.id)">{{ tArt.name }}</span>
@@ -882,6 +884,12 @@ async function handleSaveEdit() {
   gap: 4px;
   min-width: 0;
   overflow: hidden;
+}
+
+.track-title-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .track-title-text {

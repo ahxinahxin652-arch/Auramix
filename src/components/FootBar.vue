@@ -4,6 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { usePlayerStore, RepeatMode } from '../stores/player.js'
 import { useSidebarStore } from '../stores/sidebar.js'
 import { useLibraryStore } from '../stores/library'
+import { useUserStore } from '../stores/user'
+import { ElMessage } from 'element-plus'
 import AddPlaylistIcon from './AddPlaylistIcon.vue'
 import { Howl } from 'howler'
 
@@ -15,8 +17,57 @@ let currentLyrics = ''
 const player = usePlayerStore()
 const sidebarStore = useSidebarStore()
 const globalLibraryStore = useLibraryStore()
+const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
+
+// ========== VIP 试听限制（非会员只能试听 30s）==========
+const VIP_PREVIEW_LIMIT = 30
+let vipPreviewTimer = null
+const isVipPreviewing = ref(false)
+
+function startVipPreviewCheck(track) {
+  clearVipPreviewTimer()
+  // 仅当歌曲为会员歌曲 且 当前用户非会员时启用试听限制
+  if (track && track.member === 1 && !userStore.isVip) {
+    // 若歌曲本身时长不超过 30s，则无需限制
+    const dur = track.duration
+    if (typeof dur === 'number' && dur > 0 && dur <= VIP_PREVIEW_LIMIT) {
+      isVipPreviewing.value = false
+      return
+    }
+    isVipPreviewing.value = true
+
+    // 播放时立即提示
+    ElMessage({
+      message: '该歌曲为会员歌曲，可试听 30 秒',
+      type: 'warning',
+      duration: 3000,
+      showClose: true
+    })
+
+    vipPreviewTimer = setTimeout(() => {
+      enforceVipPreviewStop()
+    }, VIP_PREVIEW_LIMIT * 1000)
+  } else {
+    isVipPreviewing.value = false
+  }
+}
+
+function enforceVipPreviewStop() {
+  if (howl) {
+    howl.pause()
+  }
+  clearVipPreviewTimer()
+  // 不重置 isVipPreviewing，提示持续显示直到切歌或充值会员
+}
+
+function clearVipPreviewTimer() {
+  if (vipPreviewTimer) {
+    clearTimeout(vipPreviewTimer)
+    vipPreviewTimer = null
+  }
+}
 
 const parsedArtists = computed(() => {
   const track = player.currentTrack
@@ -56,6 +107,77 @@ function goToAlbum(albumId) {
 const isDragging = ref(false)
 const isLyricsOpen = ref(false)
 
+// ========== 播放进度追踪（累加真实解码播放时长，seek 时不计入） ==========
+const playbackTracker = {
+  playDuration: 0,        // 累计实际播放秒数
+  lastTickTime: 0,        // 上次累加的时间戳
+  isSeeking: false,       // 是否正在拖动进度条
+  reported: false,        // 是否已上报
+  trackId: null,          // 当前 track ID
+  totalDuration: 0,       // 歌曲总秒数
+}
+
+function resetPlaybackTracker(trackId, totalDuration) {
+  playbackTracker.playDuration = 0
+  playbackTracker.lastTickTime = Date.now()
+  playbackTracker.isSeeking = false
+  playbackTracker.reported = false
+  playbackTracker.trackId = trackId || null
+  playbackTracker.totalDuration = totalDuration || 0
+}
+
+/** 在 progress loop 中每 250ms 调用，累加真实播放时间 */
+function tickPlaybackTracker() {
+  if (!howl || !howl.playing() || playbackTracker.isSeeking || playbackTracker.reported) return
+  const now = Date.now()
+  const elapsed = (now - playbackTracker.lastTickTime) / 1000
+  // 防止异常值：超过 30s 的时间跳跃视为异常（如系统挂起）
+  if (elapsed > 0 && elapsed < 30) {
+    playbackTracker.playDuration += elapsed
+  }
+  playbackTracker.lastTickTime = now
+}
+
+/** 上报播放结束行为 */
+async function reportPlaybackEnd(eventType) {
+  if (playbackTracker.reported || !playbackTracker.trackId) return
+  playbackTracker.reported = true
+
+  const payload = {
+    userId: userStore.profile?.id,
+    trackId: playbackTracker.trackId,
+    playDuration: Math.floor(playbackTracker.playDuration),
+    totalDuration: Math.floor(playbackTracker.totalDuration || howl?.duration() || 0),
+    eventType: eventType || '',
+    timestamp: Math.floor(Date.now() / 1000)
+  }
+
+  try {
+    await window.electronAPI.reportPlaybackEnd(payload)
+  } catch (e) {
+    console.warn('[PlaybackTracker] 上报失败:', e)
+  }
+}
+
+// 页面关闭时用 sendBeacon 确保数据发出
+function onBeforeUnload() {
+  if (playbackTracker.reported || !playbackTracker.trackId) return
+  playbackTracker.reported = true
+
+  const payload = {
+    userId: userStore.profile?.id,
+    trackId: playbackTracker.trackId,
+    playDuration: Math.floor(playbackTracker.playDuration),
+    totalDuration: Math.floor(playbackTracker.totalDuration || 0),
+    eventType: 'CLOSE',
+    timestamp: Math.floor(Date.now() / 1000),
+    _token: userStore.token || undefined  // sendBeacon 无法带 header，放 body 中
+  }
+
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
+  navigator.sendBeacon('http://localhost:3000/api/music/playback-end', blob)
+}
+
 // ========== 滚动溢出检测 ==========
 const nameWrapRef = ref(null)
 const artistWrapRef = ref(null)
@@ -94,13 +216,22 @@ watch(() => player.currentTrack, () => {
   checkOverflow()
 })
 
+// 用户充值会员后，立即清除试听提示
+watch(() => userStore.isVip, (vip) => {
+  if (vip && isVipPreviewing.value) {
+    isVipPreviewing.value = false
+    clearVipPreviewTimer()
+  }
+})
+
 function handleSeekTrack(e) {
+  if (!howl || !player.duration) return
   const seekTime = e.detail?.time
   if (typeof seekTime === 'number') {
-    if (howl && player.duration) {
-      howl.seek(seekTime)
-      player.setCurrentTime(seekTime)
-    }
+    // VIP 试听限制：非会员不能跳转到 30s 之后
+    if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) return
+    howl.seek(seekTime)
+    player.setCurrentTime(seekTime)
   }
 }
 
@@ -231,9 +362,13 @@ onMounted(() => {
   window.addEventListener('track-deleted', handleTrackDeletedEvent)
   window.addEventListener('toggle-play', handleTogglePlayEvent)
   window.addEventListener('stop-player', handleStopPlayerEvent)
+  window.addEventListener('beforeunload', onBeforeUnload)
 })
 
 onUnmounted(() => {
+  // 页面关闭时上报播放行为
+  reportPlaybackEnd('CLOSE')
+  window.removeEventListener('beforeunload', onBeforeUnload)
   window.removeEventListener('play-track', handlePlayTrackEvent)
   window.removeEventListener('track-deleted', handleTrackDeletedEvent)
   window.removeEventListener('toggle-play', handleTogglePlayEvent)
@@ -262,7 +397,14 @@ function formatTime(seconds) {
 }
 
 // 播放曲目
+let currentPlayId = 0
+
 async function playTrack(track, playlist = [], index = -1, source = null) {
+  const playId = ++currentPlayId
+
+  // 上报上一首歌的播放行为（切歌）
+  reportPlaybackEnd('NEXT')
+
   stopCurrent()
   player.setTrack(track, playlist, index, source)
 
@@ -281,6 +423,8 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     try {
       const durationParam = track.duration != null ? Math.floor(track.duration) : 0
       const resolved = await window.electronAPI.resolveTrackById(track.id, contextType, contextId, durationParam, contextParam)
+      if (playId !== currentPlayId) return
+      
       if (resolved.success && resolved.data && resolved.data.track) {
         currentTrack = resolved.data.track
         // 同步更新 playlist 中对应的 track 对象
@@ -309,6 +453,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     }
   }
 
+  // 重置播放进度追踪（新歌开始）
+  resetPlaybackTracker(currentTrack.id, currentTrack.duration)
+
   // 更新音乐库的最近播放时间（使用决定的 warehouseId）
   if (currentTrack.warehouseId) {
     window.electronAPI.updateRecentPlayedById(currentTrack.warehouseId).catch(() => {})
@@ -334,6 +481,7 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     handleLyricsUrl(currentTrack.lyrics)
   } else {
     window.electronAPI.getFileMetadata(currentTrack.path).then(res => {
+      if (playId !== currentPlayId) return
       if (res.success && res.data) {
         handleLyricsUrl(res.data.lyrics || '')
       }
@@ -347,8 +495,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
     let audioBlob
     try {
       audioBlob = await window.electronAPI.readFileAsBlob(currentTrack.path)
+      if (playId !== currentPlayId) return
     } catch (err) {
-      console.error('鐠囪褰囬棅鎶筋暥閺傚洣娆㈡径杈Е:', err)
+      console.error('读取本地文件失败:', err)
       player.setPlaying(false)
       return
     }
@@ -357,6 +506,9 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
 
   // 读取真实的后缀名
   const fileExtension = currentTrack.path.split('.').pop().toLowerCase()
+
+  player.setCurrentTime(0)
+  player.setPlaying(false)
 
   howl = new Howl({
     src: [currentBlobUrl],
@@ -378,25 +530,31 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
       handleTrackEnd()
     },
     onload: () => {
+      if (playId !== currentPlayId) return
       player.setDuration(howl.duration())
+      howl.play()
     },
     onloaderror: (id, err) => {
-      console.error('閸旂姾娴囨径杈Е:', err)
+      console.error('加载音频失败:', err)
       player.setPlaying(false)
     },
     onplayerror: (id, err) => {
-      console.error('閹绢厽鏂佹径杈Е:', err)
+      console.error('播放音频失败:', err)
       player.setPlaying(false)
     },
   })
 
-  howl.play()
+  // 启动 VIP 试听限制检查（非会员播放会员歌曲时仅可试听 30s）
+  startVipPreviewCheck(currentTrack)
 }
 
 /**
  * 婢跺嫮鎮婇弴鑼窗閹绢厽鏂佺紒鎾存将 - 閺嶈宓佸顏嗗箚濡€崇础閸滃矂娈㈤張鐑樐佸蹇撳枀鐎规俺顢戞稉?
  */
 function handleTrackEnd() {
+  // 上报自然播放完毕
+  reportPlaybackEnd('COMPLETE')
+
   // 循环单曲：重新播放当前曲目
   if (player.repeatMode === RepeatMode.TRACK) {
     const track = player.currentPlaylist[player.currentIndex]
@@ -417,6 +575,8 @@ function handleTrackEnd() {
 }
 
 function stopCurrent() {
+  clearVipPreviewTimer()
+  isVipPreviewing.value = false
   if (howl) {
     howl.unload()
     howl = null
@@ -433,9 +593,14 @@ function stopCurrent() {
 // 播放/暂停
 function togglePlay() {
   if (!howl) return
-  if (player.isPlaying) {
+  if (howl.playing()) {
+    // 暂停时上报播放行为
+    reportPlaybackEnd('STOP')
     howl.pause()
   } else {
+    // 恢复播放时重置计时起点
+    playbackTracker.lastTickTime = Date.now()
+    playbackTracker.reported = false
     howl.play()
   }
 }
@@ -463,7 +628,11 @@ function seekToByEvent(e) {
   const track = e.currentTarget
   const rect = track.getBoundingClientRect()
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  const seekTime = x * player.duration
+  let seekTime = x * player.duration
+  // VIP 试听限制：非会员不能拖动到 30s 之后
+  if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) {
+    seekTime = VIP_PREVIEW_LIMIT
+  }
   howl.seek(seekTime)
   player.setCurrentTime(seekTime)
 }
@@ -471,6 +640,7 @@ function seekToByEvent(e) {
 function startProgressDrag(e) {
   if (!howl || !player.duration) return
   isDragging.value = true
+  playbackTracker.isSeeking = true
   seekToByEvent(e)
   document.addEventListener('mousemove', onProgressDrag)
   document.addEventListener('mouseup', stopProgressDrag)
@@ -482,15 +652,26 @@ function onProgressDrag(e) {
   if (!track) return
   const rect = track.getBoundingClientRect()
   const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  const seekTime = x * player.duration
-  howl.seek(seekTime)
+  let seekTime = x * player.duration
+  // VIP 试听限制：非会员不能拖动到 30s 之后
+  if (isVipPreviewing.value && seekTime > VIP_PREVIEW_LIMIT) {
+    seekTime = VIP_PREVIEW_LIMIT
+  }
+  // 拖动时仅更新状态，不调用 howl.seek 避免杂音
   player.setCurrentTime(seekTime)
 }
 
 function stopProgressDrag() {
   isDragging.value = false
+  playbackTracker.isSeeking = false
+  playbackTracker.lastTickTime = Date.now()
   document.removeEventListener('mousemove', onProgressDrag)
   document.removeEventListener('mouseup', stopProgressDrag)
+  
+  // 停止拖动时再执行 seek
+  if (howl && player.duration) {
+    howl.seek(player.currentTime)
+  }
 }
 
 // 音量
@@ -517,6 +698,15 @@ function startProgressLoop() {
     if (howl && player.isPlaying && !isDragging.value) {
       const t = howl.seek()
       player.setCurrentTime(t)
+      
+      // 累加真实播放时长
+      tickPlaybackTracker()
+
+      // VIP 试听安全网：进度超过 30s 时强制停止
+      if (isVipPreviewing.value && t >= VIP_PREVIEW_LIMIT) {
+        enforceVipPreviewStop()
+        return
+      }
       
       // 同步给歌词悬浮窗
       if (window.electronAPI && window.electronAPI.sendLyricsStatus) {
@@ -613,6 +803,7 @@ onUnmounted(() => {
     <!-- 中间：播放控制 -->
     <div class="foot-center">
       <div class="controls">
+        <div class="vip-preview-hint" v-if="isVipPreviewing">可试听 30s</div>
         <!-- 随机播放按钮（左侧） -->
         <button
           class="ctrl-btn shuffle-btn"
@@ -767,6 +958,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.vip-preview-hint {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f5a623;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
 .add-to-playlist-btn {
   background: none;
   border: none;

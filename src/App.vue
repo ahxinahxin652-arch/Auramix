@@ -134,7 +134,7 @@ onMounted(() => {
 
   // 根据 localStorage 恢复右侧边栏状态
   sidebarStore.setOpen(localStorageStore.isRightBarShow)
-  
+
   // 初始化导航按钮状态
   updateNavButtons()
 
@@ -147,14 +147,14 @@ onMounted(() => {
 
   // 初始化媒体库同步
   globalLibraryStore.initialize()
-  
+
   // 监听全局同步快捷键 (Ctrl+R)
   if (window.electronAPI && window.electronAPI.onAppSyncReload) {
     window.electronAPI.onAppSyncReload(async () => {
       if (isGlobalSyncing.value) return
       isGlobalSyncing.value = true
       refreshing.value = true
-      
+
       try {
         await globalLibraryStore.forceSync()
       } catch (err) {
@@ -166,7 +166,7 @@ onMounted(() => {
       }
     })
   }
-  
+
   window.addEventListener('resize', handleResize)
   handleResize()
 })
@@ -222,6 +222,11 @@ function showReportNotification(latest) {
 function goToReports() {
   router.push('/reports')
 }
+
+// 同步会员状态到 user store（供 FootBar 等组件判断 VIP 试听）
+watch(isMembershipActive, (val) => {
+  userStore.setMembershipActive(val)
+}, { immediate: true })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
