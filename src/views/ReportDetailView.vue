@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   Download,
   MagicStick,
-  ThumbsUp,
+  Star,
   ChatLineRound,
   Calendar,
   Clock,
@@ -391,7 +391,7 @@ onUnmounted(stopPolling)
                 :class="['feedback-btn', { 'is-active': feedbackRating === 1 }]"
                 @click="feedbackRating = 1"
               >
-                <el-icon><ThumbsUp /></el-icon> 赞
+                <el-icon><Star /></el-icon> 赞
               </button>
               <button
                 :class="['feedback-btn', { 'is-active': feedbackRating === 2 }]"
