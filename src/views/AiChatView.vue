@@ -121,8 +121,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
+import { usePlayerStore } from '../stores/player'
 
+const router = useRouter()
+const playerStore = usePlayerStore()
 const userStore = useUserStore()
 const sessions = ref([])
 const currentSessionId = ref(null)
@@ -305,13 +309,15 @@ const formatMessage = (content) => {
   // 1. 解析 <Action>...</Action>
   html = html.replace(/<Action>(.*?)<\/Action>/g, '<div class="ai-action-indicator"><span class="spinner"></span>$1</div>')
   
-  // 2. 解析 [Song: id=xxx, title=yyy, cover=zzz]
-  html = html.replace(/\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*cover=(.*?))?\]/g, (match, id, title, cover) => {
+  // 2. 解析 [Song: id=xxx, title=yyy, artists=zzz, cover=www]
+  html = html.replace(/\[Song:\s*id=(\d+),\s*title=(.*?)(?:,\s*artists=(.*?))?(?:,\s*cover=(.*?))?\]/g, (match, id, title, artists, cover) => {
     const coverSrc = cover && cover !== 'null' ? cover : 'https://picsum.photos/seed/music/60/60'
+    const artistText = artists && artists !== 'null' ? artists : 'Unknown Artist'
     return `<div class="ai-song-card" data-action="play-song" data-id="${id}">
       <img src="${coverSrc}" alt="cover" class="ai-song-cover" />
       <div class="ai-song-info">
         <div class="ai-song-title">${title}</div>
+        <div class="ai-song-artist" style="font-size: 12px; color: #b3b3b3; margin-bottom: 4px;">${artistText}</div>
         <div class="ai-song-action">点击播放</div>
       </div>
     </div>`
@@ -331,20 +337,27 @@ const formatMessage = (content) => {
   return html.replace(/\n/g, '<br/>')
 }
 
-const handleMessageClick = (e) => {
+const handleMessageClick = async (e) => {
   const songCard = e.target.closest('.ai-song-card')
   if (songCard) {
     const id = songCard.dataset.id
     console.log('Play song:', id)
-    // 假设使用事件总线或类似机制通知播放器，这里暂时给个提醒
-    alert(`即将播放单曲 ID: ${id}`)
+    
+    const titleElem = songCard.querySelector('.ai-song-title')
+    const track = { id: id, title: titleElem ? titleElem.innerText : 'Unknown' }
+    
+    // 派发 play-track 事件给 FootBar，由 FootBar 处理 resolveTrackById 以及 similarTracks 附加到播放列表的逻辑
+    const source = { type: 'search', id: track.id, name: track.title, route: '/ai' }
+    window.dispatchEvent(new CustomEvent('play-track', {
+      detail: { track, playlist: [track], index: 0, source }
+    }))
   }
   
   const playlistCard = e.target.closest('.ai-playlist-card')
   if (playlistCard) {
     const id = playlistCard.dataset.id
     console.log('Open playlist:', id)
-    alert(`即将跳转歌单详情 ID: ${id}`)
+    router.push(`/warehouse/${id}`)
   }
 }
 
