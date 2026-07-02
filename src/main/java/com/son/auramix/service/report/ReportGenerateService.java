@@ -103,8 +103,27 @@ public class ReportGenerateService {
             // 1. 统计
             StatsAggregateResult stats = listeningStatsService.aggregate(userId, range);
             if (stats.getTotalPlays() == null || stats.getTotalPlays() == 0) {
-                markStatus(reportId, STATUS_NO_DATA, "本周期内无播放数据", null, null, null, null);
-                log.info("报告无数据, 跳过 LLM: reportId={}", reportId);
+                // 无数据时也写入占位内容, 让前端详情页有内容可显示
+                String periodLabel = range.getPeriodType() == PeriodRange.TYPE_WEEKLY ? "本周" : "本月";
+                String noDataSummary = "这" + periodLabel + "你还没有听歌记录, 可能你太忙了。下个周期, 让我们一起发现更多好音乐吧 🎵";
+                markStatus(
+                    reportId,
+                    STATUS_NO_DATA,
+                    "本周期内无播放数据",
+                    noDataSummary,
+                    java.util.Arrays.asList("期待新歌", "再听一会"),
+                    java.util.Arrays.asList(
+                        "打开音乐库, 选一张专辑开始聆听",
+                        "去发现页找一些新歌",
+                        "周末听一场完整的演唱会现场"
+                    ),
+                    java.util.Arrays.asList(
+                        "尝试在「发现」中探索新歌单",
+                        "把喜欢的歌加入你的收藏",
+                        "尝试不同的音乐风格, 也许会有惊喜"
+                    )
+                );
+                log.info("报告无数据, 写占位内容: reportId={}", reportId);
                 return;
             }
 
