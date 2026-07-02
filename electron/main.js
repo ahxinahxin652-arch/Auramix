@@ -129,10 +129,21 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
   // Intercept Ctrl+R to prevent default reload and send custom sync event
+  // F12 / Ctrl+Shift+I / Cmd+Opt+I 打开 DevTools (方便桌面端调试)
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if ((input.control || input.meta) && input.key.toLowerCase() === 'r') {
       event.preventDefault()
       mainWindow.webContents.send('app-sync-reload')
+    }
+    // F12: 打开/关闭 DevTools
+    if (input.key === 'F12') {
+      event.preventDefault()
+      mainWindow.webContents.toggleDevTools()
+    }
+    // Ctrl+Shift+I (Windows/Linux) 或 Cmd+Opt+I (Mac)
+    if ((input.control || input.meta) && input.shift && input.key.toLowerCase() === 'i') {
+      event.preventDefault()
+      mainWindow.webContents.toggleDevTools()
     }
   })
 
