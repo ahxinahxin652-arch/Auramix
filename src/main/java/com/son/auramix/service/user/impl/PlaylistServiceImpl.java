@@ -388,6 +388,7 @@ public class PlaylistServiceImpl implements PlaylistService {
                 PlaylistTrackItemVO item = new PlaylistTrackItemVO();
                 item.setTrackId(pt.getTrackId());
                 item.setSortOrder(pt.getSortOrder());
+                item.setAddedAt(pt.getAddedAt());
 
                 Track track = trackMap.get(pt.getTrackId());
                 if (track != null) {

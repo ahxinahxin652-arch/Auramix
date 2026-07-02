@@ -43,8 +43,12 @@ public class AiChatService {
                 "IMPORTANT RULES:\n" +
                 "1. When you need to call a tool, call it DIRECTLY. Do NOT output any conversational text or action indicators before the tool call. Just emit the tool call.\n" +
                 "2. When recommending songs, output them strictly in this format: [Song: id=xxx, title=Song Name, artists=Artist Name, cover=Cover URL]. Provide actual data returned from tools. You MUST copy the exact cover URL from the tool output. Do NOT make up or shorten the cover URL.\n" +
-                "3. When creating a playlist and recommending it, output it strictly in this format: [Playlist: id=50, name=今日推荐歌单]\n" +
-                "4. When the user explicitly states their preferences or favorite genres/artists, you MUST call `updateUserProfileTool` to save this information. Do NOT call `getRecentPlaybackAndGenresTool` unless the user explicitly asks for song recommendations.\n";
+                "3. When creating a playlist, the system will automatically display it. Do NOT output [Playlist: id=xxx, name=yyy] tags yourself.\n" +
+                "4. When the user explicitly states their preferences, call `updateUserProfileTool`. Do NOT call `getRecentPlaybackAndGenresTool` unless the user asks for recommendations.\n" +
+                "5. When the user asks for song recommendations, you MUST follow this strict workflow:\n" +
+                "   Step 1: Call `getRecentPlaybackAndGenresTool` to analyze their recent taste.\n" +
+                "   Step 2: You MUST then call `searchSongsByGenreTool` using genres/keywords found in Step 1 to find new songs.\n" +
+                "   Step 3: Only recommend songs that were actually returned by these tools. NEVER hallucinate or invent songs/IDs.\n";
 
         promptMessages.add(new SystemMessage(systemText));
 

@@ -117,11 +117,11 @@ public class AiChatToolConfig {
                     log.info("Updated existing user profile: {}", profile);
                 }
                 String result = "Success: User profile updated.";
-                emitToolEvent("\n<ToolResult>" + result + "</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>更新结果: 偏好更新成功</Summary><Details>" + result + "</Details></ToolResult>\n");
                 return result;
             } catch (Exception e) {
                 log.error("Exception in updateUserProfileTool: {}", e.getMessage(), e);
-                emitToolEvent("\n<ToolResult>更新失败: " + e.getMessage() + "</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>更新失败</Summary><Details>" + e.getMessage() + "</Details></ToolResult>\n");
                 return "Error updating user profile: " + e.getMessage();
             }
         };
@@ -141,13 +141,13 @@ public class AiChatToolConfig {
                 if (profile == null) {
                     log.info("readUserProfileTool result: No profile found for userId {}", userId);
                     String result = "No user profile found. Please ask the user about their preferences.";
-                    emitToolEvent("\n<ToolResult>获取结果: 暂无偏好数据</ToolResult>\n");
+                    emitToolEvent("\n<ToolResult><Summary>获取结果: 暂无偏好数据</Summary><Details>" + result + "</Details></ToolResult>\n");
                     return result;
                 }
                 String result = String.format("Favorite Genres: %s, Favorite Artists: %s, Summary: %s", 
                     profile.getFavoriteGenres(), profile.getFavoriteArtists(), profile.getSummary());
                 log.info("readUserProfileTool result for userId {}: {}", userId, result);
-                emitToolEvent("\n<ToolResult>获取结果: " + result + "</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>获取结果: 成功读取偏好数据</Summary><Details>" + result + "</Details></ToolResult>\n");
                 return result;
             } catch (Exception e) {
                 log.error("Exception in readUserProfileTool: {}", e.getMessage(), e);
@@ -198,7 +198,7 @@ public class AiChatToolConfig {
                 
                 if (tracks.isEmpty()) {
                     String res = "No songs found for: " + keyword;
-                    emitToolEvent("\n<ToolResult>搜索结果: 未找到匹配歌曲</ToolResult>\n");
+                    emitToolEvent("\n<ToolResult><Summary>搜索结果: 未找到匹配歌曲</Summary><Details>" + res + "</Details></ToolResult>\n");
                     return res;
                 }
                 
@@ -224,11 +224,11 @@ public class AiChatToolConfig {
                     .collect(Collectors.joining("\n"));
                 
                 log.info("searchSongsByGenreTool result for keyword '{}': found {} tracks. Data: \n{}", keyword, tracks.size(), resultText);
-                emitToolEvent("\n<ToolResult>搜索结果: 找到 " + tracks.size() + " 首歌曲</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>搜索结果: 找到 " + tracks.size() + " 首歌曲</Summary><Details>\n" + resultText + "\n</Details></ToolResult>\n");
                 return resultText;
             } catch (Exception e) {
                 log.error("Exception in searchSongsByGenreTool: {}", e.getMessage(), e);
-                emitToolEvent("\n<ToolResult>搜索失败: " + e.getMessage() + "</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>搜索失败</Summary><Details>" + e.getMessage() + "</Details></ToolResult>\n");
                 return "Error searching songs: " + e.getMessage();
             }
         };
@@ -254,14 +254,16 @@ public class AiChatToolConfig {
                   
                 List<PlaybackHistory> history = playbackHistoryMapper.selectList(hw);
                 if(history.isEmpty()) {
-                    emitToolEvent("\n<ToolResult>读取结果: 暂无播放记录</ToolResult>\n");
-                    return "No recent play history.";
+                    String res = "No recent play history.";
+                    emitToolEvent("\n<ToolResult><Summary>读取结果: 暂无播放记录</Summary><Details>" + res + "</Details></ToolResult>\n");
+                    return res;
                 }
                 
                 List<Long> trackIds = history.stream().map(PlaybackHistory::getTrackId).distinct().toList();
                 if (trackIds.isEmpty()) {
-                    emitToolEvent("\n<ToolResult>读取结果: 暂无播放记录</ToolResult>\n");
-                    return "No recent play history.";
+                    String res = "No recent play history.";
+                    emitToolEvent("\n<ToolResult><Summary>读取结果: 暂无播放记录</Summary><Details>" + res + "</Details></ToolResult>\n");
+                    return res;
                 }
                 
                 List<Track> tracks = trackMapper.selectBatchIds(trackIds);
@@ -288,11 +290,11 @@ public class AiChatToolConfig {
                     .collect(Collectors.joining("\n"));
                 
                 log.info("getRecentPlaybackAndGenresTool result for userId '{}': found {} tracks. Data: \n{}", userId, tracks.size(), resultText);
-                emitToolEvent("\n<ToolResult>读取结果: 找到 " + tracks.size() + " 首最近播放歌曲</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>读取结果: 找到 " + tracks.size() + " 首最近播放歌曲</Summary><Details>\n" + resultText + "\n</Details></ToolResult>\n");
                 return resultText;
             } catch (Exception e) {
                 log.error("Exception in getRecentPlaybackAndGenresTool: {}", e.getMessage(), e);
-                emitToolEvent("\n<ToolResult>读取失败: " + e.getMessage() + "</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>读取失败</Summary><Details>" + e.getMessage() + "</Details></ToolResult>\n");
                 return "Error retrieving recent playback: " + e.getMessage();
             }
         };
@@ -332,7 +334,8 @@ public class AiChatToolConfig {
                 }
                 String resultStr = String.format("Successfully created playlist: id=%d, name='%s'", playlist.getId(), playlist.getName());
                 log.info("createPlaylistAndAddSongsTool result: added {} tracks. Data: {}", request.trackIds() != null ? request.trackIds().size() : 0, resultStr);
-                emitToolEvent("\n<ToolResult>创建结果: 成功创建歌单并添加了 " + (request.trackIds() != null ? request.trackIds().size() : 0) + " 首歌曲</ToolResult>\n");
+                emitToolEvent("\n<ToolResult><Summary>创建结果: 成功创建歌单并添加了 " + (request.trackIds() != null ? request.trackIds().size() : 0) + " 首歌曲</Summary><Details>" + resultStr + "</Details></ToolResult>\n");
+                emitToolEvent("\n[Playlist: id=" + playlist.getId() + ", name=" + playlist.getName() + "]\n");
                 return resultStr;
             } catch (Exception e) {
                 log.error("Exception in createPlaylistAndAddSongsTool: {}", e.getMessage(), e);
