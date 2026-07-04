@@ -433,16 +433,17 @@ async function playTrack(track, playlist = [], index = -1, source = null) {
         }
         player.setTrack(currentTrack, playlist, index)
 
-        // 当来源非 similar 时，通过后端接口异步加载相似歌曲
-        if (contextParam !== 'similar') {
-          player.fetchSimilarTracks(track.id)
-        }
       }
     } catch (e) {
-      // 解析失败，回退使用内存中的 track 数据
-      console.warn('鐟欙絾鐎?track 閺堚偓閺傛媽鐭惧鍕亼鐠愩儻绱濇担璺ㄦ暏閸愬懎鐡ㄩ弫鐗堝祦:', e)
+      console.warn('resolveTrackById 失败:', e)
+    }
+
+    // 当来源非 similar 时，无论 resolveTrackById 是否成功，都加载相似歌曲
+    if (contextParam !== 'similar') {
+      player.fetchSimilarTracks(track.id)
     }
   }
+
 
   // 重置播放进度追踪（新歌开始）
   resetPlaybackTracker(currentTrack.id, currentTrack.duration)

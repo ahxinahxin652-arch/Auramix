@@ -7,20 +7,20 @@ const router = useRouter()
 // ========== 发现页入口卡片数据 ==========
 const discoverCards = ref([
   {
-    id: 'guess',
-    title: '猜你喜欢',
-    badge: null,
-    subtitle: '依据你的听歌口味推荐',
-    color: '#60a5fa',
-    icon: 'guess',
-  },
-  {
     id: 'daily',
     title: '每日推荐',
     badge: '查看啦',
     subtitle: '强推！"八条轨道所览尝"',
     color: '#4ade80',
     icon: 'calendar',
+  },
+  {
+    id: 'guess',
+    title: '猜你喜欢',
+    badge: null,
+    subtitle: '依据你的听歌口味推荐',
+    color: '#60a5fa',
+    icon: 'guess',
   },
   {
     id: 'scene',
@@ -64,14 +64,12 @@ const discoverCards = ref([
   },
 ])
 
-function handleCardClick(card) {
+async function handleCardClick(card) {
   switch (card.id) {
-    case 'guess':
-      // TODO: 跳转到猜你喜欢页面
-      break
     case 'daily':
-      // TODO: 跳转到每日推荐页面
+      router.push('/daily')
       break
+    case 'guess':
     case 'scene':
       // TODO: 跳转到场景推荐页面
       break

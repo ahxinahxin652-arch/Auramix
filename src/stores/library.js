@@ -10,7 +10,8 @@ export const useLibraryStore = defineStore('library', {
     selectorVisible: false,
     selectorX: 0,
     selectorY: 0,
-    selectorTrackId: null
+    selectorTrackId: null,
+    selectorTrackData: null
   }),
   getters: {
     isSavedToAnyPlaylist: (state) => {
@@ -82,8 +83,9 @@ export const useLibraryStore = defineStore('library', {
         this.syncing = false
       }
     },
-    openSelector(trackId, x, y) {
+    openSelector(trackId, x, y, trackData = null) {
       this.selectorTrackId = trackId
+      this.selectorTrackData = trackData
       this.selectorX = x
       this.selectorY = y
       this.selectorVisible = true
@@ -120,7 +122,7 @@ export const useLibraryStore = defineStore('library', {
           }
         } else {
           if (window.electronAPI?.addTrackToLocalPlaylist) {
-            res = await window.electronAPI.addTrackToLocalPlaylist(playlistId, trackId)
+            res = await window.electronAPI.addTrackToLocalPlaylist(playlistId, trackId, this.selectorTrackData)
           }
         }
         if (res && !res.success) throw new Error(res.error || 'Failed')

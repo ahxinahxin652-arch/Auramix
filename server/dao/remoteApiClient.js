@@ -235,6 +235,14 @@ async function fetchSimilarTracks(trackId, token) {
     return request(`/api/intelligent/recommend/similar/${encodeURIComponent(trackId)}`, { token })
 }
 
+/**
+ * 获取每日推荐
+ * @param {string} token
+ */
+async function fetchDailyRecommend(token) {
+    return request('/api/intelligent/recommend/daily', { token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -250,5 +258,6 @@ module.exports = {
     fetchArtistDetail,
     fetchTrackDetail,
     reportPlaybackEnd,
-    fetchSimilarTracks
+    fetchSimilarTracks,
+    fetchDailyRecommend
 }

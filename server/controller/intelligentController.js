@@ -23,5 +23,22 @@ module.exports = function() {
     }
   })
 
+  /**
+   * GET /api/intelligent/recommend/daily
+   * 获取每日推荐
+   */
+  router.get('/recommend/daily', async (req, res) => {
+    try {
+      const token = req.headers['x-user-token'] || ''
+      console.log('[intelligentController] GET /recommend/daily', { token: token ? 'present' : 'absent' })
+
+      const result = await remoteApi.fetchDailyRecommend(token)
+      res.json(result)
+    } catch (err) {
+      console.error('[Express] GET /intelligent/recommend/daily error:', err)
+      res.json({ success: false, error: err.message || '服务器内部错误' })
+    }
+  })
+
   return router
 }

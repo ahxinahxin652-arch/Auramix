@@ -81,6 +81,11 @@ const routes = [
     name: 'ReportDetail',
     component: () => import('../views/ReportDetailView.vue'),
   },
+  {
+    path: '/daily',
+    name: 'DailyRecommend',
+    component: () => import('../views/DailyRecommendView.vue'),
+  },
 ]
 
 const router = createRouter({
