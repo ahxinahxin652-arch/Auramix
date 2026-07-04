@@ -100,6 +100,10 @@ function fetchDailyRecommend() {
   return apiFetch('/api/intelligent/recommend/daily')
 }
 
+function fetchExploreRecommend() {
+  return apiFetch('/api/intelligent/recommend/explore')
+}
+
 /** 播放结束行为上报 */
 function reportPlaybackEnd(data) {
   return apiFetch('/api/music/playback-end', { method: 'POST', body: data })
@@ -394,6 +398,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   resolveTrackById,
   fetchSimilarTracks,
   fetchDailyRecommend,
+  fetchExploreRecommend,
   reportPlaybackEnd,
   updateTrack,
   deleteTrack,

@@ -384,6 +384,7 @@ const SOURCE_TYPE_MAP = {
   album: 1,
   artist: 2,
   search: 6,
+  explore: 6,
   recommend: 3,
   similar: 7,
 }

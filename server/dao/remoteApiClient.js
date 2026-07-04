@@ -243,6 +243,14 @@ async function fetchDailyRecommend(token) {
     return request('/api/intelligent/recommend/daily', { token })
 }
 
+/**
+ * 获取探索与发现推荐
+ * @param {string} token
+ */
+async function fetchExploreRecommend(token) {
+    return request('/api/intelligent/recommend/explore', { token })
+}
+
 module.exports = {
     REMOTE_BASE_URL,
     request,
@@ -259,5 +267,6 @@ module.exports = {
     fetchTrackDetail,
     reportPlaybackEnd,
     fetchSimilarTracks,
-    fetchDailyRecommend
+    fetchDailyRecommend,
+    fetchExploreRecommend
 }

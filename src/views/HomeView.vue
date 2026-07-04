@@ -74,7 +74,7 @@ async function handleCardClick(card) {
       // TODO: 跳转到场景推荐页面
       break
     case 'explore':
-      // TODO: 跳转到探索与发现页面
+      router.push('/explore')
       break
     case 'charts':
       // TODO: 跳转到排行榜页面

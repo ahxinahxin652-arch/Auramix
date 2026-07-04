@@ -86,6 +86,11 @@ const routes = [
     name: 'DailyRecommend',
     component: () => import('../views/DailyRecommendView.vue'),
   },
+  {
+    path: '/explore',
+    name: 'Explore',
+    component: () => import('../views/ExploreView.vue'),
+  },
 ]
 
 const router = createRouter({
