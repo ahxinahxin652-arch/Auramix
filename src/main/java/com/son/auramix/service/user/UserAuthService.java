@@ -9,6 +9,7 @@ import com.son.auramix.domain.vo.user.UserLoginVO;
 import com.son.auramix.domain.vo.user.UserProfileVO;
 import com.son.auramix.domain.entity.User;
 import com.son.auramix.mapper.UserMapper;
+import com.son.auramix.service.recommend.UserPreferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,7 @@ public class UserAuthService {
     private final UserTokenStore tokenStore;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate stringRedisTemplate;
+    private final UserPreferenceService userPreferenceService;
 
     @Value("${auramix.user.token.ttl-seconds:2592000}")
     private long ttlSeconds;
@@ -158,6 +160,9 @@ public class UserAuthService {
                 .loginTime(LocalDateTime.now())
                 .build();
         tokenStore.saveToken(token, info);
+
+        // 登录时缓存用户偏好向量和每日推荐到 Redis（TTL 至当日 00:00）
+        userPreferenceService.cacheOnLogin(user.getId());
 
         return UserLoginVO.builder()
                 .token(token)

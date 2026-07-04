@@ -253,7 +253,7 @@ CREATE TABLE `playback_history` (
   `user_id` BIGINT NOT NULL,
   `track_id` BIGINT NOT NULL,
   `played_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `context_type` INT NULL COMMENT '播放来源类型: 0为歌单(playlist), 1为专辑(album), 2为歌手页(artist)',
+  `context_type` INT NULL COMMENT '播放来源类型: 0=歌单(playlist), 1=专辑(album), 2=歌手页(artist), 3=今日推荐(daily_recommendation), 4=AI生成歌单(ai_generated), 5=场景化推荐(scenario), 6=发现模块(discovery), 7=相似推荐(similar)',
   `context_id` BIGINT NULL COMMENT '对应的来源ID',
   KEY `playback_history_user_id_idx` (`user_id`),
   KEY `playback_history_track_id_idx` (`track_id`)

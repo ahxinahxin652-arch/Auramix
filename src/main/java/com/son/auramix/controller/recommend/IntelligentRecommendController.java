@@ -4,6 +4,7 @@ import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.vo.user.RecommendTrackVO;
 import com.son.auramix.security.user.UserPrincipal;
 import com.son.auramix.service.recommend.TrackRecommendService;
+import com.son.auramix.service.recommend.UserPreferenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -28,6 +29,7 @@ import java.util.List;
 public class IntelligentRecommendController {
 
     private final TrackRecommendService trackRecommendService;
+    private final UserPreferenceService userPreferenceService;
 
     /**
      * 获取相似推荐歌单
@@ -93,5 +95,32 @@ public class IntelligentRecommendController {
             return principal.getUserId();
         }
         return null;
+    }
+
+    /**
+     * 获取每日推荐歌单（20 首）
+     * <p>
+     * 优先读 Redis 缓存（TTL 至当日 00:00），过期则从 DB 重新加载并缓存。
+     *
+     * @return 每日推荐歌曲列表
+     *
+     * <h3>请求示例</h3>
+     * GET /api/intelligent/recommend/daily
+     */
+    @GetMapping("/daily")
+    public Result<List<RecommendTrackVO>> getDailyRecommendations() {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            log.warn("[每日推荐] userId 为 null，无法获取推荐");
+            return Result.success(List.of());
+        }
+        try {
+            List<RecommendTrackVO> recommendations = userPreferenceService.getDailyRecommendations(userId);
+            log.info("[每日推荐] userId={}, 返回={}首", userId, recommendations.size());
+            return Result.success(recommendations);
+        } catch (Exception e) {
+            log.error("[每日推荐] 获取推荐失败 userId={}", userId, e);
+            return Result.success(List.of());
+        }
     }
 }

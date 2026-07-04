@@ -31,8 +31,12 @@ public class PlaybackHistory implements Serializable {
     @TableField(value = "played_at", fill = FieldFill.INSERT)
     private LocalDateTime playedAt;
 
-    /** 0=歌单 1=专辑 2=歌手页 */
+    /**
+     * 0=歌单 1=专辑 2=歌手页 3=今日推荐
+     * 4=AI生成歌单 5=场景化推荐 6=发现模块 7=相似推荐
+     */
     private Integer contextType;
 
+    /** 来源实体 ID，0-4 可能有值，5-7 通常为 null */
     private Long contextId;
 }

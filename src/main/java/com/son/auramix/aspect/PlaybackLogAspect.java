@@ -158,7 +158,7 @@ public class PlaybackLogAspect {
     }
 
     /**
-     * 按参数名提取 Long 类型的值
+     * 按参数名提取 Long 类型的值，同时兼容 String 类型（前端可能传 NaN）
      */
     private Long extractLongParam(JoinPoint joinPoint, String paramName) {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
@@ -166,8 +166,20 @@ public class PlaybackLogAspect {
         Object[] args = joinPoint.getArgs();
 
         for (int i = 0; i < parameters.length; i++) {
-            if (paramName.equals(parameters[i].getName()) && args[i] instanceof Long) {
-                return (Long) args[i];
+            if (!paramName.equals(parameters[i].getName())) {
+                continue;
+            }
+            if (args[i] instanceof Long longVal) {
+                return longVal > 0 ? longVal : null;
+            }
+            if (args[i] instanceof String str) {
+                // 安全解析，忽略 NaN 和非数字字符串
+                try {
+                    long val = Long.parseLong(str);
+                    return val > 0 ? val : null;
+                } catch (NumberFormatException e) {
+                    return null;
+                }
             }
         }
         return null;
