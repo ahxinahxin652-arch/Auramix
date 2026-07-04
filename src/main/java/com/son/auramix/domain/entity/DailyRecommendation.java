@@ -30,8 +30,10 @@ public class DailyRecommendation implements Serializable {
     public static final int SOURCE_LONG_TERM = 0;
     /** 推荐来源: 短期兴趣 */
     public static final int SOURCE_SHORT_TERM = 1;
-    /** 推荐来源: 探索推荐 */
+    /** 推荐来源: 探索推荐（冷启动热门补位） */
     public static final int SOURCE_EXPLORE = 2;
+    /** 推荐来源: 探索发现（离线冷门流派探索） */
+    public static final int SOURCE_DISCOVER = 3;
 
     /** 雪花算法唯一ID */
     @TableId(type = IdType.ASSIGN_ID)
@@ -53,7 +55,7 @@ public class DailyRecommendation implements Serializable {
     /** 推荐理由标签 (如"因为你喜欢周杰伦") */
     private String reasonTag;
 
-    /** 推荐来源: 0=长期偏好, 1=短期兴趣, 2=探索推荐 */
+    /** 推荐来源: 0=长期偏好, 1=短期兴趣, 2=探索推荐(冷启动补位), 3=探索发现(离线冷门) */
     @TableField("`source`")
     private Integer source;
 

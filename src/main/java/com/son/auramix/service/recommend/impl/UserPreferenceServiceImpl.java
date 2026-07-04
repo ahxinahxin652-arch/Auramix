@@ -356,11 +356,15 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
         scores.sort((a, b) -> Double.compare(b.score, a.score));
         List<TrackScore> topN = scores.subList(0, Math.min(DAILY_COUNT, scores.size()));
 
-        // 6. 删除今日旧记录，批量插入新记录
+        // 6. 删除今日偏好推荐旧记录（只删 source=0,1,2，保留探索发现 source=3），批量插入新记录
         dailyRecommendationMapper.delete(
                 new LambdaQueryWrapper<DailyRecommendation>()
                         .eq(DailyRecommendation::getUserId, userId)
-                        .eq(DailyRecommendation::getRecommendDate, today));
+                        .eq(DailyRecommendation::getRecommendDate, today)
+                        .in(DailyRecommendation::getSource,
+                                DailyRecommendation.SOURCE_LONG_TERM,
+                                DailyRecommendation.SOURCE_SHORT_TERM,
+                                DailyRecommendation.SOURCE_EXPLORE));
 
         List<DailyRecommendation> recs = new ArrayList<>();
         for (int i = 0; i < topN.size(); i++) {
@@ -503,12 +507,16 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
                         .set(PREF_REDIS_PREFIX + userId, objectMapper.writeValueAsString(vector), ttl);
             }
 
-            // 2. 缓存每日推荐
+            // 2. 缓存每日推荐（只取 source=0,1,2，排除探索发现 source=3）
             LocalDate today = LocalDate.now();
             List<DailyRecommendation> recs = dailyRecommendationMapper.selectList(
                     new LambdaQueryWrapper<DailyRecommendation>()
                             .eq(DailyRecommendation::getUserId, userId)
                             .eq(DailyRecommendation::getRecommendDate, today)
+                            .in(DailyRecommendation::getSource,
+                                    DailyRecommendation.SOURCE_LONG_TERM,
+                                    DailyRecommendation.SOURCE_SHORT_TERM,
+                                    DailyRecommendation.SOURCE_EXPLORE)
                             .orderByAsc(DailyRecommendation::getRank));
 
             if (!recs.isEmpty()) {
@@ -575,12 +583,16 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
         }
 
         if (dailyList == null) {
-            // Redis 未命中或过期 → 从 DB 加载并重新缓存
+            // Redis 未命中或过期 → 从 DB 加载并重新缓存（只取 source=0,1,2）
             LocalDate today = LocalDate.now();
             List<DailyRecommendation> recs = dailyRecommendationMapper.selectList(
                     new LambdaQueryWrapper<DailyRecommendation>()
                             .eq(DailyRecommendation::getUserId, userId)
                             .eq(DailyRecommendation::getRecommendDate, today)
+                            .in(DailyRecommendation::getSource,
+                                    DailyRecommendation.SOURCE_LONG_TERM,
+                                    DailyRecommendation.SOURCE_SHORT_TERM,
+                                    DailyRecommendation.SOURCE_EXPLORE)
                             .orderByAsc(DailyRecommendation::getRank));
 
             if (recs.isEmpty()) {
@@ -863,6 +875,7 @@ public class UserPreferenceServiceImpl implements UserPreferenceService {
             case DailyRecommendation.SOURCE_LONG_TERM: return "long_term";
             case DailyRecommendation.SOURCE_SHORT_TERM: return "short_term";
             case DailyRecommendation.SOURCE_EXPLORE: return "explore";
+            case DailyRecommendation.SOURCE_DISCOVER: return "discover";
             default: return "unknown";
         }
     }

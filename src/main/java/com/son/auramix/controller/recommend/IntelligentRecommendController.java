@@ -3,6 +3,7 @@ package com.son.auramix.controller.recommend;
 import com.son.auramix.common.result.Result;
 import com.son.auramix.domain.vo.user.RecommendTrackVO;
 import com.son.auramix.security.user.UserPrincipal;
+import com.son.auramix.service.recommend.ExploreSongService;
 import com.son.auramix.service.recommend.TrackRecommendService;
 import com.son.auramix.service.recommend.UserPreferenceService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class IntelligentRecommendController {
 
     private final TrackRecommendService trackRecommendService;
     private final UserPreferenceService userPreferenceService;
+    private final ExploreSongService exploreSongService;
 
     /**
      * 获取相似推荐歌单
@@ -120,6 +122,35 @@ public class IntelligentRecommendController {
             return Result.success(recommendations);
         } catch (Exception e) {
             log.error("[每日推荐] 获取推荐失败 userId={}", userId, e);
+            return Result.success(List.of());
+        }
+    }
+
+    /**
+     * 获取探索发现推荐歌单（10 首，source=3）
+     * <p>
+     * 返回离线计算的冷门探索歌曲：优先用户从未听过的流派/无流派歌曲，
+     * 排除已红心和近 30 天听过的歌曲，按播放量从少到多排序。
+     * 优先读 Redis 缓存（TTL 至当日 00:00），过期则从 DB 重新加载。
+     *
+     * @return 探索发现歌曲列表
+     *
+     * <h3>请求示例</h3>
+     * GET /api/intelligent/recommend/explore
+     */
+    @GetMapping("/explore")
+    public Result<List<RecommendTrackVO>> getExploreRecommendations() {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            log.warn("[探索发现] userId 为 null，无法获取推荐");
+            return Result.success(List.of());
+        }
+        try {
+            List<RecommendTrackVO> recommendations = exploreSongService.getExploreRecommendations(userId);
+            log.info("[探索发现] userId={}, 返回={}首", userId, recommendations.size());
+            return Result.success(recommendations);
+        } catch (Exception e) {
+            log.error("[探索发现] 获取推荐失败 userId={}", userId, e);
             return Result.success(List.of());
         }
     }
