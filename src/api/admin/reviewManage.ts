@@ -262,7 +262,7 @@ export function getReviewDetail(id: string): Promise<ReviewDetail> {
 export const DIMENSION_DISPLAY_NAME: Record<AgentName, string> = {
   PoliticalSensitivity: '政治敏感',
   ViolenceTerror: '暴力恐怖',
-  ExplicitContent: '色情低俗',
+  ExplicitContent: '低俗',
   AntiSocial: '反社会',
 }
 
