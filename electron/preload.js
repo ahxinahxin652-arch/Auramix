@@ -90,6 +90,20 @@ function resolveTrackById(trackId, contextType, contextId, duration, context) {
   return apiFetch(url)
 }
 
+/** 获取相似歌曲列表 */
+function fetchSimilarTracks(trackId) {
+  return apiFetch(`/api/intelligent/recommend/similar/${encodeURIComponent(trackId)}`)
+}
+
+/** 获取每日推荐 */
+function fetchDailyRecommend() {
+  return apiFetch('/api/intelligent/recommend/daily')
+}
+
+function fetchExploreRecommend() {
+  return apiFetch('/api/intelligent/recommend/explore')
+}
+
 /** 播放结束行为上报 */
 function reportPlaybackEnd(data) {
   return apiFetch('/api/music/playback-end', { method: 'POST', body: data })
@@ -139,8 +153,8 @@ function syncLocalLibrary() {
 }
 
 
-function addTrackToLocalPlaylist(playlistId, trackId) {
-  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/tracks`, { method: 'POST', body: { trackId } })
+function addTrackToLocalPlaylist(playlistId, trackId, trackData = null) {
+  return apiFetch(`/api/library/playlists/${encodeURIComponent(playlistId)}/tracks`, { method: 'POST', body: { trackId, trackData } })
 }
 
 function removeTrackFromLocalPlaylist(playlistId, trackId) {
@@ -382,6 +396,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importFilesToWarehouseById,
   syncWarehouseById,
   resolveTrackById,
+  fetchSimilarTracks,
+  fetchDailyRecommend,
+  fetchExploreRecommend,
   reportPlaybackEnd,
   updateTrack,
   deleteTrack,

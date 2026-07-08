@@ -61,14 +61,21 @@ function playQueueTrack(track, indexOffset) {
 }
 
 function playSimilarTrack(track, index) {
-  window.dispatchEvent(new CustomEvent('play-track', { 
-    detail: { 
-      track, 
-      playlist: similarTracksList.value, 
+  window.dispatchEvent(new CustomEvent('play-track', {
+    detail: {
+      track,
+      playlist: similarTracksList.value,
       index,
       source: { type: 'similar', name: '相似推荐' }
-    } 
+    }
   }))
+}
+
+function refreshSimilar() {
+  const trackId = player.currentTrack?.id
+  if (trackId) {
+    player.fetchSimilarTracks(trackId)
+  }
 }
 
 function addSimilarToPlaylist(track, event) {
@@ -224,7 +231,27 @@ onUnmounted(() => {
     </div>
 
     <div class="queue-content" v-if="activeTab === 'similar'">
-      <div v-if="similarTracksList.length > 0" class="track-list">
+      <!-- 重新推荐按钮 -->
+      <div class="similar-header" v-if="!player.similarLoading && player.currentTrack">
+        <div class="similar-current">
+          <span class="similar-current-label">基于</span>
+          <span class="similar-current-name">{{ player.currentTrack.title || player.currentTrack.name }}</span>
+        </div>
+        <button class="refresh-btn" @click="refreshSimilar" title="重新推荐">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          重新推荐
+        </button>
+      </div>
+
+      <div v-if="player.similarLoading" class="loading-state">
+        <div class="spinner"></div>
+        <p>加载相似歌曲中...</p>
+      </div>
+      <div v-else-if="similarTracksList.length > 0" class="track-list">
         <div class="track-item similar-item" v-for="(t, index) in similarTracksList" :key="t.id + '-' + index" @dblclick="playSimilarTrack(t, index)">
           <img v-if="t.cover" :src="t.cover" class="track-cover" />
           <div v-else class="track-cover-placeholder">
@@ -458,6 +485,88 @@ onUnmounted(() => {
 
 .now-playing .track-name {
   color: #1db954;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.similar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.similar-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+  flex: 1;
+}
+
+.similar-current-label {
+  flex-shrink: 0;
+}
+
+.similar-current-name {
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(124, 92, 255, 0.35);
+  background: rgba(124, 92, 255, 0.08);
+  color: #a78bfa;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.refresh-btn:hover {
+  background: rgba(124, 92, 255, 0.15);
+  border-color: rgba(124, 92, 255, 0.55);
+  color: #c4b5fd;
+}
+
+.refresh-btn:active {
+  background: rgba(124, 92, 255, 0.2);
+  font-size: 13px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(124, 92, 255, 0.2);
+  border-top-color: #7c5cff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .empty-state {

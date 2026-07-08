@@ -144,19 +144,27 @@ module.exports = function(mainWindow) {
     try {
       const playlistId = BigInt(req.params.id)
       const trackId = BigInt(req.body.trackId)
+      const trackData = req.body.trackData || {}
       const db = getDb()
       
       // 先插入占位 Track 如果不存在
       const trackExists = await db.track.findUnique({ where: { id: trackId } })
       if (!trackExists) {
         const albumId = BigInt(Date.now()) + trackId
+        const albumTitle = trackData.album || 'Unknown Album'
         await db.album.upsert({
           where: { id: albumId },
           update: {},
-          create: { id: albumId, title: "Unknown Album", releaseDate: new Date() }
+          create: { id: albumId, title: albumTitle, releaseDate: new Date() }
         })
         await db.track.create({
-          data: { id: trackId, albumId: albumId, title: "Added Track " + trackId, duration: 0, trackNumber: 1 }
+          data: {
+            id: trackId,
+            albumId: albumId,
+            title: trackData.title || trackData.name || ('Track ' + trackId),
+            duration: trackData.duration || 0,
+            trackNumber: trackData.trackNumber || 1
+          }
         })
       }
 
