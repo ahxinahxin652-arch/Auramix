@@ -9,3 +9,4 @@ docs
 项目初始数据设计.md
 .claude
 src/test
+application-*.yaml

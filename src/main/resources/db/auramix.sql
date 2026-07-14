@@ -660,7 +660,7 @@ CREATE TABLE `track_audio_resources`  (
 -- ----------------------------
 -- Records of track_audio_resources
 -- ----------------------------
-INSERT INTO `track_audio_resources` VALUES (2070792508869713922, 2070792508030853121, 1, 0, 320171, 'http://auramix.oss-cn-hangzhou.aliyuncs.com/audio/2026/06/27/2026/06/27/ea24399a38e44a2e8f79b8f0b75a9bf8.mp3?Expires=1782553866&OSSAccessKeyId=***REMOVED***&Signature=dZiMbaJ5WBZnMdAxTqYC75J%2Biuk%3D', 7964254, '2026-06-27 16:53:02');
+INSERT INTO `track_audio_resources` VALUES (2070792508869713922, 2070792508030853121, 1, 0, 320171, 'http://auramix.oss-cn-hangzhou.aliyuncs.com/audio/2026/06/27/2026/06/27/ea24399a38e44a2e8f79b8f0b75a9bf8.mp3?Expires=1782553866&OSSAccessKeyId=LTAI5tK6WhNQ4WMnzcMmJDod&Signature=dZiMbaJ5WBZnMdAxTqYC75J%2Biuk%3D', 7964254, '2026-06-27 16:53:02');
 INSERT INTO `track_audio_resources` VALUES (2071879886839898113, 2071877056216887297, 0, 0, 130303, 'https://auramix.oss-cn-hangzhou.aliyuncs.com/audio/2026/06/30/2167e0eef16642a2ab73e4146e4cc52d.mp3', 4707190, '2026-06-30 16:53:53');
 INSERT INTO `track_audio_resources` VALUES (2071879932142575618, 2071877906041597953, 0, 0, 141601, 'https://auramix.oss-cn-hangzhou.aliyuncs.com/audio/2026/06/30/85431d1320604885bb1e22f92cd086b5.mp3', 3132917, '2026-06-30 16:54:04');
 INSERT INTO `track_audio_resources` VALUES (2071880264172068865, 2071877613866381314, 0, 0, 131531, 'https://auramix.oss-cn-hangzhou.aliyuncs.com/audio/2026/06/30/0b01ed3cb682478fa127987a297a9164.mp3', 3321151, '2026-06-30 16:55:23');

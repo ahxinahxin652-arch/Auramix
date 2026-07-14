@@ -16,9 +16,9 @@ spring:
       max-request-size: 30MB
   # ============================ 数据源 ============================
   datasource:
-    url: jdbc:mysql://115.159.190.177:3306/auramix?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: root
-    password: auramix_mysql_13387061861
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -31,8 +31,8 @@ spring:
   mail:
     host: smtp.163.com
     port: 465
-    username: wjj20050528@163.com
-    password: LWascAX6mMNPfKAA
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -45,9 +45,9 @@ spring:
   # ============================ Redis ============================
   data:
     redis:
-      host: 115.159.190.177
-      port: 6379
-      password: auramix_redis_13387061861
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 5s
       lettuce:
@@ -60,7 +60,7 @@ spring:
   # ============================ Spring AI (通义千问) ============================
   ai:
     dashscope:
-      api-key: sk-5c127116e9784b918360d6a912f7f68e
+      api-key: ${AI_DASHSCOPE_API_KEY}
       model: qwen-plus
       chat:
         options:
@@ -99,20 +99,20 @@ logging:
 aliyun:
   oss:
     # 地域节点 (例: oss-cn-hangzhou.aliyuncs.com)
-    endpoint: oss-cn-hangzhou.aliyuncs.com
+    endpoint: ${ALIYUN_OSS_ENDPOINT}
     # AccessKey ID (建议通过环境变量注入)
-    access-key-id: ***REMOVED***
+    access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID}
     # AccessKey Secret
-    access-key-secret: ***REMOVED***
+    access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET}
     # Bucket 名称
-    bucket-name: auramix
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME}
 
 # ============================ Admin / User Token ============================
 auramix:
   admin:
     bootstrap:
-      username: admin
-      password: 123456
+      username: ${ADMIN_USERNAME:admin}
+      password: ${ADMIN_PASSWORD}
     token:
       # 管理员 token 7 天滑动过期
       ttl-seconds: 604800
@@ -122,7 +122,7 @@ auramix:
       ttl-seconds: 2592000
   # 内部 API Key — 用于桌面端 Express Server → Java 后端之间的服务间调用
   # 桌面端通过 X-Internal-Api-Key 请求头传递此密钥，绕过 Admin JWT 认证
-  internal-api-key: auramix-desktop-internal-key-2026
+  internal-api-key: ${INTERNAL_API_KEY}
   # Python 脚本路径
   audio:
     script-path: E:\Auramix\backend\auramix\scripts\audio_analyzer.py
