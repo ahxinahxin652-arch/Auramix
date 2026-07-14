@@ -23,12 +23,12 @@ const discoverCards = ref([
     icon: 'guess',
   },
   {
-    id: 'scene',
-    title: '场景推荐',
+    id: 'categories',
+    title: '分类',
     badge: null,
-    subtitle: '为你的每一刻定制旋律',
-    color: '#fbbf24',
-    icon: 'scene',
+    subtitle: '超选风格随心听',
+    color: '#a78bfa',
+    icon: 'category',
   },
   {
     id: 'explore',
@@ -55,12 +55,12 @@ const discoverCards = ref([
     icon: 'artist',
   },
   {
-    id: 'categories',
-    title: '分类',
-    badge: null,
-    subtitle: '超选风格随心听',
-    color: '#a78bfa',
-    icon: 'category',
+    id: 'reports',
+    title: '我的报告',
+    badge: 'AI 生成',
+    subtitle: '查看 AI 为你生成的听歌总结',
+    color: '#c084fc',
+    icon: 'report',
   },
 ])
 
@@ -70,8 +70,10 @@ async function handleCardClick(card) {
       router.push('/daily')
       break
     case 'guess':
-    case 'scene':
-      // TODO: 跳转到场景推荐页面
+      // TODO: 跳转到猜你喜欢页面
+      break
+    case 'reports':
+      router.push('/reports')
       break
     case 'explore':
       router.push('/explore')
@@ -116,12 +118,12 @@ async function handleCardClick(card) {
                 <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
               </template>
-              <template v-else-if="card.icon === 'scene'">
-                <path d="M17 18a5 5 0 0 0-10 0"/>
-                <line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
-                <line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/>
-                <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/>
-                <polyline points="16 5 12 9 8 5"/>
+              <template v-else-if="card.icon === 'report'">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="9" y1="13" x2="15" y2="13"/>
+                <line x1="9" y1="17" x2="15" y2="17"/>
+                <line x1="9" y1="9" x2="13" y2="9"/>
               </template>
               <template v-else-if="card.icon === 'explore'">
                 <circle cx="12" cy="12" r="10"/>

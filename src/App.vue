@@ -445,37 +445,7 @@ function onSidebarAfterLeave() {
 
       <!-- Right: User Avatar Dropdown & Traffic Lights -->
       <div class="header-right">
-        <span v-if="membershipBadge" class="membership-badge-gold">{{ membershipBadge }}</span>
-        <div class="premium-icon-btn" :class="{ 'has-badge': membershipBadge, 'is-member': isMembershipActive }" @click="router.push('/premium')" title="会员">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" :style="isMembershipActive ? { color: '#fbbf24' } : {}">
-            <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
-            <path d="M3 20h18"/>
-          </svg>
-          <span class="premium-hover-text">会员</span>
-        </div>
 
-        <!-- 我的报告入口 -->
-        <el-badge
-          :value="hasUnreadReport ? 1 : 0"
-          :max="99"
-          :hidden="!hasUnreadReport"
-          class="report-badge"
-        >
-          <button
-            class="ai-chat-btn report-btn"
-            :class="{ 'has-unread': hasUnreadReport }"
-            @click="goToReports"
-            :title="hasUnreadReport ? '你有未读报告' : '我的报告'"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="9" y1="13" x2="15" y2="13"/>
-              <line x1="9" y1="17" x2="15" y2="17"/>
-              <line x1="9" y1="9" x2="13" y2="9"/>
-            </svg>
-          </button>
-        </el-badge>
 
         <!-- AI 聊天机器人入口 -->
         <button class="ai-chat-btn" @click="router.push('/ai-chat')" title="AI 助手">
@@ -489,11 +459,15 @@ function onSidebarAfterLeave() {
         </button>
 
         <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-profile-dropdown">
-          <div class="user-avatar-btn">
+          <div class="user-avatar-btn" style="position: relative;">
             <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" class="user-avatar-img" />
             <div v-else class="user-avatar-placeholder">
               {{ userStore.profile?.displayName?.charAt(0).toUpperCase() || 'U' }}
             </div>
+            <svg v-if="isMembershipActive" class="avatar-crown" width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; top: -6px; right: -6px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); z-index: 10;">
+              <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
+              <path d="M3 20h18"/>
+            </svg>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
@@ -567,26 +541,4 @@ function onSidebarAfterLeave() {
 </template>
 
 <style scoped>
-/* 我的报告按钮：与 AI 按钮同款 SVG 按钮, 加红点提示 */
-.report-badge {
-  display: inline-flex;
-  align-items: center;
-  margin: 0 2px;
-}
-
-.report-badge :deep(.el-badge__content) {
-  transform: translate(2px, -2px);
-}
-
-.report-btn {
-  position: relative;
-}
-
-.report-btn.has-unread {
-  color: #c084fc;
-}
-
-.report-btn.has-unread svg {
-  filter: drop-shadow(0 0 4px rgba(192, 132, 252, 0.6));
-}
 </style>
