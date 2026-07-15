@@ -190,11 +190,11 @@ function checkOverflow() {
   nextTick(() => {
     if (nameWrapRef.value) {
       const nameEl = nameWrapRef.value.querySelector('.track-name')
-      canScrollName.value = nameEl ? nameEl.offsetWidth > nameWrapRef.value.clientWidth : false
+      canScrollName.value = nameEl ? nameEl.offsetWidth > nameWrapRef.value.clientWidth + 2 : false
     }
     if (artistWrapRef.value) {
       const artistEl = artistWrapRef.value.querySelector('.track-artist')
-      canScrollArtist.value = artistEl ? artistEl.offsetWidth > artistWrapRef.value.clientWidth : false
+      canScrollArtist.value = artistEl ? artistEl.offsetWidth > artistWrapRef.value.clientWidth + 2 : false
     }
   })
 }
@@ -203,11 +203,11 @@ function refreshOverflow() {
   nextTick(() => {
     if (nameWrapRef.value) {
       const nameEl = nameWrapRef.value.querySelector('.track-name')
-      canScrollName.value = nameEl ? nameEl.offsetWidth > nameWrapRef.value.clientWidth : false
+      canScrollName.value = nameEl ? nameEl.offsetWidth > nameWrapRef.value.clientWidth + 2 : false
     }
     if (artistWrapRef.value) {
       const artistEl = artistWrapRef.value.querySelector('.track-artist')
-      canScrollArtist.value = artistEl ? artistEl.offsetWidth > artistWrapRef.value.clientWidth : false
+      canScrollArtist.value = artistEl ? artistEl.offsetWidth > artistWrapRef.value.clientWidth + 2 : false
     }
   })
 }
@@ -235,6 +235,8 @@ function handleSeekTrack(e) {
   }
 }
 
+let resizeObserver = null
+
 onMounted(() => {
   checkOverflow()
   window.addEventListener('resize', refreshOverflow)
@@ -246,9 +248,20 @@ onMounted(() => {
       isLyricsOpen.value = isOpen
     })
   }
+
+  // Use ResizeObserver to detect width changes reliably
+  resizeObserver = new ResizeObserver(() => {
+    refreshOverflow()
+  })
+  if (nameWrapRef.value) resizeObserver.observe(nameWrapRef.value)
+  if (artistWrapRef.value) resizeObserver.observe(artistWrapRef.value)
 })
 
 onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
   window.removeEventListener('resize', refreshOverflow)
   window.removeEventListener('seek-track', handleSeekTrack)
 })

@@ -114,8 +114,7 @@ body {
 
 /* ========== 自定义标题栏 ========== */
 .titlebar {
-    padding: 10px 16px;
-
+    padding: 0 0 0 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -132,24 +131,24 @@ body {
 .traffic-lights {
     display: flex;
     align-items: center;
-    padding: 0 14px;
+    padding: 0;
     height: 100%;
     -webkit-app-region: no-drag;
     gap: 0;
 }
 
 .traffic-btn {
-    width: 30px;
-    height: 30px;
+    width: 46px;
+    height: 100%;
     border: none;
-    border-radius: 50%;
+    border-radius: 0;
     background: transparent;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 6px;
-    transition: background 0.15s, transform 0.1s;
+    margin-right: 0;
+    transition: background 0.15s;
 }
 
 .traffic-btn svg {
@@ -168,8 +167,11 @@ body {
 }
 
 .traffic-btn:hover {
-    background: #333333 !important;
-    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.traffic-btn.close:hover {
+    background: rgb(232, 17, 35) !important;
 }
 
 /* ========== 新版导航及搜索栏 (Spotify 风格) ========== */
@@ -177,8 +179,8 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
-    flex: 0 0 auto;
-    min-width: 150px;
+    flex: 1;
+    min-width: 0;
 }
 
 .logo-text {
@@ -235,6 +237,7 @@ body {
 
 .arrow-btn.refresh-btn {
     margin-left: 6px;
+    margin-right: 16px;
 }
 
 .arrow-btn.refresh-btn:disabled {
@@ -258,7 +261,6 @@ body {
     justify-content: center;
     gap: 8px;
     flex: 0 0 auto;
-    min-width: 300px;
 }
 
 .home-circle-btn {
@@ -285,7 +287,6 @@ body {
 .home-circle-btn:hover {
     background: #333333;
     color: #e0e0e0;
-    transform: scale(1.04);
 }
 
 .home-circle-btn.active {
@@ -373,8 +374,9 @@ body {
     align-items: center;
     justify-content: flex-end;
     gap: 16px;
-    flex: 0 0 auto;
-    min-width: 280px;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
 }
 
 /* ========== 会员标识文字 ========== */
@@ -416,7 +418,6 @@ body {
 .premium-icon-btn:hover {
     background: rgba(251, 191, 36, 0.15);
     color: #fbbf24;
-    transform: scale(1.05);
 }
 
 .premium-icon-btn:hover .premium-hover-text {
@@ -462,7 +463,6 @@ body {
 .ai-chat-btn:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
-    transform: scale(1.05);
 }
 
 .user-avatar-btn {
@@ -480,6 +480,14 @@ body {
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     -webkit-app-region: no-drag;
     position: relative;
+    background-clip: padding-box;
+}
+
+.user-avatar-btn.is-vip {
+    border: 2px solid transparent;
+    background-image: linear-gradient(#1f1f1f, #1f1f1f), linear-gradient(45deg, #a855f7, #fbbf24);
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
 }
 
 .user-avatar-btn svg.user-avatar-svg {
@@ -488,10 +496,74 @@ body {
 }
 
 .user-avatar-btn:hover {
-    background: #333333;
+    background-color: #333333;
     color: #e0e0e0;
-    transform: scale(1.05);
     border-color: #e0e0e0;
+    box-shadow: 0 0 0 3px rgba(224, 224, 224, 0.2);
+}
+
+@keyframes solar-storm-1 {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.8) rotate(140deg);
+        opacity: 0;
+    }
+}
+
+@keyframes solar-storm-2 {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1.6) rotate(-110deg);
+        opacity: 0;
+    }
+}
+
+.user-avatar-btn.is-vip::before,
+.user-avatar-btn.is-vip::after {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background-origin: padding-box, border-box;
+    background-clip: padding-box, border-box;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(1) rotate(0deg);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    filter: drop-shadow(0 0 4px #a855f7) drop-shadow(0 0 4px #fbbf24);
+    z-index: 10;
+}
+
+.user-avatar-btn.is-vip::before {
+    background-image: linear-gradient(transparent, transparent),
+                      repeating-conic-gradient(from 0deg, #a855f7 0deg, #fbbf24 12deg, transparent 12deg, transparent 40deg);
+}
+
+.user-avatar-btn.is-vip::after {
+    background-image: linear-gradient(transparent, transparent),
+                      repeating-conic-gradient(from 20deg, #fbbf24 0deg, #a855f7 10deg, transparent 10deg, transparent 36deg);
+}
+
+.user-avatar-btn.is-vip:hover::before {
+    animation: solar-storm-1 1.2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+}
+
+.user-avatar-btn.is-vip:hover::after {
+    animation: solar-storm-2 1.5s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+    animation-delay: 0.4s;
+}
+
+.user-avatar-btn.is-vip:hover {
+    border-color: transparent;
+    background-image: linear-gradient(#333333, #333333), linear-gradient(45deg, #a855f7, #fbbf24);
+    box-shadow: 0 0 10px 2px rgba(168, 85, 247, 0.6), inset 0 0 6px 1px rgba(251, 191, 36, 0.4);
 }
 
 /* ========== Element Plus 下拉菜单暗黑主题自定义 ========== */

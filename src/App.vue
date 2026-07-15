@@ -459,15 +459,11 @@ function onSidebarAfterLeave() {
         </button>
 
         <el-dropdown trigger="click" @command="handleUserCommand" popper-class="user-profile-dropdown">
-          <div class="user-avatar-btn" style="position: relative;">
+          <div class="user-avatar-btn" :class="{ 'is-vip': isMembershipActive }" style="position: relative;">
             <img v-if="userStore.profile?.avatarUrl" :src="userStore.profile.avatarUrl" class="user-avatar-img" />
             <div v-else class="user-avatar-placeholder">
               {{ userStore.profile?.displayName?.charAt(0).toUpperCase() || 'U' }}
             </div>
-            <svg v-if="isMembershipActive" class="avatar-crown" width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; top: -6px; right: -6px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); z-index: 10;">
-              <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/>
-              <path d="M3 20h18"/>
-            </svg>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
