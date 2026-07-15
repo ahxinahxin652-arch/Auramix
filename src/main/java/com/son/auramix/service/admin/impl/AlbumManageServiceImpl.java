@@ -36,7 +36,14 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import com.son.auramix.domain.cache.TrackMetaCacheDTO;
+import com.son.auramix.domain.vo.admin.TrackListItemVO;
+import com.son.auramix.domain.dto.admin.TrackArtistDto;
+import com.son.auramix.service.common.TrackCacheService;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +56,8 @@ public class AlbumManageServiceImpl implements AlbumManageService {
     private final TrackAudioResourceMapper trackAudioResourceMapper;
     private final TrackVideoResourceMapper trackVideoResourceMapper;
     private final TrackGenreMapper trackGenreMapper;
+    private final TrackCacheService trackCacheService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public List<AlbumSearchVO> searchAlbums(String query) {
@@ -118,7 +127,14 @@ public class AlbumManageServiceImpl implements AlbumManageService {
 
     @Override
     public AlbumDetailVO getAlbumDetail(Long id) {
-        Album album = albumMapper.selectById(id);
+        String metaKey = "albumMeta::" + id;
+        Album album = (Album) redisTemplate.opsForValue().get(metaKey);
+        if (album == null) {
+            album = albumMapper.selectById(id);
+            if (album != null) {
+                redisTemplate.opsForValue().set(metaKey, album, 15, TimeUnit.MINUTES);
+            }
+        }
         if (album == null) {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
@@ -163,6 +179,49 @@ public class AlbumManageServiceImpl implements AlbumManageService {
             detail.setArtists(artistDtos);
         }
 
+        String relationKey = "albumTrackRelations::" + id;
+        List<Long> trackIds = (List<Long>) redisTemplate.opsForValue().get(relationKey);
+        if (trackIds == null) {
+            List<Track> tracks = trackMapper.selectList(
+                    new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, id).orderByAsc(Track::getId));
+            trackIds = tracks.stream().map(Track::getId).collect(Collectors.toList());
+            redisTemplate.opsForValue().set(relationKey, trackIds, 15, TimeUnit.MINUTES);
+        }
+
+        if (trackIds != null && !trackIds.isEmpty()) {
+            Map<Long, TrackMetaCacheDTO> trackMetaMap = trackCacheService.getTrackMetaBatch(trackIds);
+            List<TrackListItemVO> trackVOs = new ArrayList<>();
+            for (Long tId : trackIds) {
+                TrackMetaCacheDTO meta = trackMetaMap.get(tId);
+                if (meta == null) continue;
+
+                TrackListItemVO tVo = new TrackListItemVO();
+                tVo.setId(meta.getId());
+                tVo.setTitle(meta.getTitle());
+                tVo.setDuration(meta.getDuration());
+                tVo.setAlbumId(meta.getAlbumId());
+                tVo.setAlbumTitle(meta.getAlbumTitle());
+                tVo.setAlbumCover(meta.getCoverUrl());
+                
+                List<TrackArtistDto> trackArtists = new ArrayList<>();
+                if (meta.getArtists() != null) {
+                    for (TrackMetaCacheDTO.ArtistMeta a : meta.getArtists()) {
+                        TrackArtistDto aDto = new TrackArtistDto();
+                        aDto.setArtistId(a.getId());
+                        aDto.setArtistName(a.getName());
+                        trackArtists.add(aDto);
+                    }
+                }
+                tVo.setArtists(trackArtists);
+                tVo.setMember(meta.getMember());
+                
+                trackVOs.add(tVo);
+            }
+            detail.setTracks(trackVOs);
+        } else {
+            detail.setTracks(new ArrayList<>());
+        }
+
         return detail;
     }
 
@@ -199,6 +258,9 @@ public class AlbumManageServiceImpl implements AlbumManageService {
                 albumArtistMapper.insert(aa);
             }
         }
+        
+        redisTemplate.delete("albumMeta::" + id);
+        redisTemplate.delete("albumTrackRelations::" + id);
     }
 
     @Override
@@ -209,7 +271,7 @@ public class AlbumManageServiceImpl implements AlbumManageService {
             throw new BusinessException(ResultCode.NOT_FOUND);
         }
 
-        // 查出专辑下所有歌曲 ID，级联清理
+        // 查出专辑下所有歌�?ID，级联清�?
         List<Track> tracks = trackMapper.selectList(
                 new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, id));
         if (tracks != null && !tracks.isEmpty()) {
@@ -230,5 +292,8 @@ public class AlbumManageServiceImpl implements AlbumManageService {
         albumArtistMapper.delete(new LambdaQueryWrapper<AlbumArtist>().eq(AlbumArtist::getAlbumId, id));
         // 专辑本身
         albumMapper.deleteById(id);
+        
+        redisTemplate.delete("albumMeta::" + id);
+        redisTemplate.delete("albumTrackRelations::" + id);
     }
 }

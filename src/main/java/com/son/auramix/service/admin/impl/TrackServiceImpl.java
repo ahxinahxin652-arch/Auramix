@@ -21,6 +21,9 @@ import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.ResultCode;
 
 import java.util.*;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.redis.core.RedisTemplate;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +38,7 @@ public class TrackServiceImpl implements TrackService {
     private final TrackVideoResourceMapper videoMapper;
     private final TrackGenreMapper trackGenreMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public PageResult<TrackListItemVO> listTracks(String query, Long albumId, Integer status, Integer pageNum, Integer pageSize) {
@@ -169,6 +173,7 @@ public class TrackServiceImpl implements TrackService {
     }
 
     @Override
+    @Cacheable(value = "trackDetail", key = "#id")
     public TrackDetailVO getTrackDetail(Long id) {
         Track t = trackMapper.selectById(id);
         if (t == null) return null;
@@ -286,6 +291,7 @@ public class TrackServiceImpl implements TrackService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "trackDetail", key = "#id")
     public void updateTrack(Long id, TrackUpdateDTO req) {
         Track t = trackMapper.selectById(id);
         if (t == null) {
@@ -347,16 +353,20 @@ public class TrackServiceImpl implements TrackService {
         // 触发 AI 内容审核：通过 AFTER_COMMIT 事务事件异步触发，
         // 确保异步线程能读到本次事务提交的最新数据
         eventPublisher.publishEvent(new TrackCreatedEvent(id));
+        
+        redisTemplate.delete("auramix:cache:track:meta:" + id);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "trackDetail", key = "#id")
     public void deleteTrack(Long id) {
         trackMapper.deleteById(id);
         trackArtistMapper.delete(new LambdaQueryWrapper<TrackArtist>().eq(TrackArtist::getTrackId, id));
         audioMapper.delete(new LambdaQueryWrapper<TrackAudioResource>().eq(TrackAudioResource::getTrackId, id));
         videoMapper.delete(new LambdaQueryWrapper<TrackVideoResource>().eq(TrackVideoResource::getTrackId, id));
         trackGenreMapper.delete(new LambdaQueryWrapper<TrackGenre>().eq(TrackGenre::getTrackId, id));
+        redisTemplate.delete("auramix:cache:track:meta:" + id);
     }
 
     private void saveRelations(Long trackId, List<TrackArtistDto> artists, List<TrackAudioResourceDto> audios, List<TrackVideoResourceDto> videos) {

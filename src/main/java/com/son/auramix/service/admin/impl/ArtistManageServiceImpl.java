@@ -27,6 +27,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+
 @Service
 @RequiredArgsConstructor
 public class ArtistManageServiceImpl implements ArtistManageService {
@@ -79,6 +82,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
     }
 
     @Override
+    @Cacheable(value = "artistDetail", key = "#id")
     public ArtistDetailVO getArtistDetail(Long id) {
         Artist artist = artistMapper.selectById(id);
         if (artist == null) {
@@ -107,6 +111,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "artistDetail", key = "#id")
     public void updateArtist(Long id, ArtistUpdateDTO req) {
         Artist artist = artistMapper.selectById(id);
         if (artist == null) {
@@ -121,6 +126,7 @@ public class ArtistManageServiceImpl implements ArtistManageService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "artistDetail", key = "#id")
     public void deleteArtist(Long id) {
         Artist artist = artistMapper.selectById(id);
         if (artist == null) {

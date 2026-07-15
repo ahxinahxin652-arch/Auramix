@@ -30,6 +30,8 @@ import com.son.auramix.domain.vo.user.UserArtistSyncVO;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.Cacheable;
+
 @Service
 @RequiredArgsConstructor
 public class UserArtistServiceImpl implements UserArtistService {
@@ -69,6 +71,7 @@ public class UserArtistServiceImpl implements UserArtistService {
     }
 
     @Override
+    @Cacheable(value = "artistDetail", key = "#artistId")
     public UserArtistDetailVO getArtistDetail(Long artistId) {
         Artist artist = artistMapper.selectById(artistId);
         if (artist == null) {

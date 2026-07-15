@@ -25,18 +25,12 @@ public class UserSearchController {
             @RequestParam(required = false) Integer duration,
             @RequestParam(required = false) String context) {
 
-        switch (type.toLowerCase()) {
-            case "tracks":
-                return Result.success(userSearchService.searchTracks(keyword, pageNum, pageSize));
-            case "artists":
-                return Result.success(userSearchService.searchArtists(keyword, pageNum, pageSize));
-            case "albums":
-                return Result.success(userSearchService.searchAlbums(keyword, pageNum, pageSize));
-            case "playlists":
-                return Result.success(userSearchService.searchPlaylists(keyword, pageNum, pageSize));
-            case "all":
-            default:
-                return Result.success(userSearchService.searchAll(keyword));
-        }
+        return switch (type.toLowerCase()) {
+            case "tracks" -> Result.success(userSearchService.searchTracks(keyword, pageNum, pageSize));
+            case "artists" -> Result.success(userSearchService.searchArtists(keyword, pageNum, pageSize));
+            case "albums" -> Result.success(userSearchService.searchAlbums(keyword, pageNum, pageSize));
+            case "playlists" -> Result.success(userSearchService.searchPlaylists(keyword, pageNum, pageSize));
+            default -> Result.success(userSearchService.searchAll(keyword));
+        };
     }
 }

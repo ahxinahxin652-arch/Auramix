@@ -24,6 +24,7 @@ import com.son.auramix.service.user.UserTrackService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.cache.annotation.Cacheable;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -42,6 +43,7 @@ public class UserTrackServiceImpl implements UserTrackService {
     private final GenreMapper genreMapper;
 
     @Override
+    @Cacheable(value = "trackDetail", key = "#trackId")
     public UserTrackDetailVO getTrackDetail(Long trackId) {
         Track track = trackMapper.selectById(trackId);
         if (track == null || track.getStatus() != 0) {

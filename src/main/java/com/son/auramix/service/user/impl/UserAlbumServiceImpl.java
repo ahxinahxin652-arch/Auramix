@@ -17,7 +17,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import com.son.auramix.domain.cache.TrackMetaCacheDTO;
+import com.son.auramix.service.common.TrackCacheService;
+import org.springframework.data.redis.core.RedisTemplate;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +31,19 @@ public class UserAlbumServiceImpl implements UserAlbumService {
     private final TrackMapper trackMapper;
     private final TrackArtistMapper trackArtistMapper;
     private final ArtistMapper artistMapper;
+    private final TrackCacheService trackCacheService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public UserAlbumDetailVO getAlbumDetail(Long albumId) {
-        Album album = albumMapper.selectById(albumId);
+        String metaKey = "albumMeta::" + albumId;
+        Album album = (Album) redisTemplate.opsForValue().get(metaKey);
+        if (album == null) {
+            album = albumMapper.selectById(albumId);
+            if (album != null) {
+                redisTemplate.opsForValue().set(metaKey, album, 15, TimeUnit.MINUTES);
+            }
+        }
         if (album == null) {
             throw new RuntimeException("专辑不存在");
         }
@@ -42,53 +55,48 @@ public class UserAlbumServiceImpl implements UserAlbumService {
         vo.setReleaseDate(album.getReleaseDate());
         vo.setAlbumType(album.getAlbumType());
 
-        // 获取专辑下的所有歌曲
-        List<Track> tracks = trackMapper.selectList(
-                new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, albumId).eq(Track::getStatus, 0)
-        );
+        String relationKey = "albumTrackRelations::" + albumId;
+        List<Long> trackIds = (List<Long>) redisTemplate.opsForValue().get(relationKey);
+        if (trackIds == null) {
+            List<Track> tracks = trackMapper.selectList(
+                    new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, albumId).orderByAsc(Track::getId)
+            );
+            trackIds = tracks.stream().map(Track::getId).collect(Collectors.toList());
+            redisTemplate.opsForValue().set(relationKey, trackIds, 15, TimeUnit.MINUTES);
+        }
 
-        if (tracks.isEmpty()) {
+        if (trackIds.isEmpty()) {
             vo.setTracks(new ArrayList<>());
             return vo;
         }
 
-        List<Long> trackIds = tracks.stream().map(Track::getId).collect(Collectors.toList());
-        List<TrackArtist> trackArtists = trackArtistMapper.selectList(
-                new LambdaQueryWrapper<TrackArtist>().in(TrackArtist::getTrackId, trackIds)
-        );
-        List<Long> artistIds = trackArtists.stream().map(TrackArtist::getArtistId).distinct().collect(Collectors.toList());
+        Map<Long, TrackMetaCacheDTO> trackMetaMap = trackCacheService.getTrackMetaBatch(trackIds);
+        List<UserTrackSearchVO> trackVOs = new ArrayList<>();
+        for (Long tId : trackIds) {
+            TrackMetaCacheDTO meta = trackMetaMap.get(tId);
+            if (meta == null) continue;
 
-        Map<Long, Artist> artistMap = artistIds.isEmpty() ? new HashMap<>() :
-                artistMapper.selectBatchIds(artistIds).stream().collect(Collectors.toMap(Artist::getId, a -> a));
-
-        Map<Long, List<TrackArtist>> trackArtistsByTrack = trackArtists.stream()
-                .collect(Collectors.groupingBy(TrackArtist::getTrackId));
-
-        List<UserTrackSearchVO> trackVOs = tracks.stream().map(t -> {
             UserTrackSearchVO tVo = new UserTrackSearchVO();
-            tVo.setId(t.getId());
-            tVo.setTitle(t.getTitle());
-            tVo.setDuration(t.getDuration());
-            tVo.setAlbumId(album.getId());
-            tVo.setAlbumTitle(album.getTitle());
-            tVo.setCoverUrl(album.getCoverUrl());
+            tVo.setId(meta.getId());
+            tVo.setTitle(meta.getTitle());
+            tVo.setDuration(meta.getDuration());
+            tVo.setAlbumId(meta.getAlbumId());
+            tVo.setAlbumTitle(meta.getAlbumTitle());
+            tVo.setCoverUrl(meta.getCoverUrl());
 
-            List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(t.getId(), new ArrayList<>());
             List<ArtistInfoVO> artists = new ArrayList<>();
-            for (TrackArtist ta : tas) {
-                Artist a = artistMap.get(ta.getArtistId());
-                if (a != null) {
+            if (meta.getArtists() != null) {
+                for (TrackMetaCacheDTO.ArtistMeta a : meta.getArtists()) {
                     ArtistInfoVO info = new ArtistInfoVO();
                     info.setId(a.getId());
                     info.setName(a.getName());
-                    info.setRole(ta.getRole());
+                    info.setRole(a.getRole());
                     artists.add(info);
                 }
             }
             tVo.setArtists(artists);
-
-            return tVo;
-        }).collect(Collectors.toList());
+            trackVOs.add(tVo);
+        }
 
         vo.setTracks(trackVOs);
         return vo;

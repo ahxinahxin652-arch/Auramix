@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
+import com.son.auramix.domain.cache.TrackMetaCacheDTO;
 import com.son.auramix.domain.dto.user.PlaylistCreateDTO;
 import com.son.auramix.domain.dto.user.PlaylistTracksDTO;
 import com.son.auramix.domain.dto.user.PlaylistUpdateDTO;
@@ -13,11 +14,10 @@ import com.son.auramix.domain.entity.*;
 import com.son.auramix.domain.vo.user.PlaylistDetailVO;
 import com.son.auramix.domain.vo.user.PlaylistSearchItemVO;
 import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
-import com.son.auramix.domain.vo.user.ArtistInfoVO;
-import com.son.auramix.domain.vo.admin.GenreVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
+import com.son.auramix.service.common.TrackCacheService;
 import com.son.auramix.service.oss.OssService;
 import com.son.auramix.service.oss.OssUploadResult;
 import com.son.auramix.service.user.PlaylistService;
@@ -33,6 +33,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.data.redis.core.RedisTemplate;
 
 /**
  * 用户歌单服务实现
@@ -52,15 +55,17 @@ public class PlaylistServiceImpl implements PlaylistService {
     private final UserMapper userMapper;
     private final TrackGenreMapper trackGenreMapper;
     private final GenreMapper genreMapper;
+    private final TrackCacheService trackCacheService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    /** OSS 服务（当 OSS 未配置时可能�?null�?*/
+    /** OSS 服务（当 OSS 未配置时可能为 null）*/
     @Autowired(required = false)
     private OssService ossService;
 
     // ============================ 已有方法 ============================
 
     /**
-     * �?SecurityContextHolder 获取当前登录用户 ID
+     * 从 SecurityContextHolder 获取当前登录用户 ID
      */
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -71,7 +76,7 @@ public class PlaylistServiceImpl implements PlaylistService {
     }
 
     /**
-     * �?SecurityContextHolder 获取当前登录用户 ID，未登录返回 null
+     * 从 SecurityContextHolder 获取当前登录用户 ID，未登录返回 null
      */
     private Long getCurrentUserIdOrNull() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -101,13 +106,16 @@ public class PlaylistServiceImpl implements PlaylistService {
         Long ownerId = getCurrentUserId();
         Playlist playlist = getOwnedPlaylist(ownerId, playlistId);
 
-        // 级联删除歌单-歌曲关联和关注记�?
+        // 级联删除歌单-歌曲关联和关注记录
         playlistTrackMapper.delete(
                 new LambdaQueryWrapper<PlaylistTrack>().eq(PlaylistTrack::getPlaylistId, playlistId));
         playlistFollowerMapper.delete(
                 new LambdaQueryWrapper<PlaylistFollower>().eq(PlaylistFollower::getPlaylistId, playlistId));
 
         playlistMapper.deleteById(playlist.getId());
+
+        redisTemplate.delete("playlistMeta::" + playlistId);
+        redisTemplate.delete("playlistTrackRelations::" + playlistId);
 
         log.info("[PlaylistService] 删除歌单 playlistId={}, ownerId={}", playlistId, ownerId);
     }
@@ -150,6 +158,8 @@ public class PlaylistServiceImpl implements PlaylistService {
             playlistTrackMapper.insert(pt);
         }
 
+        redisTemplate.delete("playlistTrackRelations::" + playlistId);
+
         log.info("[PlaylistService] 歌单添加歌曲 playlistId={}, added={}, skipped={}",
                 playlistId, toAdd.size(), trackIds.size() - toAdd.size());
     }
@@ -164,6 +174,8 @@ public class PlaylistServiceImpl implements PlaylistService {
                 new LambdaQueryWrapper<PlaylistTrack>()
                         .eq(PlaylistTrack::getPlaylistId, playlistId)
                         .in(PlaylistTrack::getTrackId, req.getTrackIds()));
+
+        redisTemplate.delete("playlistTrackRelations::" + playlistId);
 
         log.info("[PlaylistService] 歌单移除歌曲 playlistId={}, deleted={}", playlistId, deleted);
     }
@@ -189,6 +201,9 @@ public class PlaylistServiceImpl implements PlaylistService {
         }
 
         playlistMapper.updateById(playlist);
+        
+        redisTemplate.delete("playlistMeta::" + playlistId);
+        
         log.info("[PlaylistService] 更新歌单 playlistId={}, ownerId={}", playlistId, ownerId);
     }
 
@@ -226,12 +241,15 @@ public class PlaylistServiceImpl implements PlaylistService {
                 throw new BusinessException(ResultCode.INTERNAL_ERROR, "封面上传失败: " + e.getMessage());
             }
         } else if (req.getCoverUrl() != null) {
-            // 如果通过 coverUrl 字段直接设置（JSON 兼容�?
+            // 如果通过 coverUrl 字段直接设置
             playlist.setCoverUrl(req.getCoverUrl());
         }
 
         playlistMapper.updateById(playlist);
-        log.info("[PlaylistService] 保存歌单(含封�? playlistId={}, ownerId={}", playlistId, ownerId);
+        
+        redisTemplate.delete("playlistMeta::" + playlistId);
+        
+        log.info("[PlaylistService] 保存歌单(含封面) playlistId={}, ownerId={}", playlistId, ownerId);
 
         return toResponse(playlist);
     }
@@ -304,9 +322,14 @@ public class PlaylistServiceImpl implements PlaylistService {
 
     @Override
     public PlaylistDetailVO getPlaylistDetail(Long playlistId) {
-        Playlist playlist = playlistMapper.selectById(playlistId);
+        String metaKey = "playlistMeta::" + playlistId;
+        Playlist playlist = (Playlist) redisTemplate.opsForValue().get(metaKey);
         if (playlist == null) {
-            throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
+            playlist = playlistMapper.selectById(playlistId);
+            if (playlist == null) {
+                throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
+            }
+            redisTemplate.opsForValue().set(metaKey, playlist, 15, TimeUnit.MINUTES);
         }
 
         Long currentUserId = getCurrentUserIdOrNull();
@@ -347,10 +370,16 @@ public class PlaylistServiceImpl implements PlaylistService {
         }
 
         // 歌曲列表
-        List<PlaylistTrack> playlistTracks = playlistTrackMapper.selectList(
-                new LambdaQueryWrapper<PlaylistTrack>()
-                        .eq(PlaylistTrack::getPlaylistId, playlistId)
-                        .orderByAsc(PlaylistTrack::getSortOrder));
+        String relKey = "playlistTrackRelations::" + playlistId;
+        @SuppressWarnings("unchecked")
+        List<PlaylistTrack> playlistTracks = (List<PlaylistTrack>) redisTemplate.opsForValue().get(relKey);
+        if (playlistTracks == null) {
+            playlistTracks = playlistTrackMapper.selectList(
+                    new LambdaQueryWrapper<PlaylistTrack>()
+                            .eq(PlaylistTrack::getPlaylistId, playlistId)
+                            .orderByAsc(PlaylistTrack::getSortOrder));
+            redisTemplate.opsForValue().set(relKey, playlistTracks, 15, TimeUnit.MINUTES);
+        }
 
         detail.setTrackCount(playlistTracks.size());
 
@@ -358,84 +387,45 @@ public class PlaylistServiceImpl implements PlaylistService {
             detail.setTracks(new ArrayList<>());
         } else {
             List<Long> trackIds = playlistTracks.stream().map(PlaylistTrack::getTrackId).collect(Collectors.toList());
-            List<Track> tracks = trackMapper.selectBatchIds(trackIds);
-            Map<Long, Track> trackMap = tracks.stream().collect(Collectors.toMap(Track::getId, t -> t));
-
-            // 批量查专�?
-            List<Long> albumIds = tracks.stream().map(Track::getAlbumId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-            Map<Long, Album> albumMap = (albumIds.isEmpty() ? new ArrayList<Album>() : albumMapper.selectBatchIds(albumIds))
-                    .stream().collect(Collectors.toMap(Album::getId, a -> a));
-
-            // 批量查歌�?
-            List<TrackArtist> trackArtists = trackArtistMapper.selectList(
-                    new LambdaQueryWrapper<TrackArtist>().in(TrackArtist::getTrackId, trackIds));
-            List<Long> artistIds = trackArtists.stream().map(TrackArtist::getArtistId).distinct().collect(Collectors.toList());
-            Map<Long, Artist> artistMap = (artistIds.isEmpty() ? new ArrayList<Artist>() : artistMapper.selectBatchIds(artistIds))
-                    .stream().collect(Collectors.toMap(Artist::getId, a -> a));
-            Map<Long, List<TrackArtist>> trackArtistsByTrack = trackArtists.stream()
-                    .collect(Collectors.groupingBy(TrackArtist::getTrackId));
-
-            // 批量查流派
-            List<TrackGenre> trackGenres = trackGenreMapper.selectList(
-                    new LambdaQueryWrapper<TrackGenre>().in(TrackGenre::getTrackId, trackIds));
-            List<Long> genreIds = trackGenres.stream().map(TrackGenre::getGenreId).distinct().collect(Collectors.toList());
-            Map<Long, Genre> genreMap = (genreIds.isEmpty() ? new ArrayList<Genre>() : genreMapper.selectBatchIds(genreIds))
-                    .stream().collect(Collectors.toMap(Genre::getId, g -> g));
-            Map<Long, List<TrackGenre>> trackGenresByTrack = trackGenres.stream()
-                    .collect(Collectors.groupingBy(TrackGenre::getTrackId));
+            Map<Long, TrackMetaCacheDTO> trackMetaMap = trackCacheService.getTrackMetaBatch(trackIds);
 
             List<PlaylistTrackItemVO> trackItems = playlistTracks.stream().map(pt -> {
+                TrackMetaCacheDTO meta = trackMetaMap.get(pt.getTrackId());
+                if (meta == null) {
+                    return null;
+                }
+                
                 PlaylistTrackItemVO item = new PlaylistTrackItemVO();
                 item.setTrackId(pt.getTrackId());
                 item.setSortOrder(pt.getSortOrder());
                 item.setAddedAt(pt.getAddedAt());
 
-                Track track = trackMap.get(pt.getTrackId());
-                if (track != null) {
-                    item.setTitle(track.getTitle());
-                    item.setDuration(track.getDuration());
-                    item.setMember(track.getMember());
-
-                    Album album = albumMap.get(track.getAlbumId());
-                    if (album != null) {
-                        item.setCoverUrl(album.getCoverUrl());
-                        item.setAlbumTitle(album.getTitle());
-                    item.setAlbumId(album.getId());
-                    }
-
-                    List<TrackArtist> tas = trackArtistsByTrack.getOrDefault(pt.getTrackId(), new ArrayList<>());
-                    List<ArtistInfoVO> artists = tas.stream()
-                            .map(ta -> {
-                                Artist a = artistMap.get(ta.getArtistId());
-                                if (a != null) {
-                                    ArtistInfoVO info = new ArtistInfoVO();
-                                    info.setId(a.getId());
-                                    info.setName(a.getName());
-                                    info.setRole(ta.getRole());
-                                    return info;
-                                }
-                                return null;
-                            })
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toList());
-                    item.setArtists(artists);
-
-                    List<TrackGenre> tgs = trackGenresByTrack.getOrDefault(pt.getTrackId(), new ArrayList<>());
-                    List<GenreVO> genres = tgs.stream().map(tg -> {
-                        Genre g = genreMap.get(tg.getGenreId());
-                        if (g != null) {
-                            GenreVO gvo = new GenreVO();
-                            gvo.setId(g.getId());
-                            gvo.setName(g.getName());
-                            gvo.setCreatedAt(g.getCreatedAt());
-                            return gvo;
-                        }
-                        return null;
-                    }).filter(Objects::nonNull).collect(Collectors.toList());
-                    item.setGenres(genres);
+                item.setTitle(meta.getTitle());
+                item.setDuration(meta.getDuration());
+                item.setMember(meta.getMember());
+                item.setCoverUrl(meta.getCoverUrl());
+                item.setAlbumTitle(meta.getAlbumTitle());
+                item.setAlbumId(meta.getAlbumId());
+                if (meta.getArtists() != null) {
+                    item.setArtists(meta.getArtists().stream().map(a -> {
+                        com.son.auramix.domain.vo.user.ArtistInfoVO av = new com.son.auramix.domain.vo.user.ArtistInfoVO();
+                        av.setId(a.getId());
+                        av.setName(a.getName());
+                        av.setRole(a.getRole());
+                        return av;
+                    }).collect(Collectors.toList()));
                 }
+                if (meta.getGenres() != null) {
+                    item.setGenres(meta.getGenres().stream().map(g -> {
+                        com.son.auramix.domain.vo.admin.GenreVO gv = new com.son.auramix.domain.vo.admin.GenreVO();
+                        gv.setId(g.getId());
+                        gv.setName(g.getName());
+                        return gv;
+                    }).collect(Collectors.toList()));
+                }
+                
                 return item;
-            }).collect(Collectors.toList());
+            }).filter(Objects::nonNull).collect(Collectors.toList());
 
             detail.setTracks(trackItems);
         }

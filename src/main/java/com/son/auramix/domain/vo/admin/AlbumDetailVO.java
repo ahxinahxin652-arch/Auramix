@@ -22,4 +22,6 @@ public class AlbumDetailVO {
         private Long artistId;
         private String artistName;
     }
+
+    private List<com.son.auramix.domain.vo.admin.TrackListItemVO> tracks;
 }

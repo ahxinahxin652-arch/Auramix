@@ -23,6 +23,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+
 @Service
 @RequiredArgsConstructor
 public class GenreManageServiceImpl implements GenreManageService {
@@ -56,6 +59,7 @@ public class GenreManageServiceImpl implements GenreManageService {
     }
 
     @Override
+    @Cacheable(value = "genres", key = "'all'")
     public List<GenreVO> getAllGenres() {
         return genreMapper.selectList(new LambdaQueryWrapper<Genre>().orderByAsc(Genre::getName))
                 .stream().map(g -> {
@@ -68,6 +72,7 @@ public class GenreManageServiceImpl implements GenreManageService {
     }
 
     @Override
+    @CacheEvict(value = "genres", allEntries = true)
     public void addGenre(GenreCreateDTO req) {
         // 检查是否已存在同名流派
         Long count = genreMapper.selectCount(new LambdaQueryWrapper<Genre>().eq(Genre::getName, req.getName()));
@@ -82,6 +87,7 @@ public class GenreManageServiceImpl implements GenreManageService {
     }
 
     @Override
+    @CacheEvict(value = "genres", allEntries = true)
     public void updateGenre(Long id, GenreUpdateDTO req) {
         Genre genre = genreMapper.selectById(id);
         if (genre == null) {
@@ -100,6 +106,7 @@ public class GenreManageServiceImpl implements GenreManageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    @CacheEvict(value = "genres", allEntries = true)
     public void deleteGenre(Long id) {
         Genre genre = genreMapper.selectById(id);
         if (genre == null) {
