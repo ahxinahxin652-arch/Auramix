@@ -42,6 +42,7 @@ const MIN_WIDTH_FOR_BOTH_SIDEBARS = 1100
 watch(() => leftSidebarStore.mode, (newMode) => {
   if (newMode === 'expanded' && sidebarStore.isOpen) {
     if (window.innerWidth < MIN_WIDTH_FOR_BOTH_SIDEBARS) {
+      sidebarStore.contentType = ''
       sidebarStore.setOpen(false)
       localStorageStore.setRightBarShow(false)
     }

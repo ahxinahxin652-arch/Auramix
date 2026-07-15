@@ -41,6 +41,7 @@ function closeSidebar() {
 }
 
 function openSidebar() {
+  sidebarStore.contentType = ''
   sidebarStore.setOpen(true)
   localStorageStore.setRightBarShow(true)
 }
@@ -317,7 +318,7 @@ const handleCardArtistClick = (art) => {
       transform: (!sidebarStore.isOpen && !isHovered) ? `translateX(calc(100% - 40px))` : (!sidebarStore.isOpen && isHovered ? `translateX(calc(100% - 64px))` : 'translateX(0)'),
       transition: transformTransition
     }"
-    @mouseenter="isHovered = true"
+    @mouseenter="isHovered = true; if (!sidebarStore.isOpen) sidebarStore.contentType = ''"
     @mouseleave="isHovered = false"
   >
     <!-- Collapsed handle overlay -->
