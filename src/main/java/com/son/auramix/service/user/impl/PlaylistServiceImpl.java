@@ -6,7 +6,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.son.auramix.common.exception.BusinessException;
 import com.son.auramix.common.result.PageResult;
 import com.son.auramix.common.result.ResultCode;
+import com.son.auramix.domain.cache.ArtistMetaCacheDTO;
 import com.son.auramix.domain.cache.TrackMetaCacheDTO;
+import com.son.auramix.domain.cache.PlaylistMetaCacheDTO;
+import com.son.auramix.domain.cache.PlaylistTrackRelationDTO;
 import com.son.auramix.domain.dto.user.PlaylistCreateDTO;
 import com.son.auramix.domain.dto.user.PlaylistTracksDTO;
 import com.son.auramix.domain.dto.user.PlaylistUpdateDTO;
@@ -17,6 +20,7 @@ import com.son.auramix.domain.vo.user.PlaylistTrackItemVO;
 import com.son.auramix.domain.vo.user.PlaylistVO;
 import com.son.auramix.mapper.*;
 import com.son.auramix.security.user.UserPrincipal;
+import com.son.auramix.service.common.ArtistCacheService;
 import com.son.auramix.service.common.TrackCacheService;
 import com.son.auramix.service.oss.OssService;
 import com.son.auramix.service.oss.OssUploadResult;
@@ -36,6 +40,11 @@ import java.util.stream.Collectors;
 import java.util.concurrent.TimeUnit;
 
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
  * 用户歌单服务实现
@@ -56,7 +65,13 @@ public class PlaylistServiceImpl implements PlaylistService {
     private final TrackGenreMapper trackGenreMapper;
     private final GenreMapper genreMapper;
     private final TrackCacheService trackCacheService;
+    private final ArtistCacheService artistCacheService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     /** OSS 服务（当 OSS 未配置时可能为 null）*/
     @Autowired(required = false)
@@ -114,8 +129,8 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         playlistMapper.deleteById(playlist.getId());
 
-        redisTemplate.delete("playlistMeta::" + playlistId);
-        redisTemplate.delete("playlistTrackRelations::" + playlistId);
+        redisTemplate.delete("auramix:cache:playlist:" + playlistId + ":meta");
+        stringRedisTemplate.delete("auramix:cache:playlist:" + playlistId + ":list");
 
         log.info("[PlaylistService] 删除歌单 playlistId={}, ownerId={}", playlistId, ownerId);
     }
@@ -158,7 +173,7 @@ public class PlaylistServiceImpl implements PlaylistService {
             playlistTrackMapper.insert(pt);
         }
 
-        redisTemplate.delete("playlistTrackRelations::" + playlistId);
+        stringRedisTemplate.delete("auramix:cache:playlist:" + playlistId + ":list");
 
         log.info("[PlaylistService] 歌单添加歌曲 playlistId={}, added={}, skipped={}",
                 playlistId, toAdd.size(), trackIds.size() - toAdd.size());
@@ -175,7 +190,7 @@ public class PlaylistServiceImpl implements PlaylistService {
                         .eq(PlaylistTrack::getPlaylistId, playlistId)
                         .in(PlaylistTrack::getTrackId, req.getTrackIds()));
 
-        redisTemplate.delete("playlistTrackRelations::" + playlistId);
+        stringRedisTemplate.delete("auramix:cache:playlist:" + playlistId + ":list");
 
         log.info("[PlaylistService] 歌单移除歌曲 playlistId={}, deleted={}", playlistId, deleted);
     }
@@ -202,7 +217,7 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         playlistMapper.updateById(playlist);
         
-        redisTemplate.delete("playlistMeta::" + playlistId);
+        redisTemplate.delete("auramix:cache:playlist:" + playlistId + ":meta");
         
         log.info("[PlaylistService] 更新歌单 playlistId={}, ownerId={}", playlistId, ownerId);
     }
@@ -247,7 +262,7 @@ public class PlaylistServiceImpl implements PlaylistService {
 
         playlistMapper.updateById(playlist);
         
-        redisTemplate.delete("playlistMeta::" + playlistId);
+        redisTemplate.delete("auramix:cache:playlist:" + playlistId + ":meta");
         
         log.info("[PlaylistService] 保存歌单(含封面) playlistId={}, ownerId={}", playlistId, ownerId);
 
@@ -322,63 +337,85 @@ public class PlaylistServiceImpl implements PlaylistService {
 
     @Override
     public PlaylistDetailVO getPlaylistDetail(Long playlistId) {
-        String metaKey = "playlistMeta::" + playlistId;
-        Playlist playlist = (Playlist) redisTemplate.opsForValue().get(metaKey);
-        if (playlist == null) {
-            playlist = playlistMapper.selectById(playlistId);
+        String metaKey = "auramix:cache:playlist:" + playlistId + ":meta";
+        PlaylistMetaCacheDTO playlistMeta = (PlaylistMetaCacheDTO) redisTemplate.opsForValue().get(metaKey);
+        if (playlistMeta == null) {
+            Playlist playlist = playlistMapper.selectById(playlistId);
             if (playlist == null) {
                 throw new BusinessException(ResultCode.NOT_FOUND, "歌单不存在");
             }
-            redisTemplate.opsForValue().set(metaKey, playlist, 15, TimeUnit.MINUTES);
+            playlistMeta = new PlaylistMetaCacheDTO();
+            playlistMeta.setOwnerId(playlist.getOwnerId());
+            
+            // 缓存创建者姓名
+            User owner = userMapper.selectById(playlist.getOwnerId());
+            if (owner != null) {
+                playlistMeta.setOwnerName(owner.getDisplayName());
+            }
+            
+            playlistMeta.setName(playlist.getName());
+            playlistMeta.setDescription(playlist.getDescription());
+            playlistMeta.setCoverUrl(playlist.getCoverUrl());
+            playlistMeta.setIsPublic(playlist.getIsPublic());
+            playlistMeta.setCreatedAt(playlist.getCreatedAt());
+            playlistMeta.setUpdatedAt(playlist.getUpdatedAt());
+            redisTemplate.opsForValue().set(metaKey, playlistMeta, 15, TimeUnit.MINUTES);
         }
 
         Long currentUserId = getCurrentUserIdOrNull();
 
         // 私密歌单仅创建者可见
-        if (Boolean.FALSE.equals(playlist.getIsPublic())) {
-            if (currentUserId == null || !currentUserId.equals(playlist.getOwnerId())) {
+        if (Boolean.FALSE.equals(playlistMeta.getIsPublic())) {
+            if (currentUserId == null || !currentUserId.equals(playlistMeta.getOwnerId())) {
                 throw new BusinessException(ResultCode.FORBIDDEN, "无权查看该歌曲");
             }
         }
 
         PlaylistDetailVO detail = new PlaylistDetailVO();
-        detail.setId(playlist.getId());
-        detail.setOwnerId(playlist.getOwnerId());
-        detail.setName(playlist.getName());
-        detail.setDescription(playlist.getDescription());
-        detail.setCoverUrl(playlist.getCoverUrl());
-        detail.setIsPublic(playlist.getIsPublic());
-        detail.setCreatedAt(playlist.getCreatedAt());
-        detail.setUpdatedAt(playlist.getUpdatedAt());
+        detail.setId(playlistId);
+        detail.setOwnerId(playlistMeta.getOwnerId());
+        detail.setOwnerName(playlistMeta.getOwnerName());
+        detail.setName(playlistMeta.getName());
+        detail.setDescription(playlistMeta.getDescription());
+        detail.setCoverUrl(playlistMeta.getCoverUrl());
+        detail.setIsPublic(playlistMeta.getIsPublic());
+        detail.setCreatedAt(playlistMeta.getCreatedAt());
+        detail.setUpdatedAt(playlistMeta.getUpdatedAt());
 
-        // 创建者用户名
-        User owner = userMapper.selectById(playlist.getOwnerId());
-        if (owner != null) {
-            detail.setOwnerName(owner.getDisplayName());
-        }
-
-        // isOwner / isFollowing
-        detail.setIsOwner(currentUserId != null && currentUserId.equals(playlist.getOwnerId()));
-        if (currentUserId != null) {
-            Long count = playlistFollowerMapper.selectCount(
-                    new LambdaQueryWrapper<PlaylistFollower>()
-                            .eq(PlaylistFollower::getPlaylistId, playlistId)
-                            .eq(PlaylistFollower::getUserId, currentUserId));
-            detail.setIsFollowing(count > 0);
-        } else {
-            detail.setIsFollowing(false);
-        }
+        // isOwner (isFollowing removed as per client-side sync design)
+        detail.setIsOwner(currentUserId != null && currentUserId.equals(playlistMeta.getOwnerId()));
 
         // 歌曲列表
-        String relKey = "playlistTrackRelations::" + playlistId;
-        @SuppressWarnings("unchecked")
-        List<PlaylistTrack> playlistTracks = (List<PlaylistTrack>) redisTemplate.opsForValue().get(relKey);
+        String relKey = "auramix:cache:playlist:" + playlistId + ":list";
+        String relJson = stringRedisTemplate.opsForValue().get(relKey);
+        List<PlaylistTrackRelationDTO> playlistTracks = null;
+        try {
+            if (relJson != null) {
+                playlistTracks = MAPPER.readValue(relJson, new TypeReference<List<PlaylistTrackRelationDTO>>(){});
+            }
+        } catch (Exception e) {
+            log.error("Failed to parse playlistTrackRelations json", e);
+        }
+
         if (playlistTracks == null) {
-            playlistTracks = playlistTrackMapper.selectList(
+            List<PlaylistTrack> dbTracks = playlistTrackMapper.selectList(
                     new LambdaQueryWrapper<PlaylistTrack>()
                             .eq(PlaylistTrack::getPlaylistId, playlistId)
                             .orderByAsc(PlaylistTrack::getSortOrder));
-            redisTemplate.opsForValue().set(relKey, playlistTracks, 15, TimeUnit.MINUTES);
+            playlistTracks = dbTracks.stream().map(pt -> {
+                PlaylistTrackRelationDTO dto = new PlaylistTrackRelationDTO();
+                dto.setTrackId(pt.getTrackId());
+                dto.setSortOrder(pt.getSortOrder());
+                dto.setAddedAt(pt.getAddedAt());
+                return dto;
+            }).collect(Collectors.toList());
+            
+            try {
+                String jsonStr = MAPPER.writeValueAsString(playlistTracks);
+                stringRedisTemplate.opsForValue().set(relKey, jsonStr, 15, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                log.error("Failed to serialize playlistTrackRelations", e);
+            }
         }
 
         detail.setTrackCount(playlistTracks.size());
@@ -386,8 +423,19 @@ public class PlaylistServiceImpl implements PlaylistService {
         if (playlistTracks.isEmpty()) {
             detail.setTracks(new ArrayList<>());
         } else {
-            List<Long> trackIds = playlistTracks.stream().map(PlaylistTrack::getTrackId).collect(Collectors.toList());
+            List<Long> trackIds = playlistTracks.stream().map(PlaylistTrackRelationDTO::getTrackId).collect(Collectors.toList());
             Map<Long, TrackMetaCacheDTO> trackMetaMap = trackCacheService.getTrackMetaBatch(trackIds);
+
+            List<Long> allArtistIds = trackMetaMap.values().stream()
+                    .filter(Objects::nonNull)
+                    .map(TrackMetaCacheDTO::getArtistRelations)
+                    .filter(Objects::nonNull)
+                    .flatMap(List::stream)
+                    .map(TrackMetaCacheDTO.ArtistRelation::getArtistId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            Map<Long, ArtistMetaCacheDTO> artistMetaMap = artistCacheService.getArtistMetaBatch(allArtistIds);
 
             List<PlaylistTrackItemVO> trackItems = playlistTracks.stream().map(pt -> {
                 TrackMetaCacheDTO meta = trackMetaMap.get(pt.getTrackId());
@@ -406,14 +454,18 @@ public class PlaylistServiceImpl implements PlaylistService {
                 item.setCoverUrl(meta.getCoverUrl());
                 item.setAlbumTitle(meta.getAlbumTitle());
                 item.setAlbumId(meta.getAlbumId());
-                if (meta.getArtists() != null) {
-                    item.setArtists(meta.getArtists().stream().map(a -> {
-                        com.son.auramix.domain.vo.user.ArtistInfoVO av = new com.son.auramix.domain.vo.user.ArtistInfoVO();
-                        av.setId(a.getId());
-                        av.setName(a.getName());
-                        av.setRole(a.getRole());
-                        return av;
-                    }).collect(Collectors.toList()));
+                if (meta.getArtistRelations() != null) {
+                    item.setArtists(meta.getArtistRelations().stream().map(ar -> {
+                        ArtistMetaCacheDTO artistMeta = artistMetaMap.get(ar.getArtistId());
+                        if (artistMeta != null) {
+                            com.son.auramix.domain.vo.user.ArtistInfoVO av = new com.son.auramix.domain.vo.user.ArtistInfoVO();
+                            av.setId(ar.getArtistId());
+                            av.setName(artistMeta.getName());
+                            av.setRole(ar.getRole());
+                            return av;
+                        }
+                        return null;
+                    }).filter(Objects::nonNull).collect(Collectors.toList()));
                 }
                 if (meta.getGenres() != null) {
                     item.setGenres(meta.getGenres().stream().map(g -> {
@@ -430,10 +482,17 @@ public class PlaylistServiceImpl implements PlaylistService {
             detail.setTracks(trackItems);
         }
 
-        // followerCount
-        Long followerCount = playlistFollowerMapper.selectCount(
-                new LambdaQueryWrapper<PlaylistFollower>().eq(PlaylistFollower::getPlaylistId, playlistId));
-        detail.setFollowerCount(followerCount.intValue());
+        // followerCount 缓存逻辑
+        String followCountKey = "auramix:cache:playlist:" + playlistId + ":followCount";
+        String cachedFollowerCount = stringRedisTemplate.opsForValue().get(followCountKey);
+        if (cachedFollowerCount != null) {
+            detail.setFollowerCount(Integer.parseInt(cachedFollowerCount));
+        } else {
+            Long followerCount = playlistFollowerMapper.selectCount(
+                    new LambdaQueryWrapper<PlaylistFollower>().eq(PlaylistFollower::getPlaylistId, playlistId));
+            detail.setFollowerCount(followerCount.intValue());
+            stringRedisTemplate.opsForValue().set(followCountKey, String.valueOf(followerCount), 30, TimeUnit.MINUTES);
+        }
 
         return detail;
     }
@@ -468,6 +527,11 @@ public class PlaylistServiceImpl implements PlaylistService {
         follower.setFollowedAt(java.time.LocalDateTime.now());
         playlistFollowerMapper.insert(follower);
 
+        String followCountKey = "auramix:cache:playlist:" + playlistId + ":followCount";
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(followCountKey))) {
+            stringRedisTemplate.opsForValue().increment(followCountKey);
+        }
+
         log.info("[PlaylistService] 关注歌单 playlistId={}, userId={}", playlistId, userId);
     }
 
@@ -475,11 +539,17 @@ public class PlaylistServiceImpl implements PlaylistService {
     @Transactional
     public void unfollowPlaylist(Long playlistId) {
         Long userId = getCurrentUserId();
-        // 幂等：未关注也直接返回成�?
-        playlistFollowerMapper.delete(
+        // 幂等：未关注也直接返回成功
+        int deleted = playlistFollowerMapper.delete(
                 new LambdaQueryWrapper<PlaylistFollower>()
                         .eq(PlaylistFollower::getPlaylistId, playlistId)
                         .eq(PlaylistFollower::getUserId, userId));
+        if (deleted > 0) {
+            String followCountKey = "auramix:cache:playlist:" + playlistId + ":followCount";
+            if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(followCountKey))) {
+                stringRedisTemplate.opsForValue().decrement(followCountKey);
+            }
+        }
         log.info("[PlaylistService] 取消关注歌单 playlistId={}, userId={}", playlistId, userId);
     }
 

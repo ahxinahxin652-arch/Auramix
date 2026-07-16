@@ -20,49 +20,72 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import com.son.auramix.domain.cache.TrackMetaCacheDTO;
+import com.son.auramix.domain.cache.ArtistMetaCacheDTO;
 import com.son.auramix.service.common.TrackCacheService;
+import com.son.auramix.service.common.ArtistCacheService;
 import org.springframework.data.redis.core.RedisTemplate;
 
 @Service
 @RequiredArgsConstructor
 public class UserAlbumServiceImpl implements UserAlbumService {
+    private static final com.fasterxml.jackson.databind.ObjectMapper MAPPER = new com.fasterxml.jackson.databind.ObjectMapper().registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule()).disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
 
     private final AlbumMapper albumMapper;
     private final TrackMapper trackMapper;
     private final TrackArtistMapper trackArtistMapper;
     private final ArtistMapper artistMapper;
     private final TrackCacheService trackCacheService;
+    private final ArtistCacheService artistCacheService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final org.springframework.data.redis.core.StringRedisTemplate stringRedisTemplate;
 
     @Override
     public UserAlbumDetailVO getAlbumDetail(Long albumId) {
-        String metaKey = "albumMeta::" + albumId;
-        Album album = (Album) redisTemplate.opsForValue().get(metaKey);
-        if (album == null) {
-            album = albumMapper.selectById(albumId);
+        String metaKey = "auramix:cache:album:" + albumId + ":meta";
+        com.son.auramix.domain.cache.AlbumMetaCacheDTO albumMeta = (com.son.auramix.domain.cache.AlbumMetaCacheDTO) redisTemplate.opsForValue().get(metaKey);
+        if (albumMeta == null) {
+            Album album = albumMapper.selectById(albumId);
             if (album != null) {
-                redisTemplate.opsForValue().set(metaKey, album, 15, TimeUnit.MINUTES);
+                albumMeta = new com.son.auramix.domain.cache.AlbumMetaCacheDTO();
+                albumMeta.setTitle(album.getTitle());
+                albumMeta.setCoverUrl(album.getCoverUrl());
+                albumMeta.setReleaseDate(album.getReleaseDate());
+                albumMeta.setAlbumType(album.getAlbumType());
+                redisTemplate.opsForValue().set(metaKey, albumMeta, 15, TimeUnit.MINUTES);
             }
         }
-        if (album == null) {
+        if (albumMeta == null) {
             throw new RuntimeException("专辑不存在");
         }
 
         UserAlbumDetailVO vo = new UserAlbumDetailVO();
-        vo.setId(album.getId());
-        vo.setTitle(album.getTitle());
-        vo.setCoverUrl(album.getCoverUrl());
-        vo.setReleaseDate(album.getReleaseDate());
-        vo.setAlbumType(album.getAlbumType());
+        vo.setId(albumId);
+        vo.setTitle(albumMeta.getTitle());
+        vo.setCoverUrl(albumMeta.getCoverUrl());
+        vo.setReleaseDate(albumMeta.getReleaseDate());
+        vo.setAlbumType(albumMeta.getAlbumType());
 
-        String relationKey = "albumTrackRelations::" + albumId;
-        List<Long> trackIds = (List<Long>) redisTemplate.opsForValue().get(relationKey);
+        String relationKey = "auramix:cache:album:" + albumId + ":list";
+        String trackIdsJson = stringRedisTemplate.opsForValue().get(relationKey);
+        List<Long> trackIds = null;
+        if (trackIdsJson != null) {
+            try {
+                trackIds = MAPPER.readValue(trackIdsJson, new com.fasterxml.jackson.core.type.TypeReference<List<Long>>(){});
+            } catch (Exception e) {
+                trackIds = null;
+            }
+        }
         if (trackIds == null) {
             List<Track> tracks = trackMapper.selectList(
                     new LambdaQueryWrapper<Track>().eq(Track::getAlbumId, albumId).orderByAsc(Track::getId)
             );
             trackIds = tracks.stream().map(Track::getId).collect(Collectors.toList());
-            redisTemplate.opsForValue().set(relationKey, trackIds, 15, TimeUnit.MINUTES);
+            try {
+                stringRedisTemplate.opsForValue().set(relationKey, MAPPER.writeValueAsString(trackIds), 15, TimeUnit.MINUTES);
+            } catch (Exception e) {
+                // ignore
+            }
         }
 
         if (trackIds.isEmpty()) {
@@ -71,13 +94,25 @@ public class UserAlbumServiceImpl implements UserAlbumService {
         }
 
         Map<Long, TrackMetaCacheDTO> trackMetaMap = trackCacheService.getTrackMetaBatch(trackIds);
+        
+        List<Long> allArtistIds = trackMetaMap.values().stream()
+                .filter(Objects::nonNull)
+                .map(TrackMetaCacheDTO::getArtistRelations)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .map(TrackMetaCacheDTO.ArtistRelation::getArtistId)
+                .distinct()
+                .collect(Collectors.toList());
+                
+        Map<Long, ArtistMetaCacheDTO> artistMetaMap = allArtistIds.isEmpty() ? new HashMap<>() : artistCacheService.getArtistMetaBatch(allArtistIds);
+
         List<UserTrackSearchVO> trackVOs = new ArrayList<>();
         for (Long tId : trackIds) {
             TrackMetaCacheDTO meta = trackMetaMap.get(tId);
             if (meta == null) continue;
 
             UserTrackSearchVO tVo = new UserTrackSearchVO();
-            tVo.setId(meta.getId());
+            tVo.setId(tId);
             tVo.setTitle(meta.getTitle());
             tVo.setDuration(meta.getDuration());
             tVo.setAlbumId(meta.getAlbumId());
@@ -85,13 +120,16 @@ public class UserAlbumServiceImpl implements UserAlbumService {
             tVo.setCoverUrl(meta.getCoverUrl());
 
             List<ArtistInfoVO> artists = new ArrayList<>();
-            if (meta.getArtists() != null) {
-                for (TrackMetaCacheDTO.ArtistMeta a : meta.getArtists()) {
-                    ArtistInfoVO info = new ArtistInfoVO();
-                    info.setId(a.getId());
-                    info.setName(a.getName());
-                    info.setRole(a.getRole());
-                    artists.add(info);
+            if (meta.getArtistRelations() != null) {
+                for (TrackMetaCacheDTO.ArtistRelation ar : meta.getArtistRelations()) {
+                    ArtistMetaCacheDTO artistMeta = artistMetaMap.get(ar.getArtistId());
+                    if (artistMeta != null) {
+                        ArtistInfoVO info = new ArtistInfoVO();
+                        info.setId(ar.getArtistId());
+                        info.setName(artistMeta.getName());
+                        info.setRole(ar.getRole());
+                        artists.add(info);
+                    }
                 }
             }
             tVo.setArtists(artists);

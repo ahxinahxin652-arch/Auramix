@@ -1,26 +1,20 @@
-package com.son.auramix.domain.vo.user;
+package com.son.auramix.domain.cache;
 
 import lombok.Data;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.List;
 
-/**
- * 歌单详情（含歌曲列表）
- */
 @Data
-public class PlaylistDetailVO {
-    private Long id;
+public class PlaylistMetaCacheDTO implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Long ownerId;
     private String ownerName;
     private String name;
     private String description;
     private String coverUrl;
     private Boolean isPublic;
-    private Integer trackCount;
-    private Integer followerCount;
-    private Boolean isOwner;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<PlaylistTrackItemVO> tracks;
 }

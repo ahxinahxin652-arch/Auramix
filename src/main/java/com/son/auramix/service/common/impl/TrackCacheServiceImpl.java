@@ -23,7 +23,6 @@ public class TrackCacheServiceImpl implements TrackCacheService {
     
     private final TrackMapper trackMapper;
     private final AlbumMapper albumMapper;
-    private final ArtistMapper artistMapper;
     private final TrackArtistMapper trackArtistMapper;
     private final GenreMapper genreMapper;
     private final TrackGenreMapper trackGenreMapper;
@@ -84,21 +83,6 @@ public class TrackCacheServiceImpl implements TrackCacheService {
                 );
                 Map<Long, List<TrackArtist>> trackArtistGroup = trackArtists.stream()
                         .collect(Collectors.groupingBy(TrackArtist::getTrackId));
-                        
-                Set<Long> artistIds = trackArtists.stream()
-                        .map(TrackArtist::getArtistId)
-                        .collect(Collectors.toSet());
-                Map<Long, Artist> artistMap;
-                if (!CollectionUtils.isEmpty(artistIds)) {
-                    List<Artist> artists = artistMapper.selectBatchIds(artistIds);
-                    if (!CollectionUtils.isEmpty(artists)) {
-                        artistMap = artists.stream().collect(Collectors.toMap(Artist::getId, a -> a));
-                    } else {
-                        artistMap = new HashMap<>();
-                    }
-                } else {
-                    artistMap = new HashMap<>();
-                }
 
                 // fetch track genres
                 List<TrackGenre> trackGenres = trackGenreMapper.selectList(
@@ -127,7 +111,6 @@ public class TrackCacheServiceImpl implements TrackCacheService {
                 
                 for (Track track : dbTracks) {
                     TrackMetaCacheDTO dto = new TrackMetaCacheDTO();
-                    dto.setId(track.getId());
                     dto.setTitle(track.getTitle());
                     dto.setDuration(track.getDuration());
                     dto.setMember(track.getMember());
@@ -141,18 +124,13 @@ public class TrackCacheServiceImpl implements TrackCacheService {
                     
                     // set artists
                     List<TrackArtist> taList = trackArtistGroup.getOrDefault(track.getId(), Collections.emptyList());
-                    List<TrackMetaCacheDTO.ArtistMeta> artistMetaList = taList.stream().map(ta -> {
-                        Artist artist = artistMap.get(ta.getArtistId());
-                        if (artist != null) {
-                            TrackMetaCacheDTO.ArtistMeta am = new TrackMetaCacheDTO.ArtistMeta();
-                            am.setId(artist.getId());
-                            am.setName(artist.getName());
-                            am.setRole(ta.getRole());
-                            return am;
-                        }
-                        return null;
-                    }).filter(Objects::nonNull).collect(Collectors.toList());
-                    dto.setArtists(artistMetaList);
+                    List<TrackMetaCacheDTO.ArtistRelation> artistRelationList = taList.stream().map(ta -> {
+                        TrackMetaCacheDTO.ArtistRelation ar = new TrackMetaCacheDTO.ArtistRelation();
+                        ar.setArtistId(ta.getArtistId());
+                        ar.setRole(ta.getRole());
+                        return ar;
+                    }).collect(Collectors.toList());
+                    dto.setArtistRelations(artistRelationList);
                     
                     // set genres
                     List<TrackGenre> tgList = trackGenreGroup.getOrDefault(track.getId(), Collections.emptyList());
@@ -174,6 +152,10 @@ public class TrackCacheServiceImpl implements TrackCacheService {
                 
                 if (!multiSetMap.isEmpty()) {
                     redisTemplate.opsForValue().multiSet(multiSetMap);
+                    for (String key : multiSetMap.keySet()) {
+                        long expireSeconds = java.util.concurrent.ThreadLocalRandom.current().nextInt(1530, 2071);
+                        redisTemplate.expire(key, expireSeconds, java.util.concurrent.TimeUnit.SECONDS);
+                    }
                 }
             }
         }

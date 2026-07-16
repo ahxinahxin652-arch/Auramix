@@ -8,21 +8,19 @@ import java.util.List;
 public class TrackMetaCacheDTO implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private Long id;
     private String title;
     private Integer duration;
     private String coverUrl;
     private Long albumId;
     private String albumTitle;
     private Integer member;
-    private List<ArtistMeta> artists;
+    private List<ArtistRelation> artistRelations;
     private List<GenreMeta> genres;
 
     @Data
-    public static class ArtistMeta implements Serializable {
+    public static class ArtistRelation implements Serializable {
         private static final long serialVersionUID = 1L;
-        private Long id;
-        private String name;
+        private Long artistId;
         private Integer role;
     }
 
