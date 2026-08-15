@@ -134,7 +134,8 @@ async function loadTracks() {
         id: t.trackId || t.id,
         cover: t.coverUrl || t.cover,
         album: t.albumTitle || t.album,
-        artist: (t.artists && Array.isArray(t.artists)) ? t.artists.map(a => a.name).join(', ') : t.artist
+        artist: (t.artists && Array.isArray(t.artists)) ? t.artists.map(a => a.name).join(', ') : t.artist,
+        createdAt: t.addedAt || t.createdAt
       }))
       
       warehouseInfo.value = {
@@ -788,7 +789,7 @@ function parseArtists(track) {
             <div class="track-album" @click.stop="goToAlbum(track.albumId)" :title="track.album || '未知专辑'">
               <span class="album-link">{{ track.album || '未知专辑' }}</span>
             </div>
-            <div class="track-date" @click="playTrack(track, index)">{{ formatDate(track.createdAt) }}</div>
+            <div class="track-date" @click="playTrack(track, index)">{{ formatDate(track.addedAt || track.createdAt) }}</div>
             <div class="track-duration" @click="playTrack(track, index)">
               <button 
                 class="add-to-playlist-btn" 
